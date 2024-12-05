@@ -9,7 +9,7 @@ import (
 
 // Command 执行命令
 func Command(command string) *exec.Cmd {
-	return get().command(command)
+	return get().Command(command)
 }
 func Delimiter() string {
 	return get().Delimiter()
@@ -81,6 +81,6 @@ type Service interface {
 	OS() string
 	Delimiter() string
 	Framework() string
+	Command(command string) *exec.Cmd
 	init(env []string) error
-	command(command string) *exec.Cmd
 }
