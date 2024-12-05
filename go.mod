@@ -1,4 +1,4 @@
-module github.com/dataelement/core
+module github.com/hosgf/element
 
 go 1.23.3
 
