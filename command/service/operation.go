@@ -48,38 +48,38 @@ func Reload(ctx context.Context, logger *glog.Logger) (string, error) {
 }
 
 var (
-	service Service
-	mu      sync.Mutex
+	oper Operation
+	mu   sync.Mutex
 )
 
-func get() Service {
-	if service != nil {
-		return service
+func get() Operation {
+	if oper != nil {
+		return oper
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if service != nil {
-		return service
+	if oper != nil {
+		return oper
 	}
 	os := os1.OS()
 	switch os {
 	case os1.WINDOWS:
-		service = &windows{}
+		oper = &windows{}
 		break
 	case os1.LINUX:
-		service = &linux{}
+		oper = &linux{}
 		break
 	case os1.MACOS:
-		service = &macos{}
+		oper = &macos{}
 		break
 	default:
-		service = &linux{}
+		oper = &linux{}
 		break
 	}
-	return service
+	return oper
 }
 
-type Service interface {
+type Operation interface {
 	// Init 初始化
 	Init(ctx context.Context, isDebug bool)
 	// Enable 启动

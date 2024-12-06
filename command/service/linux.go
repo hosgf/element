@@ -19,9 +19,9 @@ type linux struct {
 
 // Init 初始化systemd用于管理系统和管理服务的工具
 func (l *linux) Init(ctx context.Context, isDebug bool) {
-	systemctlPath, err := exec.LookPath("systemctl")
+	path, err := exec.LookPath("systemctl")
 	if err == nil {
-		l.cmd = cmd.New(systemctlPath, isDebug)
+		l.cmd = cmd.New(path, isDebug)
 	}
 	l.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ systemctl ]命令不可用: %s", err.Error()))
 	logger.Errorf(ctx, "%d %s", gerror.Code(l.err).Code(), l.err.Error())
