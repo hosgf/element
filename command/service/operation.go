@@ -8,51 +8,47 @@ import (
 )
 
 var (
-	oper Operation
-	mu   sync.Mutex
+	oper    Operation
+	mu      sync.Mutex
+	isDebug bool
 )
-
-// Init 初始化
-func Init(ctx context.Context, isDebug bool) {
-	Get().Init(ctx, isDebug)
-}
 
 // Enable 设置开机自启动
 func Enable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return Get().Enable(ctx, name, logger)
+	return GetDefault().Enable(ctx, name, logger)
 }
 
 // Disable 禁止开机自启动
 func Disable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return Get().Disable(ctx, name, logger)
+	return GetDefault().Disable(ctx, name, logger)
 }
 
 // Start 启动服务
 func Start(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return Get().Start(ctx, name, logger)
+	return GetDefault().Start(ctx, name, logger)
 }
 
 // Restart 重启服务
 func Restart(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return Get().Restart(ctx, name, logger)
+	return GetDefault().Restart(ctx, name, logger)
 }
 
 // Stop 停止服务
 func Stop(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return Get().Stop(ctx, name, logger)
+	return GetDefault().Stop(ctx, name, logger)
 }
 
 // Status 服务状态
 func Status(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return Get().Status(ctx, name, logger)
+	return GetDefault().Status(ctx, name, logger)
 }
 
 // Reload 重新加载服务配置文件
 func Reload(ctx context.Context, logger *glog.Logger) (string, error) {
-	return Get().Reload(ctx, logger)
+	return GetDefault().Reload(ctx, logger)
 }
 
-func Get() Operation {
+func GetDefault() Operation {
 	if oper != nil {
 		return oper
 	}
@@ -61,7 +57,15 @@ func Get() Operation {
 	if oper != nil {
 		return oper
 	}
-	os := os1.OS()
+	oper = Get(isDebug)
+	return oper
+}
+
+func Get(isDebug bool) Operation {
+	return get(os1.OS(), context.Background(), isDebug)
+}
+
+func get(os string, ctx context.Context, isDebug bool) Operation {
 	switch os {
 	case os1.WINDOWS:
 		oper = &windows{}
@@ -76,6 +80,7 @@ func Get() Operation {
 		oper = &linux{}
 		break
 	}
+	oper.Init(ctx, isDebug)
 	return oper
 }
 
