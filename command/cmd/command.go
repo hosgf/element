@@ -89,6 +89,9 @@ func (c *Cmd) Command(ctx context.Context, command string, logger *glog.Logger) 
 
 	msg := strings.TrimSpace(stderr.String())
 	logger.Warningf(ctx, "---->\r\n\tCommand: %s %s, \r\n\ttook_time: %v, \n\terr: %v, \r\n\toutput: %s", c.exe, command, time.Since(begin), msg, out)
+	if len(msg) > 0 {
+		return out, errors.New(msg)
+	}
 	return out, nil
 }
 
