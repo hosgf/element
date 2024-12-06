@@ -7,52 +7,52 @@ import (
 	"sync"
 )
 
-// Init 初始化
-func Init(ctx context.Context, isDebug bool) {
-	get().Init(ctx, isDebug)
-}
-
-// Enable 设置开机自启动
-func Enable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return get().Enable(ctx, name, logger)
-}
-
-// Disable 禁止开机自启动
-func Disable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return get().Disable(ctx, name, logger)
-}
-
-// Start 启动服务
-func Start(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return get().Start(ctx, name, logger)
-}
-
-// Restart 重启服务
-func Restart(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return get().Restart(ctx, name, logger)
-}
-
-// Stop 停止服务
-func Stop(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return get().Stop(ctx, name, logger)
-}
-
-// Status 服务状态
-func Status(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return get().Status(ctx, name, logger)
-}
-
-// Reload 重新加载服务配置文件
-func Reload(ctx context.Context, logger *glog.Logger) (string, error) {
-	return get().Reload(ctx, logger)
-}
-
 var (
 	oper Operation
 	mu   sync.Mutex
 )
 
-func get() Operation {
+// Init 初始化
+func Init(ctx context.Context, isDebug bool) {
+	Get().Init(ctx, isDebug)
+}
+
+// Enable 设置开机自启动
+func Enable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
+	return Get().Enable(ctx, name, logger)
+}
+
+// Disable 禁止开机自启动
+func Disable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
+	return Get().Disable(ctx, name, logger)
+}
+
+// Start 启动服务
+func Start(ctx context.Context, name string, logger *glog.Logger) (string, error) {
+	return Get().Start(ctx, name, logger)
+}
+
+// Restart 重启服务
+func Restart(ctx context.Context, name string, logger *glog.Logger) (string, error) {
+	return Get().Restart(ctx, name, logger)
+}
+
+// Stop 停止服务
+func Stop(ctx context.Context, name string, logger *glog.Logger) (string, error) {
+	return Get().Stop(ctx, name, logger)
+}
+
+// Status 服务状态
+func Status(ctx context.Context, name string, logger *glog.Logger) (string, error) {
+	return Get().Status(ctx, name, logger)
+}
+
+// Reload 重新加载服务配置文件
+func Reload(ctx context.Context, logger *glog.Logger) (string, error) {
+	return Get().Reload(ctx, logger)
+}
+
+func Get() Operation {
 	if oper != nil {
 		return oper
 	}
