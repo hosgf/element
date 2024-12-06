@@ -87,17 +87,17 @@ func get(os string, ctx context.Context, isDebug bool) Operation {
 type Operation interface {
 	// Init 初始化
 	Init(ctx context.Context, isDebug bool)
-	// Enable 启动
+	// Enable 设置开机自启动
 	Enable(ctx context.Context, name string, logger *glog.Logger) (string, error)
-	// Disable 启动
+	// Disable 禁止开机自启动
 	Disable(ctx context.Context, name string, logger *glog.Logger) (string, error)
-	// Start 启动
+	// Start 启动服务
 	Start(ctx context.Context, name string, logger *glog.Logger) (string, error)
-	// Restart 重启
+	// Restart 重启服务
 	Restart(ctx context.Context, name string, logger *glog.Logger) (string, error)
-	// Stop 停止
+	// Stop 停止服务
 	Stop(ctx context.Context, name string, logger *glog.Logger) (string, error)
-	// Status 状态查询
+	// Status 状态服务查询
 	Status(ctx context.Context, name string, logger *glog.Logger) (string, error)
 	// Reload 重新加载
 	Reload(ctx context.Context, logger *glog.Logger) (string, error)

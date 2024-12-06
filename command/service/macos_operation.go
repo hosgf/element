@@ -19,22 +19,22 @@ type macos struct {
 
 // Init 初始化systemd用于管理系统和管理服务的工具
 func (m *macos) Init(ctx context.Context, isDebug bool) {
-	systemctlPath, err := exec.LookPath("systemctl")
+	systemctlPath, err := exec.LookPath("launchctl")
 	if err == nil {
 		m.cmd = cmd.New(systemctlPath, isDebug)
 	}
-	m.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ systemctl ]命令不可用: %s", err.Error()))
+	m.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
 	logger.Errorf(ctx, "%d %s", gerror.Code(m.err).Code(), m.err.Error())
 }
 
 // Enable 设置开机自启动
 func (m *macos) Enable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return m.command(ctx, fmt.Sprintf("enable %s", name), logger)
+	return m.command(ctx, fmt.Sprintf("load -w  %s", name), logger)
 }
 
 // Disable 禁止开机自启动
 func (m *macos) Disable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return m.command(ctx, fmt.Sprintf("disable %s", name), logger)
+	return m.command(ctx, fmt.Sprintf("unload -w  %s", name), logger)
 }
 
 // Start 启动服务
@@ -54,7 +54,7 @@ func (m *macos) Stop(ctx context.Context, name string, logger *glog.Logger) (str
 
 // Status 服务状态
 func (m *macos) Status(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	status, err := m.command(ctx, fmt.Sprintf("status %s | grep Active: | awk '{print $2}'", name), logger)
+	status, err := m.command(ctx, fmt.Sprintf("list %s | grep Active: | awk '{print $2}'", name), logger)
 	if err != nil {
 		return "", err
 	}
