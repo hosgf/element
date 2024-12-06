@@ -19,9 +19,10 @@ type macos struct {
 
 // Init 初始化systemd用于管理系统和管理服务的工具
 func (m *macos) Init(ctx context.Context, isDebug bool) {
-	systemctlPath, err := exec.LookPath("launchctl")
+	path, err := exec.LookPath("launchctl")
 	if err == nil {
-		m.cmd = cmd.New(systemctlPath, isDebug)
+		m.cmd = cmd.New(path, isDebug)
+		return
 	}
 	m.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
 	logger.Errorf(ctx, "%d %s", gerror.Code(m.err).Code(), m.err.Error())

@@ -22,6 +22,7 @@ func (l *linux) Init(ctx context.Context, isDebug bool) {
 	path, err := exec.LookPath("systemctl")
 	if err == nil {
 		l.cmd = cmd.New(path, isDebug)
+		return
 	}
 	l.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ systemctl ]命令不可用: %s", err.Error()))
 	logger.Errorf(ctx, "%d %s", gerror.Code(l.err).Code(), l.err.Error())
