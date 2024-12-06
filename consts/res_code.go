@@ -9,6 +9,7 @@ const (
 	SC_FORBIDDEN           = 403
 	SC_NOT_FOUND           = 404
 	SC_TIMEOUT             = 408
+	SC_FAILURE             = 500
 	SC_GATEWAY             = 502
 	SC_SERVICE_UNAVAILABLE = 503
 	SC_INTERNAL_ERROR      = 506
@@ -26,6 +27,7 @@ var (
 	PARAMETER_ERROR   = gcode.New(SC_BAD_REQUEST, "请求参数有误", "")
 	PARAM_MISS        = gcode.New(SC_BAD_REQUEST, "缺少必要的请求参数", "")
 	UNSUPPORTED_ERROR = gcode.New(SC_UNSUPPORTED_ERROR, "不支持的操作", "")
+	FAILURE           = gcode.New(SC_FAILURE, "服务器异常，请稍后再试", "")
 	SERVICE_ERROR     = gcode.New(SC_SERVICE_ERROR, "服务器异常，请稍后再试", "")
 	UPLOAD_ERROR      = gcode.New(SC_UPLOAD_ERROR, "上传失败", "")
 	RETRY_ERROR       = gcode.New(10011, "超过了最大重试次数[%d 次]，不允许重试!", "")

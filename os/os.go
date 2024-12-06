@@ -69,10 +69,15 @@ func get() Service {
 	case WINDOWS:
 		service = &windows{os: os, framework: Framework()}
 		break
+	case LINUX:
+		service = &linux{os: os, framework: Framework()}
+		break
 	case MACOS:
 		service = &macos{os: os, framework: Framework()}
+		break
 	default:
 		service = &linux{os: os, framework: Framework()}
+		break
 	}
 	return service
 }

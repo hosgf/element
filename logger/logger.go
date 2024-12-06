@@ -45,8 +45,12 @@ func Debug(ctx context.Context, isDebug bool, method string, url string, content
 	Log().Debug(ctx, str)
 }
 
-func Errorf(ctx context.Context, message string, err error) {
+func Error(ctx context.Context, message string, err error) {
 	Log().Errorf(ctx, "\n -- %s ,err: %s", message, err.Error())
+}
+
+func Errorf(ctx context.Context, format string, v ...interface{}) {
+	Log().Errorf(ctx, format, v...)
 }
 
 func Warningf(ctx context.Context, format string, v ...interface{}) {

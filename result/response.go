@@ -42,7 +42,7 @@ func Success(r *ghttp.Request, data interface{}) {
 }
 
 func Fail(r *ghttp.Request, err error) {
-	response.fail(r, consts.SC_SERVICE_ERROR, err)
+	response.fail(r, consts.SC_FAILURE, err)
 }
 
 func (res *Response) fail(r *ghttp.Request, code int, err error) {

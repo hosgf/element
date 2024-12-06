@@ -93,11 +93,11 @@ func DoRequest(ctx context.Context, method, url string, data, resp interface{}, 
 		logger.Call(ctx, method, url, "", nil, isDebug, data)
 	}
 	if response == nil {
-		return gerror.NewCode(consts.SERVICE_ERROR, fmt.Sprintf("【%s】调用失败", url))
+		return gerror.NewCode(consts.FAILURE, fmt.Sprintf("【%s】调用失败", url))
 	}
 	if err := json.Unmarshal(r, resp); err != nil {
 		glog.Errorf(ctx, "参数转换异常 \n     %v \n     %s", response, err.Error())
-		return gerror.NewCode(consts.SERVICE_ERROR, fmt.Sprintf("【%s】调用失败", url))
+		return gerror.NewCode(consts.FAILURE, fmt.Sprintf("【%s】调用失败", url))
 	}
 	return nil
 }
