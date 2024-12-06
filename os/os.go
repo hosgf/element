@@ -47,6 +47,9 @@ func OS() string {
 	if gstr.Contains(goos, MACOS) {
 		return MACOS
 	}
+	if gstr.Contains(goos, "darwin") {
+		return MACOS
+	}
 	return LINUX
 }
 
