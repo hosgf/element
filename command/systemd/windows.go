@@ -3,17 +3,27 @@ package systemd
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/command/cmd"
 	"github.com/hosgf/element/consts"
-	"github.com/hosgf/element/logger"
 )
 
 type windows struct {
 	cmd *cmd.Cmd
 	err error
+}
+
+// Install 安装服务
+func (w *windows) Install(ctx context.Context, name, file string, enable bool, logger *glog.Logger) (string, error) {
+	return "", gerror.NewCode(gcode.CodeNotImplemented, "not implemented")
+}
+
+// Uninstall 卸载服务
+func (w *windows) Uninstall(ctx context.Context, name string, logger *glog.Logger) (string, error) {
+	return "", gerror.NewCode(gcode.CodeNotImplemented, "not implemented")
 }
 
 // Enable 设置开机自启动
@@ -55,7 +65,7 @@ func (w *windows) Reload(ctx context.Context, logger *glog.Logger) (string, erro
 	return w.command(ctx, "daemon-reload", logger)
 }
 
-func (w *windows) init(ctx context.Context, isDebug bool) {
+func (w *windows) init(ctx context.Context, isDebug bool, logger *glog.Logger) {
 	w.err = gerror.NewCode(consts.FAILURE, "没有实现的操作")
 	logger.Errorf(ctx, "%d %s", gerror.Code(w.err).Code(), w.err.Error())
 }

@@ -3,6 +3,7 @@ package systemd
 import (
 	"context"
 	"github.com/gogf/gf/v2/os/glog"
+	"github.com/hosgf/element/logger"
 	os1 "github.com/hosgf/element/os"
 	"sync"
 )
@@ -62,10 +63,10 @@ func GetDefault() Systemd {
 }
 
 func Get(isDebug bool) Systemd {
-	return get(os1.OS(), context.Background(), isDebug)
+	return get(os1.OS(), context.Background(), isDebug, logger.Log())
 }
 
-func get(os string, ctx context.Context, isDebug bool) Systemd {
+func get(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Systemd {
 	switch os {
 	case os1.WINDOWS:
 		oper = &windows{}
@@ -80,11 +81,15 @@ func get(os string, ctx context.Context, isDebug bool) Systemd {
 		oper = &linux{}
 		break
 	}
-	oper.init(ctx, isDebug)
+	oper.init(ctx, isDebug, logger)
 	return oper
 }
 
 type Systemd interface {
+	// Install 安装服务
+	Install(ctx context.Context, name, file string, enable bool, logger *glog.Logger) (string, error)
+	// Uninstall 卸载服务
+	Uninstall(ctx context.Context, name string, logger *glog.Logger) (string, error)
 	// Enable 设置开机自启动
 	Enable(ctx context.Context, name string, logger *glog.Logger) (string, error)
 	// Disable 禁止开机自启动
@@ -99,5 +104,6 @@ type Systemd interface {
 	Status(ctx context.Context, name string, logger *glog.Logger) (string, error)
 	// Reload 重新加载
 	Reload(ctx context.Context, logger *glog.Logger) (string, error)
-	init(ctx context.Context, isDebug bool)
+	// Systemd 初始化
+	init(ctx context.Context, isDebug bool, logger *glog.Logger)
 }

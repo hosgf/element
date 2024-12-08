@@ -3,18 +3,28 @@ package systemd
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/command/cmd"
 	"github.com/hosgf/element/consts"
-	"github.com/hosgf/element/logger"
 	"os/exec"
 )
 
 type linux struct {
 	cmd *cmd.Cmd
 	err error
+}
+
+// Install 安装服务
+func (l *linux) Install(ctx context.Context, name, file string, enable bool, logger *glog.Logger) (string, error) {
+	return "", gerror.NewCode(gcode.CodeNotImplemented, "not implemented")
+}
+
+// Uninstall 卸载服务
+func (l *linux) Uninstall(ctx context.Context, name string, logger *glog.Logger) (string, error) {
+	return "", gerror.NewCode(gcode.CodeNotImplemented, "not implemented")
 }
 
 // Enable 设置开机自启动
@@ -57,7 +67,7 @@ func (l *linux) Reload(ctx context.Context, logger *glog.Logger) (string, error)
 }
 
 // init 初始化systemd用于管理系统和管理服务的工具
-func (l *linux) init(ctx context.Context, isDebug bool) {
+func (l *linux) init(ctx context.Context, isDebug bool, logger *glog.Logger) {
 	path, err := exec.LookPath("systemctl")
 	if err == nil {
 		l.cmd = cmd.New(path, isDebug)
