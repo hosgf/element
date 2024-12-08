@@ -7,8 +7,10 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/command/cmd"
+	"github.com/hosgf/element/cmd"
 	"github.com/hosgf/element/consts"
+	"github.com/hosgf/element/os"
+	"path/filepath"
 )
 
 type windows struct {
@@ -75,4 +77,8 @@ func (w *windows) command(ctx context.Context, cmd string, logger *glog.Logger) 
 		return "", w.err
 	}
 	return "", gerror.NewCode(consts.FAILURE, "没有实现的操作")
+}
+
+func (w *windows) getTemplatePath(name string) string {
+	return filepath.Join("resource", "template", os.WINDOWS, name)
 }

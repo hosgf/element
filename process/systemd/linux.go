@@ -7,9 +7,11 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/command/cmd"
+	"github.com/hosgf/element/cmd"
 	"github.com/hosgf/element/consts"
+	"github.com/hosgf/element/os"
 	"os/exec"
+	"path/filepath"
 )
 
 type linux struct {
@@ -82,4 +84,8 @@ func (l *linux) command(ctx context.Context, cmd string, logger *glog.Logger) (s
 		return "", l.err
 	}
 	return l.cmd.Command(ctx, cmd, logger)
+}
+
+func (l *linux) getTemplatePath(name string) string {
+	return filepath.Join("resource", "template", os.LINUX, name)
 }

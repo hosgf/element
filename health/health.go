@@ -4,7 +4,7 @@ import (
 	"github.com/gogf/gf/v2/container/gset"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/gconv"
-	"github.com/hosgf/element/progress"
+	"github.com/hosgf/element/model/progress"
 )
 
 type Health int

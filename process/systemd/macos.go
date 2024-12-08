@@ -7,9 +7,11 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/command/cmd"
+	"github.com/hosgf/element/cmd"
 	"github.com/hosgf/element/consts"
+	"github.com/hosgf/element/os"
 	"os/exec"
+	"path/filepath"
 )
 
 type macos struct {
@@ -82,4 +84,8 @@ func (m *macos) command(ctx context.Context, cmd string, logger *glog.Logger) (s
 		return "", m.err
 	}
 	return m.cmd.Command(ctx, cmd, logger)
+}
+
+func (m *macos) getTemplatePath(name string) string {
+	return filepath.Join("resource", "template", os.MACOS, name)
 }

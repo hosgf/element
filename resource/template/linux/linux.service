@@ -1,0 +1,12 @@
+[Unit]
+Description=Scheduler Service
+
+[Service]
+Environment=""
+ExecStart=/usr/local/bin/scheduler.sh start
+ExecStop=/usr/local/bin/scheduler.sh stop
+PIDFile=/var/run/scheduler.pid
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
