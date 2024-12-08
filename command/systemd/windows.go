@@ -1,4 +1,4 @@
-package service
+package systemd
 
 import (
 	"context"
@@ -14,11 +14,6 @@ import (
 type windows struct {
 	cmd *cmd.Cmd
 	err error
-}
-
-func (w *windows) Init(ctx context.Context, isDebug bool) {
-	w.err = gerror.NewCode(consts.FAILURE, "没有实现的操作")
-	logger.Errorf(ctx, "%d %s", gerror.Code(w.err).Code(), w.err.Error())
 }
 
 // Enable 设置开机自启动
@@ -58,6 +53,11 @@ func (w *windows) Status(ctx context.Context, name string, logger *glog.Logger) 
 // Reload 重新加载服务配置文件
 func (w *windows) Reload(ctx context.Context, logger *glog.Logger) (string, error) {
 	return w.command(ctx, "daemon-reload", logger)
+}
+
+func (w *windows) init(ctx context.Context, isDebug bool) {
+	w.err = gerror.NewCode(consts.FAILURE, "没有实现的操作")
+	logger.Errorf(ctx, "%d %s", gerror.Code(w.err).Code(), w.err.Error())
 }
 
 func (w *windows) command(ctx context.Context, cmd string, logger *glog.Logger) (string, error) {

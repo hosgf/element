@@ -1,4 +1,4 @@
-package service
+package systemd
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	oper    Operation
+	oper    Systemd
 	mu      sync.Mutex
 	isDebug bool
 )
@@ -48,7 +48,7 @@ func Reload(ctx context.Context, logger *glog.Logger) (string, error) {
 	return GetDefault().Reload(ctx, logger)
 }
 
-func GetDefault() Operation {
+func GetDefault() Systemd {
 	if oper != nil {
 		return oper
 	}
@@ -61,11 +61,11 @@ func GetDefault() Operation {
 	return oper
 }
 
-func Get(isDebug bool) Operation {
+func Get(isDebug bool) Systemd {
 	return get(os1.OS(), context.Background(), isDebug)
 }
 
-func get(os string, ctx context.Context, isDebug bool) Operation {
+func get(os string, ctx context.Context, isDebug bool) Systemd {
 	switch os {
 	case os1.WINDOWS:
 		oper = &windows{}
@@ -80,13 +80,11 @@ func get(os string, ctx context.Context, isDebug bool) Operation {
 		oper = &linux{}
 		break
 	}
-	oper.Init(ctx, isDebug)
+	oper.init(ctx, isDebug)
 	return oper
 }
 
-type Operation interface {
-	// Init 初始化
-	Init(ctx context.Context, isDebug bool)
+type Systemd interface {
 	// Enable 设置开机自启动
 	Enable(ctx context.Context, name string, logger *glog.Logger) (string, error)
 	// Disable 禁止开机自启动
@@ -101,4 +99,5 @@ type Operation interface {
 	Status(ctx context.Context, name string, logger *glog.Logger) (string, error)
 	// Reload 重新加载
 	Reload(ctx context.Context, logger *glog.Logger) (string, error)
+	init(ctx context.Context, isDebug bool)
 }

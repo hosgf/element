@@ -1,4 +1,4 @@
-package service
+package systemd
 
 import (
 	"context"
@@ -15,17 +15,6 @@ import (
 type linux struct {
 	cmd *cmd.Cmd
 	err error
-}
-
-// Init 初始化systemd用于管理系统和管理服务的工具
-func (l *linux) Init(ctx context.Context, isDebug bool) {
-	path, err := exec.LookPath("systemctl")
-	if err == nil {
-		l.cmd = cmd.New(path, isDebug)
-		return
-	}
-	l.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ systemctl ]命令不可用: %s", err.Error()))
-	logger.Errorf(ctx, "%d %s", gerror.Code(l.err).Code(), l.err.Error())
 }
 
 // Enable 设置开机自启动
@@ -65,6 +54,17 @@ func (l *linux) Status(ctx context.Context, name string, logger *glog.Logger) (s
 // Reload 重新加载服务配置文件
 func (l *linux) Reload(ctx context.Context, logger *glog.Logger) (string, error) {
 	return l.command(ctx, "daemon-reload", logger)
+}
+
+// init 初始化systemd用于管理系统和管理服务的工具
+func (l *linux) init(ctx context.Context, isDebug bool) {
+	path, err := exec.LookPath("systemctl")
+	if err == nil {
+		l.cmd = cmd.New(path, isDebug)
+		return
+	}
+	l.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ systemctl ]命令不可用: %s", err.Error()))
+	logger.Errorf(ctx, "%d %s", gerror.Code(l.err).Code(), l.err.Error())
 }
 
 func (l *linux) command(ctx context.Context, cmd string, logger *glog.Logger) (string, error) {

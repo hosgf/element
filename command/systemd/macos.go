@@ -1,4 +1,4 @@
-package service
+package systemd
 
 import (
 	"context"
@@ -15,17 +15,6 @@ import (
 type macos struct {
 	cmd *cmd.Cmd
 	err error
-}
-
-// Init 初始化systemd用于管理系统和管理服务的工具
-func (m *macos) Init(ctx context.Context, isDebug bool) {
-	path, err := exec.LookPath("launchctl")
-	if err == nil {
-		m.cmd = cmd.New(path, isDebug)
-		return
-	}
-	m.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
-	logger.Errorf(ctx, "%d %s", gerror.Code(m.err).Code(), m.err.Error())
 }
 
 // Enable 设置开机自启动
@@ -65,6 +54,17 @@ func (m *macos) Status(ctx context.Context, name string, logger *glog.Logger) (s
 // Reload 重新加载服务配置文件
 func (m *macos) Reload(ctx context.Context, logger *glog.Logger) (string, error) {
 	return m.command(ctx, "daemon-reload", logger)
+}
+
+// init 初始化launchctl用于管理系统和管理服务的工具
+func (m *macos) init(ctx context.Context, isDebug bool) {
+	path, err := exec.LookPath("launchctl")
+	if err == nil {
+		m.cmd = cmd.New(path, isDebug)
+		return
+	}
+	m.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
+	logger.Errorf(ctx, "%d %s", gerror.Code(m.err).Code(), m.err.Error())
 }
 
 func (m *macos) command(ctx context.Context, cmd string, logger *glog.Logger) (string, error) {
