@@ -1,11 +1,18 @@
 package test
 
 import (
+	"context"
+	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/process/manager"
 	"testing"
 )
 
-func TestManagerProcess(t *testing.T) {
+func TestManagerProcessStatus(t *testing.T) {
+	runtime := manager.RuntimeConfig{}
 	m := manager.GetDefault()
-	m.Clear()
+	health, err := m.Status(context.Background(), runtime, logger.Log())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(health)
 }
