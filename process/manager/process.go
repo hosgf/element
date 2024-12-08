@@ -8,6 +8,7 @@ import (
 	"github.com/gogf/gf/v2/os/gproc"
 	"github.com/hosgf/element/consts"
 	"github.com/hosgf/element/health"
+	"github.com/hosgf/element/logger"
 	os1 "github.com/hosgf/element/os"
 	"sync"
 )
@@ -17,6 +18,23 @@ var (
 	mu      sync.Mutex
 	isDebug bool
 )
+
+func GetDefault() Manager {
+	if oper != nil {
+		return oper
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if oper != nil {
+		return oper
+	}
+	oper = Get(isDebug)
+	return oper
+}
+
+func Get(isDebug bool) Manager {
+	return get(os1.OS(), context.Background(), isDebug, logger.Log())
+}
 
 func get(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Manager {
 	switch os {

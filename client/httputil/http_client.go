@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/hosgf/element/consts"
 	"github.com/hosgf/element/logger"
-	"github.com/hosgf/element/result"
+	"github.com/hosgf/element/model/result"
 	"github.com/hosgf/element/util"
 	"net/http"
 	"time"
