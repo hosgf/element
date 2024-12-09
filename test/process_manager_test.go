@@ -27,8 +27,6 @@ func TestManagerProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	println("--------------------------------------->")
-	config.Pid = pid
 	count := 0
 	gtimer.Add(ctx, time.Second*5, func(ctx context.Context) {
 		if count > 10 {
@@ -36,7 +34,7 @@ func TestManagerProcess(t *testing.T) {
 			//nowPid, err := m.Restart(ctx, config, log)
 			//t.Log(count, "pid: ", pid, "---->", "nowPid: ", nowPid, err)
 		} else {
-			health := m.Status(ctx, config)
+			health := m.Status(config.Name)
 			t.Log(count, "pid: ", pid, "---->", health)
 		}
 		count++
@@ -54,7 +52,7 @@ func TestManagerProcessStart(t *testing.T) {
 	}
 	gtimer.Add(ctx, time.Second+3, func(ctx context.Context) {
 		t.Log(pid)
-		health := m.Status(ctx, config)
+		health := m.Status(config.Name)
 		t.Log(health)
 	})
 
@@ -71,7 +69,8 @@ func TestManagerProcessRestart(t *testing.T) {
 
 func TestManagerProcessStop(t *testing.T) {
 	m := manager.GetDefault()
-	err := m.Stop(context.Background(), GetRuntimeConfig(), logger.Log())
+	config := GetRuntimeConfig()
+	err := m.Stop(context.Background(), config.Name, logger.Log())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +79,8 @@ func TestManagerProcessStop(t *testing.T) {
 
 func TestManagerProcessStatus(t *testing.T) {
 	m := manager.GetDefault()
-	health := m.Status(context.Background(), GetRuntimeConfig())
+	config := GetRuntimeConfig()
+	health := m.Status(config.Name)
 	t.Log(health)
 }
 
