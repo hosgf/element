@@ -9,7 +9,7 @@ import (
 
 // Command 执行命令
 func Command(command string) *exec.Cmd {
-	return get().command(command)
+	return get().Command(command)
 }
 func Delimiter() string {
 	return get().Delimiter()
@@ -47,6 +47,9 @@ func OS() string {
 	if gstr.Contains(goos, MACOS) {
 		return MACOS
 	}
+	if gstr.Contains(goos, "darwin") {
+		return MACOS
+	}
 	return LINUX
 }
 
@@ -69,10 +72,15 @@ func get() Service {
 	case WINDOWS:
 		service = &windows{os: os, framework: Framework()}
 		break
+	case LINUX:
+		service = &linux{os: os, framework: Framework()}
+		break
 	case MACOS:
 		service = &macos{os: os, framework: Framework()}
+		break
 	default:
 		service = &linux{os: os, framework: Framework()}
+		break
 	}
 	return service
 }
@@ -81,6 +89,6 @@ type Service interface {
 	OS() string
 	Delimiter() string
 	Framework() string
+	Command(command string) *exec.Cmd
 	init(env []string) error
-	command(command string) *exec.Cmd
 }
