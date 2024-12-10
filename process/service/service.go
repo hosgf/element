@@ -40,8 +40,8 @@ type Operation interface {
 	PID(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error)
 	// Start 启动
 	Start(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error)
-	// Shutdown 销毁
-	Shutdown(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error)
+	// Stop 停止
+	Stop(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error)
 	// Restart 重启
 	Restart(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (bool, error)
 	// Status 状态

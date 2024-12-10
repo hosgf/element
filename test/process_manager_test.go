@@ -18,6 +18,10 @@ func GetRuntimeConfig() *manager.RuntimeConfig {
 	}
 }
 
+// Get-Process | Where-Object { $_.Name -like "*java*" -and $_.Name -like "*match-data-platform*" }
+// tasklist | findstr java | findstr name
+//
+//	Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like "*java*" -and $_.CommandLine -like "*match-data-platform*" } | Select-Object ProcessId, CommandLine
 func TestManagerProcess(t *testing.T) {
 	ctx := context.Background()
 	config := GetRuntimeConfig()

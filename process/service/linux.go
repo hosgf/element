@@ -30,7 +30,7 @@ func (l *linux) Start(ctx context.Context, config RuntimeConfig, logger *glog.Lo
 	return l.command(ctx, gstr.Join(config.Cmd, " "), logger)
 }
 
-func (l *linux) Shutdown(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error) {
+func (l *linux) Stop(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error) {
 	pid, err := l.PID(ctx, config, logger)
 	if nil != err {
 		return pid, err
@@ -50,7 +50,7 @@ func (l *linux) Shutdown(ctx context.Context, config RuntimeConfig, logger *glog
 }
 
 func (l *linux) Restart(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (bool, error) {
-	_, err := l.Shutdown(ctx, config, logger)
+	_, err := l.Stop(ctx, config, logger)
 	if nil != err {
 		return false, err
 	}
