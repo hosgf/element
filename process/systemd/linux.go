@@ -9,14 +9,11 @@ import (
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/cmd"
 	"github.com/hosgf/element/consts"
-	"github.com/hosgf/element/os"
 	"os/exec"
-	"path/filepath"
 )
 
 type linux struct {
-	cmd *cmd.Cmd
-	err error
+	operation
 }
 
 // Install 安装服务
@@ -69,23 +66,11 @@ func (l *linux) Reload(ctx context.Context, logger *glog.Logger) (string, error)
 }
 
 // init 初始化systemd用于管理系统和管理服务的工具
-func (l *linux) init(ctx context.Context, isDebug bool, logger *glog.Logger) {
+func (l *linux) init(ctx context.Context) {
 	path, err := exec.LookPath("systemctl")
 	if err == nil {
 		l.cmd = cmd.New(path, isDebug)
 		return
 	}
 	l.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ systemctl ]命令不可用: %s", err.Error()))
-	logger.Errorf(ctx, "%d %s", gerror.Code(l.err).Code(), l.err.Error())
-}
-
-func (l *linux) command(ctx context.Context, cmd string, logger *glog.Logger) (string, error) {
-	if l.err != nil {
-		return "", l.err
-	}
-	return l.cmd.Command(ctx, cmd, logger)
-}
-
-func (l *linux) getTemplatePath(name string) string {
-	return filepath.Join("resource", "template", os.LINUX, name)
 }

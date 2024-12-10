@@ -7,15 +7,11 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/cmd"
 	"github.com/hosgf/element/consts"
-	"github.com/hosgf/element/os"
-	"path/filepath"
 )
 
 type windows struct {
-	cmd *cmd.Cmd
-	err error
+	operation
 }
 
 // Install 安装服务
@@ -67,18 +63,6 @@ func (w *windows) Reload(ctx context.Context, logger *glog.Logger) (string, erro
 	return w.command(ctx, "daemon-reload", logger)
 }
 
-func (w *windows) init(ctx context.Context, isDebug bool, logger *glog.Logger) {
+func (w *windows) init(ctx context.Context) {
 	w.err = gerror.NewCode(consts.FAILURE, "没有实现的操作")
-	logger.Errorf(ctx, "%d %s", gerror.Code(w.err).Code(), w.err.Error())
-}
-
-func (w *windows) command(ctx context.Context, cmd string, logger *glog.Logger) (string, error) {
-	if w.err != nil {
-		return "", w.err
-	}
-	return "", gerror.NewCode(consts.FAILURE, "没有实现的操作")
-}
-
-func (w *windows) getTemplatePath(name string) string {
-	return filepath.Join("resource", "template", os.WINDOWS, name)
 }

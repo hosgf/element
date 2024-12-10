@@ -3,13 +3,15 @@ package systemd
 import (
 	"context"
 	"github.com/gogf/gf/v2/os/glog"
+	"github.com/hosgf/element/cmd"
 	"github.com/hosgf/element/logger"
 	os1 "github.com/hosgf/element/os"
+	"path/filepath"
 	"sync"
 )
 
 var (
-	oper    Systemd
+	o       Operation
 	mu      sync.Mutex
 	isDebug bool
 )
@@ -49,43 +51,45 @@ func Reload(ctx context.Context, logger *glog.Logger) (string, error) {
 	return GetDefault().Reload(ctx, logger)
 }
 
-func GetDefault() Systemd {
-	if oper != nil {
-		return oper
+func GetDefault() Operation {
+	if o != nil {
+		return o
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if oper != nil {
-		return oper
+	if o != nil {
+		return o
 	}
-	oper = Get(isDebug)
-	return oper
+	o = Get(os1.OS(), isDebug, logger.Log())
+	return o
 }
 
-func Get(isDebug bool) Systemd {
-	return get(os1.OS(), context.Background(), isDebug, logger.Log())
+func Get(os string, isDebug bool, logger *glog.Logger) Operation {
+	return get(os, context.Background(), isDebug, logger)
 }
 
-func get(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Systemd {
+func get(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Operation {
+	operation := operation{os: os, isDebug: isDebug, logger: logger}
+	var o Operation
 	switch os {
 	case os1.WINDOWS:
-		oper = &windows{}
+		o = &windows{operation}
 		break
 	case os1.LINUX:
-		oper = &linux{}
+		o = &linux{operation}
 		break
 	case os1.MACOS:
-		oper = &macos{}
+		o = &macos{operation}
 		break
 	default:
-		oper = &linux{}
+		o = &linux{operation}
 		break
 	}
-	oper.init(ctx, isDebug, logger)
-	return oper
+	o.init(ctx)
+	return o
 }
 
-type Systemd interface {
+type Operation interface {
 	// Install 安装服务
 	Install(ctx context.Context, name, file string, enable bool, logger *glog.Logger) (string, error)
 	// Uninstall 卸载服务
@@ -105,5 +109,24 @@ type Systemd interface {
 	// Reload 重新加载
 	Reload(ctx context.Context, logger *glog.Logger) (string, error)
 	// Systemd 初始化
-	init(ctx context.Context, isDebug bool, logger *glog.Logger)
+	init(ctx context.Context)
+}
+
+type operation struct {
+	os      string
+	cmd     *cmd.Cmd
+	logger  *glog.Logger
+	isDebug bool
+	err     error
+}
+
+func (o *operation) command(ctx context.Context, cmd string, logger *glog.Logger) (string, error) {
+	if o.err != nil {
+		return "", o.err
+	}
+	return o.cmd.Command(ctx, cmd, logger)
+}
+
+func (o *operation) getTemplatePath(name string) string {
+	return filepath.Join("resource", "template", o.os, name)
 }

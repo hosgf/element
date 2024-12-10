@@ -12,55 +12,41 @@ import (
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/logger"
 	os1 "github.com/hosgf/element/os"
+	"github.com/hosgf/element/process/systemd"
 	"sync"
 )
 
 var (
-	oper    Manager
+	o       Operation
 	mu      sync.Mutex
 	isDebug bool
 )
 
-func GetDefault() Manager {
-	if oper != nil {
-		return oper
+func GetDefault() Operation {
+	if o != nil {
+		return o
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if oper != nil {
-		return oper
+	if o != nil {
+		return o
 	}
-	oper = Get(isDebug)
-	return oper
+	o = Get(isDebug)
+	return o
 }
 
-func Get(isDebug bool) Manager {
+func Get(isDebug bool) Operation {
 	return get(os1.OS(), context.Background(), isDebug, logger.Log())
 }
 
-func get(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Manager {
-	switch os {
-	case os1.WINDOWS:
-		oper = &operation{}
-		break
-	case os1.LINUX:
-		oper = &operation{}
-		break
-	case os1.MACOS:
-		oper = &operation{}
-		break
-	default:
-		oper = &operation{}
-		break
-	}
-	oper.init(ctx, isDebug, logger)
-	return oper
+func get(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Operation {
+	o := &global{operation{os: os, isDebug: isDebug, logger: logger}}
+	o.init(ctx)
+	return o
 }
 
-type operation struct {
-	manager *gproc.Manager
-	mapping *gmap.StrIntMap
-	err     error
+type global struct {
+	operation
 }
 
 func (o *operation) GetProcess(name string) *gproc.Process {
@@ -107,8 +93,8 @@ func (o *operation) Restart(ctx context.Context, runtime *RuntimeConfig, logger 
 	if o.err != nil {
 		return -1, o.err
 	}
-	pname := runtime.Name
-	if len(pname) < 1 {
+	name := runtime.Name
+	if len(name) < 1 {
 		return -1, gerror.NewCode(consts.FAILURE, "\n -- 进程重启失败，进程名称不能为空")
 	}
 	pid := o.GetPid(runtime.Name)
@@ -168,12 +154,13 @@ func (o *operation) Clear() {
 }
 
 // init
-func (o *operation) init(ctx context.Context, isDebug bool, logger *glog.Logger) {
-	o.manager = gproc.NewManager()
+func (o *operation) init(ctx context.Context) {
 	o.mapping = gmap.NewStrIntMap(true)
+	o.manager = gproc.NewManager()
+	o.sys = systemd.Get(o.os, o.isDebug, o.logger)
 }
 
-type Manager interface {
+type Operation interface {
 	// GetProcess 获取进程对象
 	GetProcess(name string) *gproc.Process
 	// GetPid 获取进程ID
@@ -189,7 +176,17 @@ type Manager interface {
 	// Clear 清空进程信息
 	Clear()
 	// 初始化
-	init(ctx context.Context, isDebug bool, logger *glog.Logger)
+	init(ctx context.Context)
+}
+
+type operation struct {
+	os      string
+	mapping *gmap.StrIntMap
+	manager *gproc.Manager
+	sys     systemd.Operation
+	logger  *glog.Logger
+	isDebug bool
+	err     error
 }
 
 type RuntimeConfig struct {

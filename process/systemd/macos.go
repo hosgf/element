@@ -9,14 +9,11 @@ import (
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/cmd"
 	"github.com/hosgf/element/consts"
-	"github.com/hosgf/element/os"
 	"os/exec"
-	"path/filepath"
 )
 
 type macos struct {
-	cmd *cmd.Cmd
-	err error
+	operation
 }
 
 // Install 安装服务
@@ -69,23 +66,11 @@ func (m *macos) Reload(ctx context.Context, logger *glog.Logger) (string, error)
 }
 
 // init 初始化launchctl用于管理系统和管理服务的工具
-func (m *macos) init(ctx context.Context, isDebug bool, logger *glog.Logger) {
+func (m *macos) init(ctx context.Context) {
 	path, err := exec.LookPath("launchctl")
 	if err == nil {
 		m.cmd = cmd.New(path, isDebug)
 		return
 	}
 	m.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
-	logger.Errorf(ctx, "%d %s", gerror.Code(m.err).Code(), m.err.Error())
-}
-
-func (m *macos) command(ctx context.Context, cmd string, logger *glog.Logger) (string, error) {
-	if m.err != nil {
-		return "", m.err
-	}
-	return m.cmd.Command(ctx, cmd, logger)
-}
-
-func (m *macos) getTemplatePath(name string) string {
-	return filepath.Join("resource", "template", os.MACOS, name)
 }
