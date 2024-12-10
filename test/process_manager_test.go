@@ -12,7 +12,7 @@ import (
 func GetRuntimeConfig() *manager.RuntimeConfig {
 	return &manager.RuntimeConfig{
 		Name:    "match-data-platform",
-		Cmd:     []string{"java -jar D:\\UE\\project\\intelligent-match-platform\\match-data-platform\\target\\match-data-platform.jar -Dfile.encoding=UTF-8 &"},
+		Cmd:     []string{"java -jar D:\\UE\\project\\intelligent-match-platform\\match-data-platform\\target\\match-data-platform.jar -Dmatch-data-platform -Dfile.encoding=UTF-8 &"},
 		Env:     []string{"name=match-data-platform"},
 		Restart: "always",
 	}
@@ -22,7 +22,7 @@ func TestManagerProcess(t *testing.T) {
 	ctx := context.Background()
 	config := GetRuntimeConfig()
 	log := logger.Log()
-	m := manager.GetDefault()
+	m := manager.Get()
 	pid, err := m.Start(ctx, config, log)
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestManagerProcess(t *testing.T) {
 func TestManagerProcessStart(t *testing.T) {
 	ctx := context.Background()
 	config := GetRuntimeConfig()
-	m := manager.GetDefault()
+	m := manager.Get()
 	pid, err := m.Start(ctx, config, logger.Log())
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +59,7 @@ func TestManagerProcessStart(t *testing.T) {
 }
 
 func TestManagerProcessRestart(t *testing.T) {
-	m := manager.GetDefault()
+	m := manager.Get()
 	pid, err := m.Restart(context.Background(), GetRuntimeConfig(), logger.Log())
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func TestManagerProcessRestart(t *testing.T) {
 }
 
 func TestManagerProcessStop(t *testing.T) {
-	m := manager.GetDefault()
+	m := manager.Get()
 	config := GetRuntimeConfig()
 	err := m.Stop(context.Background(), config.Name, logger.Log())
 	if err != nil {
@@ -78,14 +78,14 @@ func TestManagerProcessStop(t *testing.T) {
 }
 
 func TestManagerProcessStatus(t *testing.T) {
-	m := manager.GetDefault()
+	m := manager.Get()
 	config := GetRuntimeConfig()
 	health := m.Status(config.Name)
 	t.Log(health)
 }
 
 func TestManagerProcessClear(t *testing.T) {
-	m := manager.GetDefault()
+	m := manager.Get()
 	m.Clear()
 	t.Log("\r\n-------------   END")
 }

@@ -18,40 +18,40 @@ var (
 
 // Enable 设置开机自启动
 func Enable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return GetDefault().Enable(ctx, name, logger)
+	return Get().Enable(ctx, name, logger)
 }
 
 // Disable 禁止开机自启动
 func Disable(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return GetDefault().Disable(ctx, name, logger)
+	return Get().Disable(ctx, name, logger)
 }
 
 // Start 启动服务
 func Start(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return GetDefault().Start(ctx, name, logger)
+	return Get().Start(ctx, name, logger)
 }
 
 // Restart 重启服务
 func Restart(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return GetDefault().Restart(ctx, name, logger)
+	return Get().Restart(ctx, name, logger)
 }
 
 // Stop 停止服务
 func Stop(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return GetDefault().Stop(ctx, name, logger)
+	return Get().Stop(ctx, name, logger)
 }
 
 // Status 服务状态
 func Status(ctx context.Context, name string, logger *glog.Logger) (string, error) {
-	return GetDefault().Status(ctx, name, logger)
+	return Get().Status(ctx, name, logger)
 }
 
 // Reload 重新加载服务配置文件
 func Reload(ctx context.Context, logger *glog.Logger) (string, error) {
-	return GetDefault().Reload(ctx, logger)
+	return Get().Reload(ctx, logger)
 }
 
-func GetDefault() Operation {
+func Get() Operation {
 	if o != nil {
 		return o
 	}
@@ -60,15 +60,15 @@ func GetDefault() Operation {
 	if o != nil {
 		return o
 	}
-	o = Get(os1.OS(), isDebug, logger.Log())
+	o = CreateInstance(context.Background(), os1.OS(), isDebug, logger.Log())
 	return o
 }
 
-func Get(os string, isDebug bool, logger *glog.Logger) Operation {
-	return get(os, context.Background(), isDebug, logger)
+func CreateInstance(ctx context.Context, os string, isDebug bool, logger *glog.Logger) Operation {
+	return createInstance(os, ctx, isDebug, logger)
 }
 
-func get(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Operation {
+func createInstance(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Operation {
 	operation := operation{os: os, isDebug: isDebug, logger: logger}
 	var o Operation
 	switch os {

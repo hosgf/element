@@ -22,7 +22,7 @@ var (
 	isDebug bool
 )
 
-func GetDefault() Operation {
+func Get() Operation {
 	if o != nil {
 		return o
 	}
@@ -31,15 +31,15 @@ func GetDefault() Operation {
 	if o != nil {
 		return o
 	}
-	o = Get(isDebug)
+	o = CreateInstance(isDebug)
 	return o
 }
 
-func Get(isDebug bool) Operation {
-	return get(os1.OS(), context.Background(), isDebug, logger.Log())
+func CreateInstance(isDebug bool) Operation {
+	return createInstance(os1.OS(), context.Background(), isDebug, logger.Log())
 }
 
-func get(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Operation {
+func createInstance(os string, ctx context.Context, isDebug bool, logger *glog.Logger) Operation {
 	o := &global{operation{os: os, isDebug: isDebug, logger: logger}}
 	o.init(ctx)
 	return o
@@ -157,7 +157,7 @@ func (o *operation) Clear() {
 func (o *operation) init(ctx context.Context) {
 	o.mapping = gmap.NewStrIntMap(true)
 	o.manager = gproc.NewManager()
-	o.sys = systemd.Get(o.os, o.isDebug, o.logger)
+	o.sys = systemd.CreateInstance(ctx, o.os, o.isDebug, o.logger)
 }
 
 type Operation interface {
@@ -190,8 +190,9 @@ type operation struct {
 }
 
 type RuntimeConfig struct {
-	Name    string   `json:"name,omitempty"`
-	Restart string   `json:"restart,omitempty"`
-	Cmd     []string `json:"cmd,omitempty"`
-	Env     []string `json:"env,omitempty"`
+	Name    string     `json:"name,omitempty"`
+	Restart string     `json:"restart,omitempty"`
+	Cmd     []string   `json:"cmd,omitempty"`
+	Env     []string   `json:"env,omitempty"`
+	Hosts   []os1.Host `json:"hosts,omitempty"`
 }

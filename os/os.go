@@ -12,22 +12,27 @@ import (
 
 // Command 执行命令
 func Command(command string) *exec.Cmd {
-	return get().Command(command)
+	return Get().Command(command)
 }
 
 // Delimiter 获取标记
 func Delimiter() string {
-	return get().Delimiter()
+	return Get().Delimiter()
 }
 
 // SetEnvironment 设置环境变量
 func SetEnvironment(ctx context.Context, envs map[string]string) {
-	get().SetEnvironment(ctx, envs)
+	Get().SetEnvironment(ctx, envs)
+}
+
+// SetHosts 设置环境变量
+func SetHosts(ctx context.Context, hosts []Host) error {
+	return Get().SetHosts(ctx, hosts)
 }
 
 // Init 系统初始化
 func Init(env []string) error {
-	return get().init(env)
+	return Get().init(env)
 }
 
 // Framework 获取操作系统架构类型
@@ -68,7 +73,7 @@ var (
 	mu      sync.Mutex
 )
 
-func get() Service {
+func Get() Service {
 	if service != nil {
 		return service
 	}
