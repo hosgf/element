@@ -134,6 +134,12 @@ type Service interface {
 	Delimiter() string
 	Framework() string
 	SetEnvironment(ctx context.Context, envs map[string]string)
+	SetHosts(ctx context.Context, hosts []Host) error
 	Command(command string) *exec.Cmd
 	init(env []string) error
+}
+
+type Host struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
