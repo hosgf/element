@@ -10,17 +10,7 @@ const (
 )
 
 type linux struct {
-	os        string
-	framework string
-	env       []string
-}
-
-func (os *linux) OS() string {
-	return os.os
-}
-
-func (os *linux) Framework() string {
-	return os.framework
+	system
 }
 
 func (os *linux) Delimiter() string {
@@ -33,12 +23,4 @@ func (os *linux) Command(command string) *exec.Cmd {
 		cmd.Env = append(os1.Environ(), os.env...)
 	}
 	return cmd
-}
-
-func (os *linux) init(env []string) error {
-	if len(env) < 1 {
-		return nil
-	}
-	os.env = append(os.env, env...)
-	return nil
 }

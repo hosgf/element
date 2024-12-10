@@ -10,21 +10,11 @@ const (
 )
 
 type windows struct {
-	os        string
-	framework string
-	env       []string
-}
-
-func (os *windows) OS() string {
-	return os.os
+	system
 }
 
 func (os *windows) Delimiter() string {
 	return "\r\n"
-}
-
-func (os *windows) Framework() string {
-	return os.framework
 }
 
 func (os *windows) Command(command string) *exec.Cmd {

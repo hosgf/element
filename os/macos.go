@@ -10,17 +10,7 @@ const (
 )
 
 type macos struct {
-	os        string
-	framework string
-	env       []string
-}
-
-func (os *macos) OS() string {
-	return os.os
-}
-
-func (os *macos) Framework() string {
-	return os.framework
+	system
 }
 
 func (os *macos) Delimiter() string {
@@ -33,12 +23,4 @@ func (os *macos) Command(command string) *exec.Cmd {
 		cmd.Env = append(os1.Environ(), os.env...)
 	}
 	return cmd
-}
-
-func (os *macos) init(env []string) error {
-	if len(env) < 1 {
-		return nil
-	}
-	os.env = append(os.env, env...)
-	return nil
 }

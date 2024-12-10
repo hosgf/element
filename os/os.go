@@ -1,7 +1,10 @@
 package os
 
 import (
+	"context"
+	"github.com/gogf/gf/v2/os/genv"
 	"github.com/gogf/gf/v2/text/gstr"
+	"github.com/hosgf/element/logger"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -11,8 +14,15 @@ import (
 func Command(command string) *exec.Cmd {
 	return get().Command(command)
 }
+
+// Delimiter 获取标记
 func Delimiter() string {
 	return get().Delimiter()
+}
+
+// SetEnvironment 设置环境变量
+func SetEnvironment(ctx context.Context, envs map[string]string) {
+	get().SetEnvironment(ctx, envs)
 }
 
 // Init 系统初始化
@@ -68,27 +78,62 @@ func get() Service {
 		return service
 	}
 	os := OS()
+	o := system{os: os, framework: Framework()}
 	switch os {
 	case WINDOWS:
-		service = &windows{os: os, framework: Framework()}
+		service = &windows{o}
 		break
 	case LINUX:
-		service = &linux{os: os, framework: Framework()}
+		service = &linux{o}
 		break
 	case MACOS:
-		service = &macos{os: os, framework: Framework()}
+		service = &macos{o}
 		break
 	default:
-		service = &linux{os: os, framework: Framework()}
+		service = &linux{o}
 		break
 	}
 	return service
+}
+
+type system struct {
+	os        string
+	framework string
+	env       []string
+}
+
+func (os *system) OS() string {
+	return os.os
+}
+
+func (os *system) Framework() string {
+	return os.framework
+}
+
+func (os *system) SetEnvironment(ctx context.Context, envs map[string]string) {
+	if len(envs) == 0 {
+		return
+	}
+	for key, value := range envs {
+		if err := genv.Set(key, value); err != nil {
+			logger.Errorf(ctx, "设置环境变量失败: %s %s %s", key, value, err.Error())
+		}
+	}
+}
+
+func (os *system) init(env []string) error {
+	if len(env) < 1 {
+		return nil
+	}
+	os.env = append(os.env, env...)
+	return nil
 }
 
 type Service interface {
 	OS() string
 	Delimiter() string
 	Framework() string
+	SetEnvironment(ctx context.Context, envs map[string]string)
 	Command(command string) *exec.Cmd
 	init(env []string) error
 }
