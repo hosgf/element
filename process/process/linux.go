@@ -3,9 +3,11 @@ package process
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/cmd"
+	"github.com/hosgf/element/consts"
 	"time"
 )
 
@@ -24,10 +26,13 @@ func (l *linux) PID(ctx context.Context, config RuntimeConfig, logger *glog.Logg
 
 func (l *linux) Start(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error) {
 	if l.Status(ctx, config, logger) {
-		logger.Debugf(ctx, "%s Is Running...", config.Name)
 		return l.PID(ctx, config, logger)
 	}
-	return l.command(ctx, gstr.Join(config.Cmd, " "), logger)
+	command := gstr.Trim(gstr.Join(config.Cmd, " "))
+	if len(command) < 1 {
+		return "", gerror.NewCode(consts.FAILURE, fmt.Sprintf("启动 [%s] 的命令脚本不能为空！！！", config.Name))
+	}
+	return l.command(ctx, command, logger)
 }
 
 func (l *linux) Stop(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error) {

@@ -24,7 +24,6 @@ func (w *windows) PID(ctx context.Context, config RuntimeConfig, logger *glog.Lo
 
 func (w *windows) Start(ctx context.Context, config RuntimeConfig, logger *glog.Logger) (string, error) {
 	if w.Status(ctx, config, logger) {
-		logger.Debugf(ctx, "%s Is Running...", config.Name)
 		return w.PID(ctx, config, logger)
 	}
 	return w.command(ctx, gstr.Join(config.Cmd, " "), logger)
