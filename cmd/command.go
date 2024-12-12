@@ -32,6 +32,10 @@ func (c *Cmd) Convert(address string) string {
 }
 
 func (c *Cmd) Stream(ctx context.Context, command string, logger *glog.Logger) error {
+	if len(command) < 1 {
+		logger.Errorf(ctx, "---->\tcommand is empty")
+		return errors.New("command is empty")
+	}
 	cmd := c.command(command)
 	stdout, err := cmd.StdoutPipe()
 	cmd.Stderr = cmd.Stdout
@@ -66,6 +70,10 @@ func (c *Cmd) Stream(ctx context.Context, command string, logger *glog.Logger) e
 }
 
 func (c *Cmd) Command(ctx context.Context, command string, logger *glog.Logger) (string, error) {
+	if len(command) < 1 {
+		logger.Errorf(ctx, "---->\tcommand is empty")
+		return "", errors.New("command is empty")
+	}
 	cmd := c.command(command)
 	stderr := &bytes.Buffer{}
 	cmd.Stderr = stderr
