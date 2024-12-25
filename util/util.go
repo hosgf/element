@@ -4,7 +4,6 @@ import (
 	"context"
 	rand2 "crypto/rand"
 	"errors"
-	"github.com/gogf/gf/v2/os/genv"
 	"github.com/hosgf/element/logger"
 	"hash/crc32"
 	"math"
@@ -158,9 +157,9 @@ func Addr() (string, error) {
 }
 
 func AppDir() string {
-	homePath := genv.Get("SCHEDULER_HOME")
-	if !homePath.IsEmpty() {
-		return homePath.String()
+	homePath := GetHomePath()
+	if len(homePath) < 1 {
+		return homePath
 	}
 	dir := getCurrentAbPathByExecutable()
 	tmpDir, _ := filepath.EvalSymlinks(os.TempDir())

@@ -8,9 +8,8 @@ import (
 	"fmt"
 	"github.com/gogf/gf/v2/encoding/gbase64"
 	"github.com/gogf/gf/v2/util/gconv"
+	"github.com/hosgf/element/config"
 )
-
-const aesKey = "youedata12345678"
 
 type ecb struct {
 	b         cipher.Block
@@ -20,11 +19,19 @@ type ecb struct {
 type ecbEncrypter ecb
 type ecbDecrypter ecb
 
-func Encrypt(data string) string {
-	return gconv.String(gbase64.Encode(aesEcbEncrypt(data, aesKey)))
+func EncryptDefault(data string) string {
+	return Encrypt(data, config.AesKey)
 }
 
-func Decrypt(data string) (string, error) {
+func DecryptDefault(data string) (string, error) {
+	return Decrypt(data, config.AesKey)
+}
+
+func Encrypt(data, key string) string {
+	return gconv.String(gbase64.Encode(aesEcbEncrypt(data, key)))
+}
+
+func Decrypt(data, key string) (string, error) {
 	if len(data) < 1 {
 		return data, nil
 	}
@@ -32,7 +39,7 @@ func Decrypt(data string) (string, error) {
 	if err != nil {
 		return data, err
 	}
-	newData1, err := aesEcbDecrypt(gconv.Bytes(newData), gconv.Bytes(aesKey))
+	newData1, err := aesEcbDecrypt(gconv.Bytes(newData), gconv.Bytes(key))
 	if err != nil {
 		return data, err
 	}
