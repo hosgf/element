@@ -45,6 +45,10 @@ func Debug(ctx context.Context, isDebug bool, method string, url string, content
 	Log().Debug(ctx, str)
 }
 
+func Info(ctx context.Context, v ...interface{}) {
+	Log().Info(ctx, v...)
+}
+
 func Error(ctx context.Context, message string, err error) {
 	Log().Errorf(ctx, "\n -- %s ,err: %s", message, err.Error())
 }
@@ -59,6 +63,10 @@ func Warningf(ctx context.Context, format string, v ...interface{}) {
 
 func Debugf(ctx context.Context, format string, v ...interface{}) {
 	Log().Debugf(ctx, format, v...)
+}
+
+func SetLevelStr(levelStr string) error {
+	return Log().SetLevelStr(levelStr)
 }
 
 func Log(name ...string) *glog.Logger {
