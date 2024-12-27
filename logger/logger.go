@@ -57,6 +57,10 @@ func Errorf(ctx context.Context, format string, v ...interface{}) {
 	Log().Errorf(ctx, format, v...)
 }
 
+func Fatalf(ctx context.Context, format string, v ...interface{}) {
+	Log().Fatalf(ctx, format, v...)
+}
+
 func Warningf(ctx context.Context, format string, v ...interface{}) {
 	Log().Warningf(ctx, format, v...)
 }
