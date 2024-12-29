@@ -1,10 +1,12 @@
 package progress
 
+import "github.com/hosgf/element/health"
+
 type ProgressGroup struct {
-	Namespace string     `json:"namespace,omitempty"`
-	Group     string     `json:"group,omitempty"`
-	Status    string     `json:"status,omitempty"`
-	Details   []Progress `json:"details,omitempty"`
+	Namespace string        `json:"namespace,omitempty"`
+	Group     string        `json:"group,omitempty"`
+	Status    health.Health `json:"status,omitempty"`
+	Details   []Progress    `json:"details,omitempty"`
 }
 
 type Progress struct {
@@ -13,22 +15,22 @@ type Progress struct {
 	Svc        string                 `json:"svc,omitempty"`
 	Name       string                 `json:"name,omitempty"`
 	Group      string                 `json:"group,omitempty"`
-	Status     string                 `json:"status,omitempty"`
+	Status     health.Health          `json:"status,omitempty"`
 	Time       int64                  `json:"time,omitempty"`
 	Indicators map[string]interface{} `json:"indicators,omitempty"`
 	Details    map[string]interface{} `json:"details,omitempty"`
 }
 
 type Db struct {
-	Status  string   `json:"status"`
-	Details Database `json:"details"`
+	Status  health.Health `json:"status"`
+	Details Database      `json:"details"`
 }
 type Ping struct {
-	Status string `json:"status"`
+	Status health.Health `json:"status"`
 }
 
 type RefreshScope struct {
-	Status string `json:"status"`
+	Status health.Health `json:"status"`
 }
 
 type Database struct {
@@ -52,7 +54,7 @@ type Health struct {
 	Svc       string                 `json:"svc,omitempty"`
 	Name      string                 `json:"name,omitempty"`
 	Group     string                 `json:"group,omitempty"`
-	Status    string                 `json:"status,omitempty"`
+	Status    health.Health          `json:"status,omitempty"`
 	Time      int64                  `json:"time,omitempty"`
 	Details   map[string]interface{} `json:"details,omitempty"`
 }
@@ -73,4 +75,11 @@ type Resource struct {
 	Minimum   int64  `json:"minimum,omitempty"`   // 最小
 	Maximum   int64  `json:"maximum,omitempty"`   // 最大
 	Threshold int64  `json:"threshold,omitempty"` // 阈值
+}
+
+type Service struct {
+	Namespace string        `json:"namespace,omitempty"`
+	App       string        `json:"app,omitempty"`
+	Name      string        `json:"name,omitempty"`
+	Status    health.Health `json:"status,omitempty"`
 }
