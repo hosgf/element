@@ -47,6 +47,34 @@ func (k *kubernetes) PodIsExist(ctx context.Context, namespace, pod string) (boo
 	return k.isExist(p, err, "Failed to get Pod: %v")
 }
 
+func (k *kubernetes) RestartPod(ctx context.Context, namespace, pod string) error {
+	exist, err := k.PodIsExist(ctx, namespace, pod)
+	if err != nil || !exist {
+		return err
+	}
+	return k.api.CoreV1().Pods(namespace).Delete(ctx, pod, v1.DeleteOptions{})
+}
+
+func (k *kubernetes) RestartAppPods(ctx context.Context, namespace, appname string) error {
+	if k.err != nil {
+		return k.err
+	}
+	opts := v1.ListOptions{
+		LabelSelector: fmt.Sprintf("app=%s", appname),
+	}
+	corev1 := k.api.CoreV1().Pods(namespace)
+	list, err := corev1.List(ctx, opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
+	}
+	for _, p := range list.Items {
+		if p.Name != "" {
+			err = corev1.Delete(ctx, p.Name, v1.DeleteOptions{})
+		}
+	}
+	return err
+}
+
 func (k *kubernetes) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]*Pod, error) {
 	list, err := k.api.CoreV1().Pods(namespace).List(ctx, opts)
 	if err != nil {

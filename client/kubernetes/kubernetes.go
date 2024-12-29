@@ -50,12 +50,11 @@ type service interface {
 
 // pods
 type pods interface {
-	GetPod(ctx context.Context, namespace, appname string) ([]string, error)
-	GetPods(ctx context.Context, namespace string) ([]string, error)
-	GetPodsStatus(ctx context.Context, namespace string) string
-	PodIsExist(ctx context.Context, namespace, pod string) string
-	RestartPod(ctx context.Context, namespace, pod string) string
-	RestartAppPods(ctx context.Context, namespace, label string) string
+	GetPod(ctx context.Context, namespace, appname string) ([]*Pod, error)
+	GetPods(ctx context.Context, namespace string) ([]*Pod, error)
+	PodIsExist(ctx context.Context, namespace, pod string) (bool, error)
+	RestartPod(ctx context.Context, namespace, pod string) error
+	RestartAppPods(ctx context.Context, namespace, appname string) error
 }
 
 // job
