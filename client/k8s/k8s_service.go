@@ -76,13 +76,12 @@ func (k *kubernetes) CreateService(ctx context.Context, service Service) error {
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				"app": service.App,
+				types.LabelApp.String(): service.App,
 			},
 			Ports: ports,
 			Type:  any(len(service.ServiceType) < 1, corev1.ServiceTypeClusterIP, corev1.ServiceType(service.ServiceType)), // 默认为 ClusterIP 类型
 		},
 	}
-
 	opts := v1.CreateOptions{}
 	_, err := k.api.CoreV1().Services(service.Namespace).Create(ctx, svc, opts)
 	if err != nil {

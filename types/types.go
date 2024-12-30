@@ -3,7 +3,7 @@ package types
 type Label string
 
 const (
-	LabelApp   Label = "x-platform-app"
+	LabelApp   Label = "app"
 	LabelOwner Label = "x-platform-owner"
 	LabelType  Label = "x-platform-type"
 )

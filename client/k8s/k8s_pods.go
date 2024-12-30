@@ -13,15 +13,17 @@ import (
 
 type Pod struct {
 	progress.Service
-	Cpu        string      `json:"cpu,omitempty"`
-	Memory     string      `json:"memory,omitempty"`
 	Containers []Container `json:"containers,omitempty"`
 }
 
 type Container struct {
-	progress.Service
-	Cpu    string `json:"cpu,omitempty"`
-	Memory string `json:"memory,omitempty"`
+	Name    string          `json:"name,omitempty"`
+	Image   string          `json:"image,omitempty"`
+	Command []string        `json:"command,omitempty"`
+	Args    []string        `json:"args,omitempty"`
+	Ports   []progress.Port `json:"ports,omitempty"`
+	Cpu     string          `json:"cpu,omitempty"`
+	Memory  string          `json:"memory,omitempty"`
 }
 
 func (k *kubernetes) GetPod(ctx context.Context, namespace, appname string) ([]*Pod, error) {
@@ -56,6 +58,14 @@ func (k *kubernetes) PodIsExist(ctx context.Context, namespace, pod string) (boo
 func (k *kubernetes) CreatePod(ctx context.Context, pod Pod) error {
 	if k.err != nil {
 		return k.err
+	}
+	containers := make([]corev1.Container, 0, len(pod.Containers))
+	for _, c := range pod.Containers {
+		containers = append(containers, corev1.Container{
+			Name:     c.Name,
+			Port:     p.Port,
+			NodePort: p.NodePort,
+		})
 	}
 	p := &corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{
