@@ -13,6 +13,13 @@ import (
 
 type Pod struct {
 	progress.Service
+	Cpu        string      `json:"cpu,omitempty"`
+	Memory     string      `json:"memory,omitempty"`
+	Containers []Container `json:"containers,omitempty"`
+}
+
+type Container struct {
+	progress.Service
 	Cpu    string `json:"cpu,omitempty"`
 	Memory string `json:"memory,omitempty"`
 }
@@ -55,9 +62,9 @@ func (k *kubernetes) CreatePod(ctx context.Context, pod Pod) error {
 			Name:      pod.Name, // Pod 名称
 			Namespace: pod.Namespace,
 			Labels: map[string]string{
-				types.LabelApp.String():    pod.App,
-				types.LabelOwners.String(): pod.Owners,
-				types.LabelType.String():   pod.GroupType,
+				types.LabelApp.String():   pod.App,
+				types.LabelOwner.String(): pod.Owner,
+				types.LabelType.String():  pod.GroupType,
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -131,7 +138,7 @@ func (k *kubernetes) pods(ctx context.Context, namespace string, opts v1.ListOpt
 				Namespace: p.Namespace,
 				Name:      p.Name,
 				App:       p.Labels[types.LabelApp.String()],
-				Owners:    p.Labels[types.LabelOwners.String()],
+				Owner:     p.Labels[types.LabelOwner.String()],
 				GroupType: p.Labels[types.LabelType.String()],
 				Status:    Status(string(p.Status.Phase)),
 			},

@@ -34,7 +34,7 @@ func (k *kubernetes) GetServices(ctx context.Context, namespace string) ([]*Serv
 				Namespace: namespace,
 				Name:      svc.Name,
 				App:       svc.Labels[types.LabelApp.String()],
-				Owners:    svc.Labels[types.LabelOwners.String()],
+				Owner:     svc.Labels[types.LabelOwner.String()],
 				GroupType: svc.Labels[types.LabelType.String()],
 				Status:    Status(svc.Status.String()),
 			}})
@@ -69,9 +69,9 @@ func (k *kubernetes) CreateService(ctx context.Context, service Service) error {
 			Name:      service.Name,      // Service 名称
 			Namespace: service.Namespace, // Service 所在的 Namespace
 			Labels: map[string]string{
-				types.LabelApp.String():    service.App,
-				types.LabelOwners.String(): service.Owners,
-				types.LabelType.String():   service.GroupType,
+				types.LabelApp.String():   service.App,
+				types.LabelOwner.String(): service.Owner,
+				types.LabelType.String():  service.GroupType,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -97,9 +97,9 @@ func (k *kubernetes) ApplyService(ctx context.Context, service Service) error {
 	}
 	svc := applyconfigurationscorev1.Service(service.Name, service.Namespace)
 	svc.WithLabels(map[string]string{
-		types.LabelApp.String():    service.App,
-		types.LabelOwners.String(): service.Owners,
-		types.LabelType.String():   service.GroupType,
+		types.LabelApp.String():   service.App,
+		types.LabelOwner.String(): service.Owner,
+		types.LabelType.String():  service.GroupType,
 	})
 	t := any(len(service.ServiceType) < 1, corev1.ServiceTypeClusterIP, corev1.ServiceType(service.ServiceType))
 	svc.Spec.Type = &t
