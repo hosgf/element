@@ -7,6 +7,7 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,6 +44,51 @@ func (k *kubernetes) PodIsExist(ctx context.Context, namespace, pod string) (boo
 	opts := v1.GetOptions{}
 	p, err := k.api.CoreV1().Pods(namespace).Get(ctx, pod, opts)
 	return k.isExist(p, err, "Failed to get Pod: %v")
+}
+
+func (k *kubernetes) CreatePod(ctx context.Context, pod Pod) error {
+	if k.err != nil {
+		return k.err
+	}
+	p := &corev1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      pod.Name, // Pod 名称
+			Namespace: pod.Namespace,
+			Labels: map[string]string{
+				types.LabelApp.String():    pod.App,
+				types.LabelOwners.String(): pod.Owners,
+				types.LabelType.String():   pod.GroupType,
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "nginx-container",
+					Image: "nginx", // 使用 Nginx 镜像
+					Ports: []corev1.ContainerPort{
+						{
+							ContainerPort: 80,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	opts := v1.CreateOptions{}
+	_, err := k.api.CoreV1().Pods(pod.Namespace).Create(ctx, p, opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create pod: %v", err)
+	}
+	return nil
+}
+
+func (k *kubernetes) DeletePod(ctx context.Context, namespace, pod string) error {
+	if k.err != nil {
+		return k.err
+	}
+	opts := v1.DeleteOptions{}
+	return k.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
 }
 
 func (k *kubernetes) RestartPod(ctx context.Context, namespace, pod string) error {
