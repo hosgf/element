@@ -80,6 +80,8 @@ type Resource struct {
 type Service struct {
 	Namespace string        `json:"namespace,omitempty"`
 	App       string        `json:"app,omitempty"`
+	Owners    string        `json:"owners,omitempty"`
+	GroupType string        `json:"groupType,omitempty"`
 	Name      string        `json:"name,omitempty"`
 	Status    health.Health `json:"status,omitempty"`
 }

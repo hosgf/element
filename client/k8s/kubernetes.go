@@ -1,10 +1,9 @@
-package kubernetes
+package k8s
 
 import (
 	"context"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/hosgf/element/model/progress"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -43,8 +42,10 @@ type namespace interface {
 
 // 服务
 type service interface {
-	GetServices(ctx context.Context, namespace string) ([]*progress.Service, error)
+	GetServices(ctx context.Context, namespace string) ([]*Service, error)
 	ServiceIsExist(ctx context.Context, namespace, service string) (bool, error)
+	CreateService(ctx context.Context, service Service) error
+	ApplyService(ctx context.Context, service Service) error
 	DeleteService(ctx context.Context, namespace, service string) error
 }
 
@@ -53,6 +54,9 @@ type pods interface {
 	GetPod(ctx context.Context, namespace, appname string) ([]*Pod, error)
 	GetPods(ctx context.Context, namespace string) ([]*Pod, error)
 	PodIsExist(ctx context.Context, namespace, pod string) (bool, error)
+	CreatePod(ctx context.Context, pod Pod) error
+	ApplyPod(ctx context.Context, pod Pod) error
+	DeletePod(ctx context.Context, namespace, pod string) error
 	RestartPod(ctx context.Context, namespace, pod string) error
 	RestartAppPods(ctx context.Context, namespace, appname string) error
 }

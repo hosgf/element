@@ -1,4 +1,4 @@
-package kubernetes
+package k8s
 
 import (
 	"github.com/gogf/gf/v2/text/gstr"

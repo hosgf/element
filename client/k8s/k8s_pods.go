@@ -1,21 +1,19 @@
-package kubernetes
+package k8s
 
 import (
 	"context"
 	"fmt"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/hosgf/element/health"
+	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/types"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Pod struct {
-	Namespace string        `json:"namespace,omitempty"`
-	App       string        `json:"app,omitempty"`
-	Name      string        `json:"name,omitempty"`
-	Status    health.Health `json:"status,omitempty"`
-	Cpu       string        `json:"cpu,omitempty"`
-	Memory    string        `json:"memory,omitempty"`
+	progress.Service
+	Cpu    string `json:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty"`
 }
 
 func (k *kubernetes) GetPod(ctx context.Context, namespace, appname string) ([]*Pod, error) {
@@ -23,7 +21,7 @@ func (k *kubernetes) GetPod(ctx context.Context, namespace, appname string) ([]*
 		return nil, k.err
 	}
 	opts := v1.ListOptions{
-		LabelSelector: fmt.Sprintf("app=%s", appname),
+		LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
 	}
 	return k.pods(ctx, namespace, opts)
 }
@@ -83,10 +81,14 @@ func (k *kubernetes) pods(ctx context.Context, namespace string, opts v1.ListOpt
 	pods := make([]*Pod, 0, len(list.Items))
 	for _, p := range list.Items {
 		pods = append(pods, &Pod{
-			Namespace: p.Namespace,
-			Name:      p.Name,
-			App:       p.Labels["app"],
-			Status:    Status(string(p.Status.Phase)),
+			Service: progress.Service{
+				Namespace: p.Namespace,
+				Name:      p.Name,
+				App:       p.Labels[types.LabelApp.String()],
+				Owners:    p.Labels[types.LabelOwners.String()],
+				GroupType: p.Labels[types.LabelType.String()],
+				Status:    Status(string(p.Status.Phase)),
+			},
 		})
 	}
 	return pods, nil

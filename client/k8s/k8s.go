@@ -1,9 +1,10 @@
-package kubernetes
+package k8s
 
 import (
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/util"
+	corev1 "k8s.io/api/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -40,4 +41,11 @@ func (k *kubernetes) Version() (string, error) {
 		return "", err
 	}
 	return version.String(), nil
+}
+
+func any(expr bool, a, b corev1.ServiceType) corev1.ServiceType {
+	if expr {
+		return a
+	}
+	return b
 }
