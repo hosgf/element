@@ -41,7 +41,7 @@ func (k *kubernetes) GetPods(ctx context.Context, namespace string) ([]*Pod, err
 		return nil, k.err
 	}
 	opts := v1.ListOptions{
-		//LabelSelector: fmt.Sprintf("app=%s", name),
+		//LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
 	}
 	return k.pods(ctx, namespace, opts)
 }
@@ -121,7 +121,7 @@ func (k *kubernetes) RestartAppPods(ctx context.Context, namespace, appname stri
 		return k.err
 	}
 	opts := v1.ListOptions{
-		LabelSelector: fmt.Sprintf("app=%s", appname),
+		LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
 	}
 	corev1 := k.api.CoreV1().Pods(namespace)
 	list, err := corev1.List(ctx, opts)
