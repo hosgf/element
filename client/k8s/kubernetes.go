@@ -49,14 +49,14 @@ type nodesInterface interface {
 
 type namespaceInterface interface {
 	List(ctx context.Context) ([]string, error)
-	IsExist(ctx context.Context, namespace string) (bool, error)
+	Exists(ctx context.Context, namespace string) (bool, error)
 	Create(ctx context.Context, namespace string) (bool, error)
 	Delete(ctx context.Context, namespace string) error
 }
 
 type serviceInterface interface {
 	List(ctx context.Context, namespace string) ([]Service, error)
-	IsExist(ctx context.Context, namespace, service string) (bool, error)
+	Exists(ctx context.Context, namespace, service string) (bool, error)
 	Create(ctx context.Context, service Service) error
 	Apply(ctx context.Context, service Service) error
 	Delete(ctx context.Context, namespace, service string) error
@@ -65,7 +65,7 @@ type serviceInterface interface {
 type podsInterface interface {
 	Get(ctx context.Context, namespace, appname string) ([]Pod, error)
 	List(ctx context.Context, namespace string) ([]Pod, error)
-	IsExist(ctx context.Context, namespace, pod string) (bool, error)
+	Exists(ctx context.Context, namespace, pod string) (bool, error)
 	Create(ctx context.Context, pod Pod) error
 	Apply(ctx context.Context, pod Pod) error
 	Delete(ctx context.Context, namespace, pod string) error

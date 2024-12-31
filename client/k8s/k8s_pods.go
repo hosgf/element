@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/hosgf/element/format"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
@@ -108,12 +107,12 @@ func (c *Container) resource(container *corev1.Container) {
 	}
 	container.Resources = corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    *res.NewQuantity(format.Cpu(cpu.Minimum, cpu.Unit), res.DecimalSI),
-			corev1.ResourceMemory: *res.NewQuantity(format.Memory(cpu.Minimum, cpu.Unit), res.DecimalSI),
+			corev1.ResourceCPU:    *res.NewQuantity(types.FormatCpu(cpu.Minimum, cpu.Unit), res.DecimalSI),
+			corev1.ResourceMemory: *res.NewQuantity(types.FormatMemory(cpu.Minimum, cpu.Unit), res.DecimalSI),
 		},
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    *res.NewQuantity(format.Cpu(cpu.Maximum, cpu.Unit), res.DecimalSI),
-			corev1.ResourceMemory: *res.NewQuantity(format.Memory(cpu.Maximum, cpu.Unit), res.DecimalSI),
+			corev1.ResourceCPU:    *res.NewQuantity(types.FormatCpu(cpu.Maximum, cpu.Unit), res.DecimalSI),
+			corev1.ResourceMemory: *res.NewQuantity(types.FormatMemory(cpu.Maximum, cpu.Unit), res.DecimalSI),
 		},
 	}
 }
@@ -153,7 +152,7 @@ func (o *podsOperation) List(ctx context.Context, namespace string) ([]Pod, erro
 	return o.pods(ctx, namespace, opts)
 }
 
-func (o *podsOperation) IsExist(ctx context.Context, namespace, pod string) (bool, error) {
+func (o *podsOperation) Exists(ctx context.Context, namespace, pod string) (bool, error) {
 	if o.err != nil {
 		return false, o.err
 	}
@@ -238,7 +237,7 @@ func (o *podsOperation) Delete(ctx context.Context, namespace, pod string) error
 }
 
 func (o *podsOperation) Restart(ctx context.Context, namespace, pod string) error {
-	exist, err := o.IsExist(ctx, namespace, pod)
+	exist, err := o.Exists(ctx, namespace, pod)
 	if err != nil || !exist {
 		return err
 	}

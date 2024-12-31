@@ -54,7 +54,7 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]Servic
 	return services, nil
 }
 
-func (o *serviceOperation) IsExist(ctx context.Context, namespace, service string) (bool, error) {
+func (o *serviceOperation) Exists(ctx context.Context, namespace, service string) (bool, error) {
 	if o.err != nil {
 		return false, o.err
 	}

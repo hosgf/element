@@ -27,7 +27,7 @@ func (o *namespaceOperation) List(ctx context.Context) ([]string, error) {
 	return namespaces, nil
 }
 
-func (o *namespaceOperation) IsExist(ctx context.Context, namespace string) (bool, error) {
+func (o *namespaceOperation) Exists(ctx context.Context, namespace string) (bool, error) {
 	if o.err != nil {
 		return false, o.err
 	}
