@@ -5,47 +5,54 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/util"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"path/filepath"
 )
 
-var Kubernetes = newKubernetes()
-
-func newKubernetes() *kubernetes {
-	k := &kubernetes{}
-	k.namespaceOperation = &namespaceOperation{k.options}
-	k.serviceOperation = &serviceOperation{k.options}
-	k.podsOperation = &podsOperation{k.options}
+func New(isDebug bool) *Kubernetes {
+	k := &Kubernetes{}
+	k.options = &options{isDebug: isDebug}
+	k.nodes = &nodesOperation{k.options}
+	k.namespace = &namespaceOperation{k.options}
+	k.service = &serviceOperation{k.options}
+	k.pods = &podsOperation{k.options}
 	return k
 }
 
 type options struct {
-	*option
-	api *k8s.Clientset
+	isDebug bool
+	err     error
+	api     *k8s.Clientset
 }
 
-type kubernetes struct {
+type Kubernetes struct {
 	*options
-	namespaceOperation *namespaceOperation
-	serviceOperation   *serviceOperation
-	podsOperation      *podsOperation
+	nodes     *nodesOperation
+	namespace *namespaceOperation
+	service   *serviceOperation
+	pods      *podsOperation
 }
 
-func (k *kubernetes) Namespace() *namespaceOperation {
-	return k.namespaceOperation
+func (k *Kubernetes) Nodes() *nodesOperation {
+	return k.nodes
 }
 
-func (k *kubernetes) Service() *serviceOperation {
-	return k.serviceOperation
+func (k *Kubernetes) Namespace() *namespaceOperation {
+	return k.namespace
 }
 
-func (k *kubernetes) Pod() *podsOperation {
-	return k.podsOperation
+func (k *Kubernetes) Service() *serviceOperation {
+	return k.service
 }
 
-func (k *kubernetes) Init(homePath string) error {
+func (k *Kubernetes) Pod() *podsOperation {
+	return k.pods
+}
+
+func (k *Kubernetes) Init(homePath string) error {
 	kubeconfig := filepath.Join(util.Any(homePath == "", homedir.HomeDir(), homePath), ".kube", "config")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
@@ -58,11 +65,10 @@ func (k *kubernetes) Init(homePath string) error {
 		return k.err
 	}
 	k.api = clientset
-	k.namespaceOperation.api = k.api
 	return nil
 }
 
-func (k *kubernetes) Version() (string, error) {
+func (k *Kubernetes) Version() (string, error) {
 	if k.err != nil {
 		return "", k.err
 	}
@@ -78,4 +84,14 @@ func any(expr bool, a, b corev1.ServiceType) corev1.ServiceType {
 		return a
 	}
 	return b
+}
+
+func (o *options) isExist(value interface{}, err error, format string) (bool, error) {
+	if err == nil {
+		return value != nil, nil
+	}
+	if errors.IsNotFound(err) {
+		return false, nil
+	}
+	return false, gerror.NewCodef(gcode.CodeNotImplemented, format, err)
 }

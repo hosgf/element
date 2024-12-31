@@ -8,6 +8,8 @@ import (
 
 func Test(t *testing.T) {
 	ctx := context.Background()
-	kubernetes := k8s.Kubernetes
-	kubernetes.Pod().List(ctx, "")
+	kubernetes := k8s.New(true)
+	kubernetes.Init("")
+	kubernetes.Namespace().List(ctx)
+	//kubernetes.Init()
 }
