@@ -133,7 +133,7 @@ func (c *Container) env(container *corev1.Container) {
 	container.Env = envVars
 }
 
-func (o *podsOperation) Get(ctx context.Context, namespace, appname string) ([]*Pod, error) {
+func (o *podsOperation) Get(ctx context.Context, namespace, appname string) ([]Pod, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -143,7 +143,7 @@ func (o *podsOperation) Get(ctx context.Context, namespace, appname string) ([]*
 	return o.pods(ctx, namespace, opts)
 }
 
-func (o *podsOperation) List(ctx context.Context, namespace string) ([]*Pod, error) {
+func (o *podsOperation) List(ctx context.Context, namespace string) ([]Pod, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -265,20 +265,20 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 	return err
 }
 
-func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]*Pod, error) {
-	list, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
+func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]Pod, error) {
+	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
 	}
-	pods := make([]*Pod, 0, len(list.Items))
-	for _, p := range list.Items {
+	pods := make([]Pod, 0, len(datas.Items))
+	for _, p := range datas.Items {
 		model := Model{
 			Namespace: namespace,
 			Name:      p.Name,
 			Status:    Status(string(p.Status.Phase)),
 		}
 		model.labels(p.Labels)
-		pods = append(pods, &Pod{
+		pods = append(pods, Pod{
 			Model:     model,
 			GroupName: p.Spec.NodeSelector[types.LabelGroupName.String()],
 		})

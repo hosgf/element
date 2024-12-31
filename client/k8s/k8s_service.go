@@ -29,7 +29,7 @@ func (s Service) toSelector() map[string]string {
 	}
 }
 
-func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Service, error) {
+func (o *serviceOperation) List(ctx context.Context, namespace string) ([]Service, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -38,7 +38,7 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Servi
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Services: %v", err)
 	}
-	services := make([]*Service, 0, len(svcs.Items))
+	services := make([]Service, 0, len(svcs.Items))
 	for _, svc := range svcs.Items {
 		model := Model{
 			Namespace: namespace,
@@ -46,7 +46,7 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Servi
 			Status:    Status(svc.Status.String()),
 		}
 		model.labels(svc.Labels)
-		services = append(services, &Service{
+		services = append(services, Service{
 			Model:     model,
 			GroupName: svc.Spec.Selector[types.LabelGroupName.String()],
 		})
