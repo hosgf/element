@@ -10,7 +10,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	applyconfigurationscorev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	k8s "k8s.io/client-go/kubernetes"
 )
 
 type serviceOperation struct {
