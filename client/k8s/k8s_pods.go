@@ -24,6 +24,14 @@ type Pod struct {
 	Containers []Container `json:"containers,omitempty"`
 }
 
+func (p *Pod) containers() []corev1.Container {
+	containers := make([]corev1.Container, 0, len(p.Containers))
+	for _, c := range p.Containers {
+		containers = append(containers, c.toContainer())
+	}
+	return containers
+}
+
 type Container struct {
 	Name       string              `json:"name,omitempty"`
 	Image      string              `json:"image,omitempty"`
@@ -158,10 +166,6 @@ func (o *podsOperation) Create(ctx context.Context, pod Pod) error {
 	if o.err != nil {
 		return o.err
 	}
-	containers := make([]corev1.Container, 0, len(pod.Containers))
-	for _, c := range pod.Containers {
-		containers = append(containers, c.toContainer())
-	}
 	p := &corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      pod.Name, // Pod 名称
@@ -169,10 +173,9 @@ func (o *podsOperation) Create(ctx context.Context, pod Pod) error {
 			Labels:    pod.toLabel(),
 		},
 		Spec: corev1.PodSpec{
-			Containers: containers,
+			Containers: pod.containers(),
 		},
 	}
-
 	opts := v1.CreateOptions{}
 	_, err := o.api.CoreV1().Pods(pod.Namespace).Create(ctx, p, opts)
 	if err != nil {
@@ -189,8 +192,36 @@ func (o *podsOperation) Apply(ctx context.Context, pod Pod) error {
 	// 更新Labels
 	p.WithLabels(pod.toLabel())
 	// 更新容器
-	p.
-		opts := v1.ApplyOptions{}
+	p.Spec.Containers = make([]applyconfigurationscorev1.ContainerApplyConfiguration, 0, len(pod.containers()))
+	for _, c := range pod.containers() {
+		ports := make([]*applyconfigurationscorev1.ContainerPortApplyConfiguration, 0, len(c.Ports))
+		for _, p := range c.Ports {
+			port := applyconfigurationscorev1.ContainerPort()
+			port.WithName(p.Name)
+			port.WithProtocol(p.Protocol)
+			port.WithHostPort(p.HostPort)
+			port.WithHostIP(p.HostIP)
+			port.WithContainerPort(p.ContainerPort)
+			ports = append(ports, port)
+		}
+		envs := make([]*applyconfigurationscorev1.EnvVarApplyConfiguration, 0, len(c.Env))
+		for _, e := range c.Env {
+			env := applyconfigurationscorev1.EnvVar()
+			env.WithName(e.Name)
+			env.WithValue(e.Value)
+			envs = append(envs, env)
+		}
+		container := applyconfigurationscorev1.Container()
+		container.WithName(c.Name)
+		container.WithImage(c.Image)
+		container.WithImagePullPolicy(c.ImagePullPolicy)
+		container.WithCommand(c.Command...)
+		container.WithArgs(c.Args...)
+		container.WithPorts(ports...)
+		container.WithEnv(envs...)
+		p.Spec.Containers = append(p.Spec.Containers, *container)
+	}
+	opts := v1.ApplyOptions{}
 	_, err := o.api.CoreV1().Pods(pod.Namespace).Apply(ctx, p, opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
