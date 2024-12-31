@@ -1,8 +1,10 @@
 package format
 
-func Memory(format string, data int64) int64 {
+func Memory(data int64, unit string) int64 {
 	formatData := int64(0)
-	switch format {
+	switch unit {
+	case "":
+		formatData = data
 	case "Ki":
 		formatData = data / 1024
 	case "Mi":
@@ -15,9 +17,18 @@ func Memory(format string, data int64) int64 {
 	return formatData
 }
 
-func DataSize(format string, data int64) int64 {
+func MemoryOrDefault(data int64, unit string, dataDefault int64) int64 {
+	if data > 0 {
+		return Memory(data, unit)
+	}
+	return dataDefault
+}
+
+func DataSize(data int64, unit string) int64 {
 	formatData := int64(0)
-	switch format {
+	switch unit {
+	case "":
+		formatData = data
 	case "Ki":
 		formatData = data
 	case "Mi":
@@ -30,9 +41,18 @@ func DataSize(format string, data int64) int64 {
 	return formatData
 }
 
-func Cpu(format string, data int64) int64 {
+func DataSizeOrDefault(data int64, unit string, dataDefault int64) int64 {
+	if data > 0 {
+		return DataSize(data, unit)
+	}
+	return dataDefault
+}
+
+func Cpu(data int64, unit string) int64 {
 	formatData := int64(0)
-	switch format {
+	switch unit {
+	case "":
+		formatData = data
 	case "m":
 		formatData = data
 	case "μ":
@@ -41,4 +61,11 @@ func Cpu(format string, data int64) int64 {
 		formatData = data / 1000 / 1000
 	}
 	return formatData
+}
+
+func CpuOrDefault(data int64, unit string, dataDefault int64) int64 {
+	if data > 0 {
+		return Cpu(data, unit)
+	}
+	return dataDefault
 }

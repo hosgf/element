@@ -1,6 +1,9 @@
 package progress
 
-import "github.com/hosgf/element/health"
+import (
+	"github.com/hosgf/element/health"
+	"github.com/hosgf/element/types"
+)
 
 type ProgressGroup struct {
 	Namespace string        `json:"namespace,omitempty"`
@@ -70,18 +73,24 @@ type Port struct {
 
 // Resource 进程资源
 type Resource struct {
-	Type      string `json:"type,omitempty"`      // 资源类型(RAM OR CPU)
-	Unit      string `json:"unit,omitempty"`      // 单位
-	Minimum   int64  `json:"minimum,omitempty"`   // 最小
-	Maximum   int64  `json:"maximum,omitempty"`   // 最大
-	Threshold int64  `json:"threshold,omitempty"` // 阈值
+	Type      types.ResourceType `json:"type,omitempty"`      // 资源类型(RAM OR CPU)
+	Unit      string             `json:"unit,omitempty"`      // 单位
+	Minimum   int64              `json:"minimum,omitempty"`   // 最小
+	Maximum   int64              `json:"maximum,omitempty"`   // 最大
+	Threshold int64              `json:"threshold,omitempty"` // 阈值
 }
 
-type Service struct {
-	Namespace string        `json:"namespace,omitempty"`
-	App       string        `json:"app,omitempty"`
-	Owner     string        `json:"owner,omitempty"`
-	GroupType string        `json:"groupType,omitempty"`
-	Name      string        `json:"name,omitempty"`
-	Status    health.Health `json:"status,omitempty"`
+func (r *Resource) Update(res Resource) {
+	if len(res.Type) > 0 {
+		res.Type = r.Type
+	}
+	if res.Minimum > 0 {
+		r.Minimum = res.Minimum
+	}
+	if res.Maximum > 0 {
+		r.Maximum = res.Maximum
+	}
+	if res.Threshold > 0 {
+		r.Threshold = res.Threshold
+	}
 }

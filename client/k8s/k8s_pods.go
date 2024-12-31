@@ -5,125 +5,223 @@ import (
 	"fmt"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/hosgf/element/format"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
+	res "k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	applyconfigurationscorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
+type podsOperation struct {
+	*options
+}
+
 type Pod struct {
-	progress.Service
+	Model
+	GroupName  string      `json:"groupName,omitempty"`
 	Containers []Container `json:"containers,omitempty"`
 }
 
 type Container struct {
-	Name    string          `json:"name,omitempty"`
-	Image   string          `json:"image,omitempty"`
-	Command []string        `json:"command,omitempty"`
-	Args    []string        `json:"args,omitempty"`
-	Ports   []progress.Port `json:"ports,omitempty"`
-	Cpu     string          `json:"cpu,omitempty"`
-	Memory  string          `json:"memory,omitempty"`
+	Name       string              `json:"name,omitempty"`
+	Image      string              `json:"image,omitempty"`
+	PullPolicy string              `json:"string,omitempty"`
+	Command    []string            `json:"command,omitempty"`
+	Args       []string            `json:"args,omitempty"`
+	Ports      []progress.Port     `json:"ports,omitempty"`
+	Resource   []progress.Resource `json:"resource,omitempty"`
+	Env        map[string]string   `json:"env,omitempty"`
 }
 
-func (k *kubernetes) GetPod(ctx context.Context, namespace, appname string) ([]*Pod, error) {
-	if k.err != nil {
-		return nil, k.err
+func (c *Container) toContainer() corev1.Container {
+	container := &corev1.Container{
+		Name:    c.Name,
+		Image:   c.Image,
+		Command: c.Command,
+		Args:    c.Args,
+	}
+	if len(c.PullPolicy) < 1 {
+		container.ImagePullPolicy = corev1.PullIfNotPresent
+	} else {
+		container.ImagePullPolicy = corev1.PullPolicy(c.PullPolicy)
+	}
+	// 设置Port
+	c.ports(container)
+	// 设置资源
+	c.resource(container)
+	// 设置env
+	c.env(container)
+	// todo pvc
+	return *container
+}
+
+func (c *Container) ports(container *corev1.Container) {
+	list := c.Ports
+	if list == nil || len(list) < 1 {
+		return
+	}
+	ports := make([]corev1.ContainerPort, 0, len(list))
+	for _, p := range list {
+		ports = append(ports, corev1.ContainerPort{
+			Name:          p.Name,
+			Protocol:      corev1.Protocol(p.Protocol),
+			ContainerPort: p.TargetPort,
+		})
+	}
+	container.Ports = ports
+}
+
+func (c *Container) resource(container *corev1.Container) {
+	var (
+		cpu = progress.Resource{
+			Type:    types.ResourceCPU,
+			Unit:    "m",
+			Minimum: 500,
+			Maximum: 1000,
+		}
+		memory = progress.Resource{
+			Type:    types.ResourceCPU,
+			Unit:    "Mi",
+			Minimum: 30,
+			Maximum: 500,
+		}
+	)
+	if len(c.Resource) < 1 {
+		for _, r := range c.Resource {
+			switch r.Type {
+			case types.ResourceCPU:
+				cpu.Update(r)
+			case types.ResourceRAM:
+				memory.Update(r)
+			}
+		}
+	}
+	container.Resources = corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    *res.NewQuantity(format.Cpu(cpu.Minimum, cpu.Unit), res.DecimalSI),
+			corev1.ResourceMemory: *res.NewQuantity(format.Memory(cpu.Minimum, cpu.Unit), res.DecimalSI),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    *res.NewQuantity(format.Cpu(cpu.Maximum, cpu.Unit), res.DecimalSI),
+			corev1.ResourceMemory: *res.NewQuantity(format.Memory(cpu.Maximum, cpu.Unit), res.DecimalSI),
+		},
+	}
+}
+
+func (c *Container) env(container *corev1.Container) {
+	env := c.Env
+	if env == nil || len(env) < 1 {
+		return
+	}
+	envVars := make([]corev1.EnvVar, 0, len(env))
+	for k, v := range env {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
+	}
+	container.Env = envVars
+}
+
+func (o *podsOperation) Get(ctx context.Context, namespace, appname string) ([]*Pod, error) {
+	if o.err != nil {
+		return nil, o.err
 	}
 	opts := v1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
 	}
-	return k.pods(ctx, namespace, opts)
+	return o.pods(ctx, namespace, opts)
 }
 
-func (k *kubernetes) GetPods(ctx context.Context, namespace string) ([]*Pod, error) {
-	if k.err != nil {
-		return nil, k.err
+func (o *podsOperation) List(ctx context.Context, namespace string) ([]*Pod, error) {
+	if o.err != nil {
+		return nil, o.err
 	}
 	opts := v1.ListOptions{
 		//LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
 	}
-	return k.pods(ctx, namespace, opts)
+	return o.pods(ctx, namespace, opts)
 }
 
-func (k *kubernetes) PodIsExist(ctx context.Context, namespace, pod string) (bool, error) {
-	if k.err != nil {
-		return false, k.err
+func (o *podsOperation) IsExist(ctx context.Context, namespace, pod string) (bool, error) {
+	if o.err != nil {
+		return false, o.err
 	}
 	opts := v1.GetOptions{}
-	p, err := k.api.CoreV1().Pods(namespace).Get(ctx, pod, opts)
-	return k.isExist(p, err, "Failed to get Pod: %v")
+	p, err := o.api.CoreV1().Pods(namespace).Get(ctx, pod, opts)
+	return o.isExist(p, err, "Failed to get Pod: %v")
 }
 
-func (k *kubernetes) CreatePod(ctx context.Context, pod Pod) error {
-	if k.err != nil {
-		return k.err
+func (o *podsOperation) Create(ctx context.Context, pod Pod) error {
+	if o.err != nil {
+		return o.err
 	}
 	containers := make([]corev1.Container, 0, len(pod.Containers))
 	for _, c := range pod.Containers {
-		containers = append(containers, corev1.Container{
-			Name:     c.Name,
-			Port:     p.Port,
-			NodePort: p.NodePort,
-		})
+		containers = append(containers, c.toContainer())
 	}
 	p := &corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      pod.Name, // Pod 名称
 			Namespace: pod.Namespace,
-			Labels: map[string]string{
-				types.LabelApp.String():   pod.App,
-				types.LabelOwner.String(): pod.Owner,
-				types.LabelType.String():  pod.GroupType,
-			},
+			Labels:    pod.toLabel(),
 		},
 		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:  "nginx-container",
-					Image: "nginx", // 使用 Nginx 镜像
-					Ports: []corev1.ContainerPort{
-						{
-							ContainerPort: 80,
-						},
-					},
-				},
-			},
+			Containers: containers,
 		},
 	}
 
 	opts := v1.CreateOptions{}
-	_, err := k.api.CoreV1().Pods(pod.Namespace).Create(ctx, p, opts)
+	_, err := o.api.CoreV1().Pods(pod.Namespace).Create(ctx, p, opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create pod: %v", err)
 	}
 	return nil
 }
 
-func (k *kubernetes) DeletePod(ctx context.Context, namespace, pod string) error {
-	if k.err != nil {
-		return k.err
+func (o *podsOperation) Apply(ctx context.Context, pod Pod) error {
+	if o.err != nil {
+		return o.err
 	}
-	opts := v1.DeleteOptions{}
-	return k.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
+	p := applyconfigurationscorev1.Pod(pod.Name, pod.Namespace)
+	// 更新Labels
+	p.WithLabels(pod.toLabel())
+	// 更新容器
+	p.
+		opts := v1.ApplyOptions{}
+	_, err := o.api.CoreV1().Pods(pod.Namespace).Apply(ctx, p, opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
+	}
+	return nil
 }
 
-func (k *kubernetes) RestartPod(ctx context.Context, namespace, pod string) error {
-	exist, err := k.PodIsExist(ctx, namespace, pod)
+func (o *podsOperation) Delete(ctx context.Context, namespace, pod string) error {
+	if o.err != nil {
+		return o.err
+	}
+	opts := v1.DeleteOptions{}
+	return o.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
+}
+
+func (o *podsOperation) Restart(ctx context.Context, namespace, pod string) error {
+	exist, err := o.IsExist(ctx, namespace, pod)
 	if err != nil || !exist {
 		return err
 	}
-	return k.api.CoreV1().Pods(namespace).Delete(ctx, pod, v1.DeleteOptions{})
+	return o.api.CoreV1().Pods(namespace).Delete(ctx, pod, v1.DeleteOptions{})
 }
 
-func (k *kubernetes) RestartAppPods(ctx context.Context, namespace, appname string) error {
-	if k.err != nil {
-		return k.err
+func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname string) error {
+	if o.err != nil {
+		return o.err
 	}
 	opts := v1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
 	}
-	corev1 := k.api.CoreV1().Pods(namespace)
+	corev1 := o.api.CoreV1().Pods(namespace)
 	list, err := corev1.List(ctx, opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
@@ -136,22 +234,22 @@ func (k *kubernetes) RestartAppPods(ctx context.Context, namespace, appname stri
 	return err
 }
 
-func (k *kubernetes) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]*Pod, error) {
-	list, err := k.api.CoreV1().Pods(namespace).List(ctx, opts)
+func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]*Pod, error) {
+	list, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
 	}
 	pods := make([]*Pod, 0, len(list.Items))
 	for _, p := range list.Items {
+		model := Model{
+			Namespace: namespace,
+			Name:      p.Name,
+			Status:    Status(string(p.Status.Phase)),
+		}
+		model.labels(p.Labels)
 		pods = append(pods, &Pod{
-			Service: progress.Service{
-				Namespace: p.Namespace,
-				Name:      p.Name,
-				App:       p.Labels[types.LabelApp.String()],
-				Owner:     p.Labels[types.LabelOwner.String()],
-				GroupType: p.Labels[types.LabelType.String()],
-				Status:    Status(string(p.Status.Phase)),
-			},
+			Model:     model,
+			GroupName: p.Spec.NodeSelector[types.LabelGroupName.String()],
 		})
 	}
 	return pods, nil

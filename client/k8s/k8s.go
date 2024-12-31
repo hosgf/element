@@ -11,9 +11,38 @@ import (
 	"path/filepath"
 )
 
-type kubernetes struct {
-	option
+var Kubernetes = newKubernetes()
+
+func newKubernetes() *kubernetes {
+	k := &kubernetes{}
+	k.namespaceOperation = &namespaceOperation{k.options}
+	k.serviceOperation = &serviceOperation{k.options}
+	k.podsOperation = &podsOperation{k.options}
+	return k
+}
+
+type options struct {
+	*option
 	api *k8s.Clientset
+}
+
+type kubernetes struct {
+	*options
+	namespaceOperation *namespaceOperation
+	serviceOperation   *serviceOperation
+	podsOperation      *podsOperation
+}
+
+func (k *kubernetes) Namespace() *namespaceOperation {
+	return k.namespaceOperation
+}
+
+func (k *kubernetes) Service() *serviceOperation {
+	return k.serviceOperation
+}
+
+func (k *kubernetes) Pod() *podsOperation {
+	return k.podsOperation
 }
 
 func (k *kubernetes) Init(homePath string) error {
@@ -29,6 +58,7 @@ func (k *kubernetes) Init(homePath string) error {
 		return k.err
 	}
 	k.api = clientset
+	k.namespaceOperation.api = k.api
 	return nil
 }
 

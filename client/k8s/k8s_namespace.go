@@ -8,11 +8,15 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (k *kubernetes) GetNamespaces(ctx context.Context) ([]string, error) {
-	if k.err != nil {
-		return nil, k.err
+type namespaceOperation struct {
+	*options
+}
+
+func (o *namespaceOperation) List(ctx context.Context) ([]string, error) {
+	if o.err != nil {
+		return nil, o.err
 	}
-	ns, err := k.api.CoreV1().Namespaces().List(ctx, v1.ListOptions{})
+	ns, err := o.api.CoreV1().Namespaces().List(ctx, v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -23,28 +27,28 @@ func (k *kubernetes) GetNamespaces(ctx context.Context) ([]string, error) {
 	return namespaces, nil
 }
 
-func (k *kubernetes) NamespaceIsExist(ctx context.Context, namespace string) (bool, error) {
-	if k.err != nil {
-		return false, k.err
+func (o *namespaceOperation) IsExist(ctx context.Context, namespace string) (bool, error) {
+	if o.err != nil {
+		return false, o.err
 	}
-	_, err := k.api.CoreV1().Namespaces().Get(ctx, namespace, v1.GetOptions{})
-	return k.isExist("", err, "Error occurred while fetching namespace: %v")
+	_, err := o.api.CoreV1().Namespaces().Get(ctx, namespace, v1.GetOptions{})
+	return o.isExist("", err, "Error occurred while fetching namespace: %v")
 }
 
-func (k *kubernetes) CreateNamespace(ctx context.Context, namespace string) (bool, error) {
-	if k.err != nil {
-		return false, k.err
+func (o *namespaceOperation) Create(ctx context.Context, namespace string) (bool, error) {
+	if o.err != nil {
+		return false, o.err
 	}
-	_, err := k.api.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: namespace}}, v1.CreateOptions{})
+	_, err := o.api.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: namespace}}, v1.CreateOptions{})
 	if err != nil {
 		return false, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create namespace: %v", err)
 	}
 	return true, nil
 }
 
-func (k *kubernetes) DeleteNamespace(ctx context.Context, namespace string) error {
-	if k.err != nil {
-		return k.err
+func (o *namespaceOperation) Delete(ctx context.Context, namespace string) error {
+	if o.err != nil {
+		return o.err
 	}
-	return k.api.CoreV1().Namespaces().Delete(ctx, namespace, v1.DeleteOptions{})
+	return o.api.CoreV1().Namespaces().Delete(ctx, namespace, v1.DeleteOptions{})
 }

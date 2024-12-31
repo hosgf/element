@@ -10,50 +10,63 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	applyconfigurationscorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	k8s "k8s.io/client-go/kubernetes"
 )
 
+type serviceOperation struct {
+	*options
+}
+
 type Service struct {
-	progress.Service
+	Model
+	GroupName   string          `json:"groupName,omitempty"`
 	ServiceType string          `json:"serviceType,omitempty"`
 	Ports       []progress.Port `json:"ports,omitempty"`
 }
 
-func (k *kubernetes) GetServices(ctx context.Context, namespace string) ([]*Service, error) {
-	if k.err != nil {
-		return nil, k.err
+func (s Service) toSelector() map[string]string {
+	return map[string]string{
+		types.LabelGroupName.String(): s.GroupName,
+	}
+}
+
+func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Service, error) {
+	if o.err != nil {
+		return nil, o.err
 	}
 	opts := v1.ListOptions{}
-	svcs, err := k.api.CoreV1().Services(namespace).List(ctx, opts)
+	svcs, err := o.api.CoreV1().Services(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Services: %v", err)
 	}
 	services := make([]*Service, 0, len(svcs.Items))
 	for _, svc := range svcs.Items {
+		model := Model{
+			Namespace: namespace,
+			Name:      svc.Name,
+			Status:    Status(svc.Status.String()),
+		}
+		model.labels(svc.Labels)
 		services = append(services, &Service{
-			Service: progress.Service{
-				Namespace: namespace,
-				Name:      svc.Name,
-				App:       svc.Labels[types.LabelApp.String()],
-				Owner:     svc.Labels[types.LabelOwner.String()],
-				GroupType: svc.Labels[types.LabelType.String()],
-				Status:    Status(svc.Status.String()),
-			}})
+			Model:     model,
+			GroupName: svc.Spec.Selector[types.LabelGroupName.String()],
+		})
 	}
 	return services, nil
 }
 
-func (k *kubernetes) ServiceIsExist(ctx context.Context, namespace, service string) (bool, error) {
-	if k.err != nil {
-		return false, k.err
+func (o *serviceOperation) IsExist(ctx context.Context, namespace, service string) (bool, error) {
+	if o.err != nil {
+		return false, o.err
 	}
 	opts := v1.GetOptions{}
-	svc, err := k.api.CoreV1().Services(namespace).Get(ctx, service, opts)
-	return k.isExist(svc, err, "Failed to get Services: %v")
+	svc, err := o.api.CoreV1().Services(namespace).Get(ctx, service, opts)
+	return o.isExist(svc, err, "Failed to get Services: %v")
 }
 
-func (k *kubernetes) CreateService(ctx context.Context, service Service) error {
-	if k.err != nil {
-		return k.err
+func (o *serviceOperation) Create(ctx context.Context, service Service) error {
+	if o.err != nil {
+		return o.err
 	}
 	ports := make([]corev1.ServicePort, 0, len(service.Ports))
 	for _, p := range service.Ports {
@@ -68,40 +81,31 @@ func (k *kubernetes) CreateService(ctx context.Context, service Service) error {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      service.Name,      // Service 名称
 			Namespace: service.Namespace, // Service 所在的 Namespace
-			Labels: map[string]string{
-				types.LabelApp.String():   service.App,
-				types.LabelOwner.String(): service.Owner,
-				types.LabelType.String():  service.GroupType,
-			},
+			Labels:    service.toLabel(),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				types.LabelApp.String(): service.App,
-			},
-			Ports: ports,
-			Type:  any(len(service.ServiceType) < 1, corev1.ServiceTypeClusterIP, corev1.ServiceType(service.ServiceType)), // 默认为 ClusterIP 类型
+			Selector: service.toSelector(),
+			Ports:    ports,
+			Type:     any(len(service.ServiceType) < 1, corev1.ServiceTypeClusterIP, corev1.ServiceType(service.ServiceType)), // 默认为 ClusterIP 类型
 		},
 	}
 	opts := v1.CreateOptions{}
-	_, err := k.api.CoreV1().Services(service.Namespace).Create(ctx, svc, opts)
+	_, err := o.api.CoreV1().Services(service.Namespace).Create(ctx, svc, opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create service: %v", err)
 	}
 	return nil
 }
 
-func (k *kubernetes) ApplyService(ctx context.Context, service Service) error {
-	if k.err != nil {
-		return k.err
+func (o *serviceOperation) Apply(ctx context.Context, service Service) error {
+	if o.err != nil {
+		return o.err
 	}
 	svc := applyconfigurationscorev1.Service(service.Name, service.Namespace)
-	svc.WithLabels(map[string]string{
-		types.LabelApp.String():   service.App,
-		types.LabelOwner.String(): service.Owner,
-		types.LabelType.String():  service.GroupType,
-	})
+	svc.WithLabels(service.toLabel())
 	t := any(len(service.ServiceType) < 1, corev1.ServiceTypeClusterIP, corev1.ServiceType(service.ServiceType))
 	svc.Spec.Type = &t
+	svc.Spec.Selector = service.toSelector()
 	svc.Spec.Ports = make([]applyconfigurationscorev1.ServicePortApplyConfiguration, 0, len(service.Ports))
 	for _, p := range service.Ports {
 		protocol := corev1.Protocol(p.Protocol)
@@ -116,17 +120,17 @@ func (k *kubernetes) ApplyService(ctx context.Context, service Service) error {
 		})
 	}
 	opts := v1.ApplyOptions{}
-	_, err := k.api.CoreV1().Services(service.Namespace).Apply(ctx, svc, opts)
+	_, err := o.api.CoreV1().Services(service.Namespace).Apply(ctx, svc, opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply service: %v", err)
 	}
 	return nil
 }
 
-func (k *kubernetes) DeleteService(ctx context.Context, namespace, service string) error {
-	if k.err != nil {
-		return k.err
+func (o *serviceOperation) Delete(ctx context.Context, namespace, service string) error {
+	if o.err != nil {
+		return o.err
 	}
 	opts := v1.DeleteOptions{}
-	return k.api.CoreV1().Services(namespace).Delete(ctx, service, opts)
+	return o.api.CoreV1().Services(namespace).Delete(ctx, service, opts)
 }

@@ -4,17 +4,45 @@ import (
 	"context"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/hosgf/element/health"
+	"github.com/hosgf/element/types"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 type operation interface {
-	basics
-	resource
-	namespace
-	service
-	pods
-	job
-	storage
+	Init(homePath string) error
+	Version() (string, error)
+	NamespaceOperation
+	ServiceOperation
+	PodsOperation
+	JobsOperation
+	StorageOperation
+}
+
+type Model struct {
+	Namespace string        `json:"namespace,omitempty"`
+	App       string        `json:"app,omitempty"`
+	Owner     string        `json:"owner,omitempty"`
+	Scope     string        `json:"scope,omitempty"`
+	Name      string        `json:"name,omitempty"`
+	Status    health.Health `json:"status,omitempty"`
+}
+
+func (m Model) toLabel() map[string]string {
+	return map[string]string{
+		types.LabelApp.String():   m.App,
+		types.LabelOwner.String(): m.Owner,
+		types.LabelScope.String(): m.Scope,
+	}
+}
+
+func (m Model) labels(labels map[string]string) {
+	if len(labels) < 1 {
+		return
+	}
+	m.App = labels[types.LabelApp.String()]
+	m.Owner = labels[types.LabelOwner.String()]
+	m.Scope = labels[types.LabelScope.String()]
 }
 
 type option struct {
@@ -22,51 +50,61 @@ type option struct {
 	err     error
 }
 
-// basics
-type basics interface {
-	Init(homePath string) error
-	Version() (string, error)
+// NamespaceOperation namespace
+type NamespaceOperation interface {
+	Namespace() namespaceInterface
 }
 
-// 资源
-type resource interface {
+type namespaceInterface interface {
+	List(ctx context.Context) ([]string, error)
+	IsExist(ctx context.Context, namespace string) (bool, error)
+	Create(ctx context.Context, namespace string) ([]string, error)
+	Delete(ctx context.Context, namespace string) error
 }
 
-// namespace
-type namespace interface {
-	GetNamespaces(ctx context.Context) ([]string, error)
-	NamespaceIsExist(ctx context.Context, namespace string) (bool, error)
-	CreateNamespace(ctx context.Context, namespace string) ([]string, error)
-	DeleteNamespace(ctx context.Context, namespace string) error
+// ServiceOperation 服务
+type ServiceOperation interface {
+	Service() serviceInterface
 }
 
-// 服务
-type service interface {
-	GetServices(ctx context.Context, namespace string) ([]*Service, error)
-	ServiceIsExist(ctx context.Context, namespace, service string) (bool, error)
-	CreateService(ctx context.Context, service Service) error
-	ApplyService(ctx context.Context, service Service) error
-	DeleteService(ctx context.Context, namespace, service string) error
+type serviceInterface interface {
+	List(ctx context.Context, namespace string) ([]*Service, error)
+	IsExist(ctx context.Context, namespace, service string) (bool, error)
+	Create(ctx context.Context, service Service) error
+	Apply(ctx context.Context, service Service) error
+	Delete(ctx context.Context, namespace, service string) error
 }
 
-// pods
-type pods interface {
-	GetPod(ctx context.Context, namespace, appname string) ([]*Pod, error)
-	GetPods(ctx context.Context, namespace string) ([]*Pod, error)
-	PodIsExist(ctx context.Context, namespace, pod string) (bool, error)
-	CreatePod(ctx context.Context, pod Pod) error
-	ApplyPod(ctx context.Context, pod Pod) error
-	DeletePod(ctx context.Context, namespace, pod string) error
-	RestartPod(ctx context.Context, namespace, pod string) error
-	RestartAppPods(ctx context.Context, namespace, appname string) error
+// PodsOperation pods
+type PodsOperation interface {
+	Pod() podsInterface
 }
 
-// job
-type job interface {
+type podsInterface interface {
+	Get(ctx context.Context, namespace, appname string) ([]*Pod, error)
+	List(ctx context.Context, namespace string) ([]*Pod, error)
+	IsExist(ctx context.Context, namespace, pod string) (bool, error)
+	Create(ctx context.Context, pod Pod) error
+	Apply(ctx context.Context, pod Pod) error
+	Delete(ctx context.Context, namespace, pod string) error
+	Restart(ctx context.Context, namespace, pod string) error
+	RestartApp(ctx context.Context, namespace, appname string) error
 }
 
-// 存储
-type storage interface {
+// JobsOperation job
+type JobsOperation interface {
+	Job() jobsInterface
+}
+
+type jobsInterface interface {
+}
+
+// StorageOperation 存储
+type StorageOperation interface {
+	Storage() storageInterface
+}
+
+type storageInterface interface {
 }
 
 func (k *option) isExist(value interface{}, err error, format string) (bool, error) {
