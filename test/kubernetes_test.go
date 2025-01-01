@@ -40,7 +40,7 @@ func TestNamespaces(t *testing.T) {
 func TestCreateNamespace(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
-	isOk, err := kubernetes.Namespace().Create(ctx, "test2")
+	isOk, err := kubernetes.Namespace().Create(ctx, "test21")
 	if err != nil {
 		t.Fatal(err)
 		return

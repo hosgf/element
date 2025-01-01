@@ -7,8 +7,9 @@ import (
 
 type Namespace struct {
 	Name   string        `json:"name,omitempty"`
-	Status health.Health `json:"status,omitempty"`
+	Label  string        `json:"label,omitempty"`
 	Remark string        `json:"remark,omitempty"`
+	Status health.Health `json:"status,omitempty"`
 }
 
 // Resource 资源对象

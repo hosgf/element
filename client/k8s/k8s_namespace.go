@@ -27,6 +27,7 @@ func (o *namespaceOperation) List(ctx context.Context) ([]resource.Namespace, er
 	for _, ns := range datas.Items {
 		namespaces = append(namespaces, resource.Namespace{
 			Name:   ns.Name,
+			Label:  ns.Labels[types.LabelOwner.String()],
 			Status: Status(string(ns.Status.Phase)),
 		})
 	}
