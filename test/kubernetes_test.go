@@ -48,6 +48,17 @@ func TestCreateNamespace(t *testing.T) {
 	g.Dump(isOk)
 }
 
+func TestPodList(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	datas, err := kubernetes.Pod().List(ctx, "kube-system")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	g.Dump(datas)
+}
+
 func TestParse(t *testing.T) {
 	fmt.Println(types.Parse("16384Mi"))
 	fmt.Println(types.Parse("16384"))

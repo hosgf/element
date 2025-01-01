@@ -18,14 +18,13 @@ type serviceOperation struct {
 
 type Service struct {
 	Model
-	GroupName   string          `json:"groupName,omitempty"`
 	ServiceType string          `json:"serviceType,omitempty"`
 	Ports       []progress.Port `json:"ports,omitempty"`
 }
 
 func (s Service) toSelector() map[string]string {
 	return map[string]string{
-		types.LabelGroupName.String(): s.GroupName,
+		types.LabelGroup.String(): s.Group,
 	}
 }
 
@@ -46,10 +45,8 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]Servic
 			Status:    Status(svc.Status.String()),
 		}
 		model.labels(svc.Labels)
-		services = append(services, Service{
-			Model:     model,
-			GroupName: svc.Spec.Selector[types.LabelGroupName.String()],
-		})
+		model.Group = svc.Spec.Selector[types.LabelGroup.String()]
+		services = append(services, Service{Model: model})
 	}
 	return services, nil
 }

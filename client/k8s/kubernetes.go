@@ -21,6 +21,7 @@ type operation interface {
 type Model struct {
 	Namespace string        `json:"namespace,omitempty"`
 	App       string        `json:"app,omitempty"`
+	Group     string        `json:"group,omitempty"`
 	Owner     string        `json:"owner,omitempty"`
 	Scope     string        `json:"scope,omitempty"`
 	Name      string        `json:"name,omitempty"`
@@ -32,6 +33,7 @@ func (m Model) toLabel() map[string]string {
 		types.LabelApp.String():   m.App,
 		types.LabelOwner.String(): m.Owner,
 		types.LabelScope.String(): m.Scope,
+		types.LabelGroup.String(): m.Group,
 	}
 }
 
@@ -42,6 +44,8 @@ func (m Model) labels(labels map[string]string) {
 	m.App = labels[types.LabelApp.String()]
 	m.Owner = labels[types.LabelOwner.String()]
 	m.Scope = labels[types.LabelScope.String()]
+	m.Group = labels[types.LabelGroup.String()]
+
 }
 
 type nodesInterface interface {

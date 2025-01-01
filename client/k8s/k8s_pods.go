@@ -19,8 +19,8 @@ type podsOperation struct {
 
 type Pod struct {
 	Model
-	GroupName  string      `json:"groupName,omitempty"`
-	Containers []Container `json:"containers,omitempty"`
+	RunningNode string      `json:"runningNode,omitempty"`
+	Containers  []Container `json:"containers,omitempty"`
 }
 
 func (p *Pod) containers() []corev1.Container {
@@ -278,8 +278,8 @@ func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.List
 		}
 		model.labels(p.Labels)
 		pods = append(pods, Pod{
-			Model:     model,
-			GroupName: p.Spec.NodeSelector[types.LabelGroupName.String()],
+			Model:       model,
+			RunningNode: p.Spec.NodeName,
 		})
 	}
 	return pods, nil

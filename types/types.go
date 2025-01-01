@@ -4,10 +4,10 @@ package types
 type Label string
 
 const (
-	LabelGroupName Label = "app"              // 所属进程组名称
-	LabelApp       Label = "x-platform-app"   // 应用名称
-	LabelOwner     Label = "x-platform-owner" // 所属人
-	LabelScope     Label = "x-platform-scope" // 所属作用域
+	LabelApp   Label = "x-platform-app"   // 应用名称
+	LabelGroup Label = "x-platform-group" // 所属进程组名称
+	LabelOwner Label = "x-platform-owner" // 所属人
+	LabelScope Label = "x-platform-scope" // 所属作用域
 )
 
 func (l Label) String() string {
