@@ -37,6 +37,17 @@ func TestNamespaces(t *testing.T) {
 	g.Dump(namespaces)
 }
 
+func TestCreateNamespace(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	isOk, err := kubernetes.Namespace().Create(ctx, "test2")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	g.Dump(isOk)
+}
+
 func TestParse(t *testing.T) {
 	fmt.Println(types.Parse("16384Mi"))
 	fmt.Println(types.Parse("16384"))

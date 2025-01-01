@@ -5,7 +5,9 @@ import (
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/model/resource"
+	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,11 +45,19 @@ func (o *namespaceOperation) Create(ctx context.Context, namespace string) (bool
 	if o.err != nil {
 		return false, o.err
 	}
-	_, err := o.api.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: namespace}}, v1.CreateOptions{})
-	if err != nil {
-		return false, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create namespace: %v", err)
+	_, err := o.api.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+		ObjectMeta: v1.ObjectMeta{
+			Name:   namespace,
+			Labels: map[string]string{types.LabelOwner.String(): "custom"},
+		},
+	}, v1.CreateOptions{})
+	if err == nil {
+		return true, err
 	}
-	return true, nil
+	if errors.IsAlreadyExists(err) {
+		return false, nil
+	}
+	return false, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create namespace: %v", err)
 }
 
 func (o *namespaceOperation) Delete(ctx context.Context, namespace string) error {
