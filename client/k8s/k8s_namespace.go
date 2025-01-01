@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/hosgf/element/model/resource"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -12,17 +13,20 @@ type namespaceOperation struct {
 	*options
 }
 
-func (o *namespaceOperation) List(ctx context.Context) ([]string, error) {
+func (o *namespaceOperation) List(ctx context.Context) ([]resource.Namespace, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
-	ns, err := o.api.CoreV1().Namespaces().List(ctx, v1.ListOptions{})
+	datas, err := o.api.CoreV1().Namespaces().List(ctx, v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	namespaces := make([]string, 0, len(ns.Items))
-	for _, namespace := range ns.Items {
-		namespaces = append(namespaces, namespace.Name)
+	namespaces := make([]resource.Namespace, 0, len(datas.Items))
+	for _, ns := range datas.Items {
+		namespaces = append(namespaces, resource.Namespace{
+			Name:   ns.Name,
+			Status: Status(string(ns.Status.Phase)),
+		})
 	}
 	return namespaces, nil
 }

@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"github.com/hosgf/element/health"
+	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
 )
 
@@ -48,7 +49,7 @@ type nodesInterface interface {
 }
 
 type namespaceInterface interface {
-	List(ctx context.Context) ([]string, error)
+	List(ctx context.Context) ([]resource.Namespace, error)
 	Exists(ctx context.Context, namespace string) (bool, error)
 	Create(ctx context.Context, namespace string) (bool, error)
 	Delete(ctx context.Context, namespace string) error

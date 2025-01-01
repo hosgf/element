@@ -11,6 +11,7 @@ const (
 	Pending = "pending"
 	// Running 运行中
 	Running = "running"
+	Active  = "active"
 	// Completed 运行中
 	Completed = "completed"
 	// Succeeded 正常终止
@@ -61,6 +62,7 @@ func Status(status string) health.Health {
 	switch gstr.ToLower(status) {
 	case
 		Running,
+		Active,
 		Completed:
 		return health.UP
 	case

@@ -9,24 +9,32 @@ import (
 	"testing"
 )
 
-func Test(t *testing.T) {
-	ctx := context.Background()
+func client() *k8s.Kubernetes {
 	kubernetes := k8s.New(true)
 	kubernetes.Init("")
-	kubernetes.Namespace().List(ctx)
-	//kubernetes.Init()
+	return kubernetes
 }
 
 func TestNodeTop(t *testing.T) {
 	ctx := context.Background()
-	kubernetes := k8s.New(true)
-	kubernetes.Init("")
+	kubernetes := client()
 	nodes, err := kubernetes.Nodes().Top(ctx)
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 	g.Dump(nodes)
+}
+
+func TestNamespaces(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	namespaces, err := kubernetes.Namespace().List(ctx)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	g.Dump(namespaces)
 }
 
 func TestParse(t *testing.T) {

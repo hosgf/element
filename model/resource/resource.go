@@ -5,6 +5,12 @@ import (
 	"github.com/hosgf/element/health"
 )
 
+type Namespace struct {
+	Name   string        `json:"name,omitempty"`
+	Status health.Health `json:"status,omitempty"`
+	Remark string        `json:"remark,omitempty"`
+}
+
 // Resource 资源对象
 type Resource struct {
 	Namespace string        `json:"namespace,omitempty"`
