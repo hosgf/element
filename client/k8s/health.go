@@ -84,3 +84,18 @@ func Status(status string) health.Health {
 		return health.DOWN
 	}
 }
+
+func NodeStatus(status string) health.Health {
+	switch gstr.ToLower(status) {
+	case
+		"true":
+		return health.UP
+	case
+		"false":
+		return health.DOWN
+	case Unkonwn:
+		return health.UNKNOWN
+	default:
+		return health.DOWN
+	}
+}

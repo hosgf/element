@@ -5,6 +5,27 @@ import (
 	"github.com/gogf/gf/v2/text/gstr"
 )
 
+// Indicator 指标类型
+type Indicator string
+
+const (
+	IndicatorNodeStatus    Indicator = "NodeStatus"
+	IndicatorMemoryStatus  Indicator = "MemoryStatus"
+	IndicatorNetworkStatus Indicator = "NetworkStatus"
+	IndicatorDiskStatus    Indicator = "DiskStatus"
+)
+
+func (t Indicator) String() string {
+	return string(t)
+}
+
+type IndicatorDetails struct {
+	Status  string `json:"status,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
+// Health 健康状态
 type Health int
 
 // Health

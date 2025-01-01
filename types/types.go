@@ -1,5 +1,6 @@
 package types
 
+// Label 标签类型
 type Label string
 
 const (
@@ -13,15 +14,13 @@ func (l Label) String() string {
 	return string(l)
 }
 
+// ResourceType 资源类型
 type ResourceType string
 
 const (
-	ResourceCPU     ResourceType = "CPU"
-	ResourceRAM     ResourceType = "RAM"
-	ResourceStorage ResourceType = "STORAGE"
-	//	v1.ResourceCPU:    "500m",  // 请求 500m CPU
-	//
-	// v1.ResourceMemory: "256Mi", // 请求 256Mi 内存
+	ResourceCPU     ResourceType = "cpu"
+	ResourceMemory  ResourceType = "memory"
+	ResourceStorage ResourceType = "storage"
 )
 
 func (r ResourceType) String() string {

@@ -89,7 +89,7 @@ func (c *Container) resource(container *corev1.Container) {
 			Maximum: 1000,
 		}
 		memory = progress.Resource{
-			Type:    types.ResourceCPU,
+			Type:    types.ResourceMemory,
 			Unit:    "Mi",
 			Minimum: 30,
 			Maximum: 500,
@@ -100,7 +100,7 @@ func (c *Container) resource(container *corev1.Container) {
 			switch r.Type {
 			case types.ResourceCPU:
 				cpu.Update(r)
-			case types.ResourceRAM:
+			case types.ResourceMemory:
 				memory.Update(r)
 			}
 		}

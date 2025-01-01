@@ -12,12 +12,13 @@ import (
 )
 
 type Node struct {
-	Name    string           `json:"name,omitempty"`
-	Address string           `json:"address,omitempty"`
-	Role    string           `json:"role,omitempty"`
-	Status  health.Health    `json:"status,omitempty"`
-	Cpu     resource.Details `json:"cpu,omitempty"`
-	Memory  resource.Details `json:"memory,omitempty"`
+	Name       string                                       `json:"name,omitempty"`
+	Address    string                                       `json:"address,omitempty"`
+	Roles      string                                       `json:"roles,omitempty"`
+	Status     health.Health                                `json:"status,omitempty"`
+	Cpu        resource.Details                             `json:"cpu,omitempty"`
+	Memory     resource.Details                             `json:"memory,omitempty"`
+	Indicators map[health.Indicator]health.IndicatorDetails `json:"indicators,omitempty"` // 指标
 }
 
 type nodesOperation struct {
@@ -35,10 +36,10 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 	nodes := make([]Node, 0, len(datas.Items))
 	for _, n := range datas.Items {
 		node := Node{
-			Name:   n.Name,
-			Cpu:    resource.Details{},
-			Memory: resource.Details{},
-			Status: Status(string(n.Status.Phase)),
+			Name:       n.Name,
+			Cpu:        resource.Details{},
+			Memory:     resource.Details{},
+			Indicators: map[health.Indicator]health.IndicatorDetails{},
 		}
 		for _, address := range n.Status.Addresses {
 			switch address.Type {
@@ -47,27 +48,49 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 			}
 		}
 		if _, exists := n.Labels["node-role.kubernetes.io/master"]; exists {
-			node.Role = "master"
+			node.Roles = "master"
 		}
 		if _, exists := n.Labels["node-role.kubernetes.io/worker"]; exists {
-			node.Role = "worker"
+			node.Roles = "worker"
 		}
-		for resourceName, quantity := range n.Status.Allocatable {
+		// 资源总量
+		for name, quantity := range n.Status.Capacity {
 			value, unit := types.Parse(quantity.String())
-			switch resourceName {
+			switch name {
+			case corev1.ResourceCPU:
+				node.Cpu.Total = types.FormatCpu(value, unit)
+			case corev1.ResourceMemory:
+				node.Memory.Total = types.FormatMemory(value, unit)
+			}
+		}
+		// 空闲资源
+		for name, quantity := range n.Status.Allocatable {
+			value, unit := types.Parse(quantity.String())
+			switch name {
 			case corev1.ResourceCPU:
 				node.Cpu.Free = types.FormatCpu(value, unit)
 			case corev1.ResourceMemory:
 				node.Memory.Free = types.FormatMemory(value, unit)
 			}
 		}
-		for resourceName, quantity := range n.Status.Capacity {
-			value, unit := types.Parse(quantity.String())
-			switch resourceName {
-			case corev1.ResourceCPU:
-				node.Cpu.Total = types.FormatCpu(value, unit)
-			case corev1.ResourceMemory:
-				node.Memory.Total = types.FormatMemory(value, unit)
+		// 状态
+		for _, condition := range n.Status.Conditions {
+			status := string(condition.Status)
+			details := health.IndicatorDetails{
+				Status:  status,
+				Reason:  condition.Reason,
+				Message: condition.Message,
+			}
+			switch condition.Type {
+			case corev1.NodeReady:
+				node.Status = NodeStatus(status)
+				node.Indicators[health.IndicatorNodeStatus] = details
+			case corev1.NodeMemoryPressure:
+				node.Indicators[health.IndicatorMemoryStatus] = details
+			case corev1.NodeDiskPressure:
+				node.Indicators[health.IndicatorDiskStatus] = details
+			case corev1.NodeNetworkUnavailable:
+				node.Indicators[health.IndicatorNetworkStatus] = details
 			}
 		}
 		nodes = append(nodes, node)

@@ -3,7 +3,6 @@ package k8s
 import (
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/hosgf/element/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8s "k8s.io/client-go/kubernetes"
@@ -53,7 +52,7 @@ func (k *Kubernetes) Pod() *podsOperation {
 }
 
 func (k *Kubernetes) Init(homePath string) error {
-	kubeconfig := filepath.Join(util.Any(homePath == "", homedir.HomeDir(), homePath), ".kube", "config")
+	kubeconfig := k.config(homePath)
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to build kubeconfig: %v", err)
@@ -77,6 +76,16 @@ func (k *Kubernetes) Version() (string, error) {
 		return "", err
 	}
 	return version.String(), nil
+}
+
+func (k *Kubernetes) config(homePath string) string {
+	if homePath != "" {
+		return filepath.Join(homePath, ".kube", "config")
+	}
+	if home := homedir.HomeDir(); home != "" {
+		return filepath.Join(home, ".kube", "config")
+	}
+	return ""
 }
 
 func any(expr bool, a, b corev1.ServiceType) corev1.ServiceType {
