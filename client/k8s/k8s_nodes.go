@@ -4,11 +4,13 @@ import (
 	"context"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
 )
 
 type Node struct {
@@ -47,11 +49,10 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 				node.Address = address.Address
 			}
 		}
-		if _, exists := n.Labels["node-role.kubernetes.io/master"]; exists {
-			node.Roles = "master"
-		}
-		if _, exists := n.Labels["node-role.kubernetes.io/worker"]; exists {
-			node.Roles = "worker"
+		for k, _ := range n.Labels {
+			if gstr.HasPrefix(k, "node-role.kubernetes.io/") {
+				node.Roles = strings.TrimPrefix(k, "node-role.kubernetes.io/")
+			}
 		}
 		// 资源总量
 		for name, quantity := range n.Status.Capacity {
