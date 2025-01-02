@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
@@ -17,12 +18,54 @@ type serviceOperation struct {
 }
 
 type Service struct {
-	Model
-	ServiceType string          `json:"serviceType,omitempty"`
-	Ports       []progress.Port `json:"ports,omitempty"`
+	Namespace   string            `json:"namespace,omitempty"`
+	App         string            `json:"app,omitempty"`
+	Group       string            `json:"group,omitempty"`
+	Owner       string            `json:"owner,omitempty"`
+	Scope       string            `json:"scope,omitempty"`
+	Name        string            `json:"name,omitempty"`
+	Status      health.Health     `json:"status,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	ServiceType string            `json:"serviceType,omitempty"`
+	Ports       []progress.Port   `json:"ports,omitempty"`
 }
 
-func (s Service) toSelector() map[string]string {
+func (s *Service) toLabel() map[string]string {
+	labels := map[string]string{
+		types.LabelApp.String():   s.App,
+		types.LabelOwner.String(): s.Owner,
+		types.LabelScope.String(): s.Scope,
+		types.LabelGroup.String(): s.Group,
+	}
+	if s.Labels != nil {
+		for k, v := range s.Labels {
+			labels[k] = v
+		}
+	}
+	return labels
+}
+
+func (s *Service) labels(labels map[string]string) {
+	if len(labels) < 1 {
+		return
+	}
+	s.App = labels[types.LabelApp.String()]
+	s.Owner = labels[types.LabelOwner.String()]
+	s.Scope = labels[types.LabelScope.String()]
+	s.Group = labels[types.LabelGroup.String()]
+	delete(labels, types.LabelApp.String())
+	delete(labels, types.LabelOwner.String())
+	delete(labels, types.LabelScope.String())
+	delete(labels, types.LabelGroup.String())
+	if s.Labels == nil {
+		s.Labels = map[string]string{}
+	}
+	for k, v := range labels {
+		s.Labels[k] = v
+	}
+}
+
+func (s *Service) toSelector() map[string]string {
 	return map[string]string{
 		types.LabelGroup.String(): s.Group,
 	}
@@ -39,14 +82,14 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]Servic
 	}
 	services := make([]Service, 0, len(svcs.Items))
 	for _, svc := range svcs.Items {
-		model := Model{
+		service := Service{
 			Namespace: namespace,
 			Name:      svc.Name,
+			Group:     svc.Spec.Selector[types.LabelGroup.String()],
 			Status:    Status(svc.Status.String()),
 		}
-		model.labels(svc.Labels)
-		model.Group = svc.Spec.Selector[types.LabelGroup.String()]
-		services = append(services, Service{Model: model})
+		service.labels(svc.Labels)
+		services = append(services, service)
 	}
 	return services, nil
 }

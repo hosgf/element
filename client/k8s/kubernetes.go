@@ -2,9 +2,7 @@ package k8s
 
 import (
 	"context"
-	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/resource"
-	"github.com/hosgf/element/types"
 )
 
 type operation interface {
@@ -16,52 +14,6 @@ type operation interface {
 	Pod() podsInterface
 	Job() jobsInterface
 	Storage() storageInterface
-}
-
-type Model struct {
-	Namespace string            `json:"namespace,omitempty"`
-	App       string            `json:"app,omitempty"`
-	Group     string            `json:"group,omitempty"`
-	Owner     string            `json:"owner,omitempty"`
-	Scope     string            `json:"scope,omitempty"`
-	Name      string            `json:"name,omitempty"`
-	Status    health.Health     `json:"status,omitempty"`
-	Labels    map[string]string `json:"labels,omitempty"`
-}
-
-func (m *Model) toLabel() map[string]string {
-	labels := map[string]string{
-		types.LabelApp.String():   m.App,
-		types.LabelOwner.String(): m.Owner,
-		types.LabelScope.String(): m.Scope,
-		types.LabelGroup.String(): m.Group,
-	}
-	if m.Labels != nil {
-		for k, v := range m.Labels {
-			labels[k] = v
-		}
-	}
-	return labels
-}
-
-func (m *Model) labels(labels map[string]string) {
-	if len(labels) < 1 {
-		return
-	}
-	m.App = labels[types.LabelApp.String()]
-	m.Owner = labels[types.LabelOwner.String()]
-	m.Scope = labels[types.LabelScope.String()]
-	m.Group = labels[types.LabelGroup.String()]
-	delete(labels, types.LabelApp.String())
-	delete(labels, types.LabelOwner.String())
-	delete(labels, types.LabelScope.String())
-	delete(labels, types.LabelGroup.String())
-	if m.Labels == nil {
-		m.Labels = map[string]string{}
-	}
-	for k, v := range labels {
-		m.Labels[k] = v
-	}
 }
 
 type nodesInterface interface {

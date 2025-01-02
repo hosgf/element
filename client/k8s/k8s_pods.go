@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
@@ -18,9 +19,51 @@ type podsOperation struct {
 }
 
 type Pod struct {
-	Model
-	RunningNode string      `json:"runningNode,omitempty"`
-	Containers  []Container `json:"containers,omitempty"`
+	Namespace   string            `json:"namespace,omitempty"`
+	App         string            `json:"app,omitempty"`
+	Group       string            `json:"group,omitempty"`
+	Owner       string            `json:"owner,omitempty"`
+	Scope       string            `json:"scope,omitempty"`
+	Name        string            `json:"name,omitempty"`
+	Status      health.Health     `json:"status,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	RunningNode string            `json:"runningNode,omitempty"`
+	Containers  []Container       `json:"containers,omitempty"`
+}
+
+func (p *Pod) toLabel() map[string]string {
+	labels := map[string]string{
+		types.LabelApp.String():   p.App,
+		types.LabelOwner.String(): p.Owner,
+		types.LabelScope.String(): p.Scope,
+		types.LabelGroup.String(): p.Group,
+	}
+	if p.Labels != nil {
+		for k, v := range p.Labels {
+			labels[k] = v
+		}
+	}
+	return labels
+}
+
+func (p *Pod) labels(labels map[string]string) {
+	if len(labels) < 1 {
+		return
+	}
+	p.App = labels[types.LabelApp.String()]
+	p.Owner = labels[types.LabelOwner.String()]
+	p.Scope = labels[types.LabelScope.String()]
+	p.Group = labels[types.LabelGroup.String()]
+	delete(labels, types.LabelApp.String())
+	delete(labels, types.LabelOwner.String())
+	delete(labels, types.LabelScope.String())
+	delete(labels, types.LabelGroup.String())
+	if p.Labels == nil {
+		p.Labels = map[string]string{}
+	}
+	for k, v := range labels {
+		p.Labels[k] = v
+	}
 }
 
 func (p *Pod) containers() []corev1.Container {
@@ -211,18 +254,22 @@ func (o *podsOperation) Create(ctx context.Context, pod Pod) error {
 	if o.err != nil {
 		return o.err
 	}
-	p := &corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      pod.Name, // Pod 名称
-			Namespace: pod.Namespace,
-			Labels:    pod.toLabel(),
-		},
-		Spec: corev1.PodSpec{
-			Containers: pod.containers(),
+	metadata := v1.ObjectMeta{
+		Name:      pod.Name, // Pod 名称
+		Namespace: pod.Namespace,
+		Labels:    pod.toLabel(),
+	}
+	p := &corev1.PodTemplate{
+		ObjectMeta: metadata,
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metadata,
+			Spec: corev1.PodSpec{
+				Containers: pod.containers(),
+			},
 		},
 	}
 	opts := v1.CreateOptions{}
-	_, err := o.api.CoreV1().Pods(pod.Namespace).Create(ctx, p, opts)
+	_, err := o.api.CoreV1().PodTemplates(pod.Namespace).Create(ctx, p, opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create pod: %v", err)
 	}
@@ -317,17 +364,14 @@ func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.List
 	}
 	pods := make([]Pod, 0, len(datas.Items))
 	for _, p := range datas.Items {
-		model := Model{
-			Namespace: namespace,
-			Name:      p.Name,
-			Status:    Status(string(p.Status.Phase)),
-		}
-		model.labels(p.Labels)
 		pod := Pod{
-			Model:       model,
+			Namespace:   namespace,
+			Name:        p.Name,
 			Containers:  make([]Container, 0),
 			RunningNode: p.Spec.NodeName,
+			Status:      Status(string(p.Status.Phase)),
 		}
+		pod.labels(p.Labels)
 		for _, c := range p.Spec.Containers {
 			pod.toContainer(c)
 		}
