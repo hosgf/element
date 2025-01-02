@@ -18,8 +18,9 @@ func (l Label) String() string {
 type ProtocolType string
 
 const (
-	ProtocolTcp ProtocolType = "tcp"
-	ProtocolUdp ProtocolType = "udp"
+	ProtocolTcp  ProtocolType = "TCP"
+	ProtocolUdp  ProtocolType = "UDP"
+	ProtocolSctp ProtocolType = "SCTP"
 )
 
 func (t ProtocolType) String() string {
