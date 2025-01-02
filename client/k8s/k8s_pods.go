@@ -31,6 +31,23 @@ func (p *Pod) containers() []corev1.Container {
 	return containers
 }
 
+func (p *Pod) toContainer(c corev1.Container) {
+	container := Container{
+		Name:       c.Name,
+		Image:      c.Image,
+		PullPolicy: string(c.ImagePullPolicy),
+		Command:    c.Command,
+		Args:       c.Args,
+		Ports:      make([]progress.Port, 0, len(c.Ports)),
+		Resource:   make([]progress.Resource, 0),
+		Env:        map[string]string{},
+	}
+	container.setResource(c)
+	container.setEnv(c)
+	container.setPorts(c)
+	p.Containers = append(p.Containers, container)
+}
+
 type Container struct {
 	Name       string              `json:"name,omitempty"`
 	Image      string              `json:"image,omitempty"`
@@ -80,6 +97,16 @@ func (c *Container) ports(container *corev1.Container) {
 	container.Ports = ports
 }
 
+func (c *Container) setPorts(container corev1.Container) {
+	for _, port := range container.Ports {
+		c.Ports = append(c.Ports, progress.Port{
+			Name:       port.Name,
+			TargetPort: port.ContainerPort,
+			Protocol:   string(port.Protocol),
+		})
+	}
+}
+
 func (c *Container) resource(container *corev1.Container) {
 	var (
 		cpu = progress.Resource{
@@ -106,15 +133,28 @@ func (c *Container) resource(container *corev1.Container) {
 		}
 	}
 	container.Resources = corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{
+		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    *res.NewQuantity(types.FormatCpu(cpu.Minimum, cpu.Unit), res.DecimalSI),
 			corev1.ResourceMemory: *res.NewQuantity(types.FormatMemory(cpu.Minimum, cpu.Unit), res.DecimalSI),
 		},
-		Requests: corev1.ResourceList{
+		Limits: corev1.ResourceList{
 			corev1.ResourceCPU:    *res.NewQuantity(types.FormatCpu(cpu.Maximum, cpu.Unit), res.DecimalSI),
 			corev1.ResourceMemory: *res.NewQuantity(types.FormatMemory(cpu.Maximum, cpu.Unit), res.DecimalSI),
 		},
 	}
+}
+
+func (c *Container) setResource(container corev1.Container) {
+	resources := container.Resources
+	requests := resources.Requests
+	limits := resources.Limits
+	cpu := progress.Resource{Type: types.ResourceCPU, Threshold: -1, Minimum: -1, Maximum: -1}
+	cpu.SetMinimum(requests.Cpu().String())
+	cpu.SetMaximum(limits.Cpu().String())
+	memory := progress.Resource{Type: types.ResourceMemory, Threshold: -1, Minimum: -1, Maximum: -1}
+	memory.SetMinimum(requests.Memory().String())
+	memory.SetMaximum(limits.Memory().String())
+	c.Resource = append(c.Resource, cpu, memory)
 }
 
 func (c *Container) env(container *corev1.Container) {
@@ -130,6 +170,12 @@ func (c *Container) env(container *corev1.Container) {
 		})
 	}
 	container.Env = envVars
+}
+
+func (c *Container) setEnv(container corev1.Container) {
+	for _, envVar := range container.Env {
+		c.Env[envVar.Name] = envVar.Value
+	}
 }
 
 func (o *podsOperation) Get(ctx context.Context, namespace, appname string) ([]Pod, error) {
@@ -277,10 +323,15 @@ func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.List
 			Status:    Status(string(p.Status.Phase)),
 		}
 		model.labels(p.Labels)
-		pods = append(pods, Pod{
+		pod := Pod{
 			Model:       model,
+			Containers:  make([]Container, 0),
 			RunningNode: p.Spec.NodeName,
-		})
+		}
+		for _, c := range p.Spec.Containers {
+			pod.toContainer(c)
+		}
+		pods = append(pods, pod)
 	}
 	return pods, nil
 }

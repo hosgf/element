@@ -94,3 +94,29 @@ func (r *Resource) Update(res Resource) {
 		r.Threshold = res.Threshold
 	}
 }
+
+func (r *Resource) SetMinimum(data string) {
+	if len(data) < 1 {
+		return
+	}
+	value, unit := types.Parse(data)
+	if len(r.Unit) < 1 {
+		r.Unit = unit
+	}
+	if value > 0 {
+		r.Minimum = value
+	}
+}
+
+func (r *Resource) SetMaximum(data string) {
+	if len(data) < 1 {
+		return
+	}
+	value, unit := types.Parse(data)
+	if len(r.Unit) < 1 {
+		r.Unit = unit
+	}
+	if value > 0 {
+		r.Maximum = value
+	}
+}

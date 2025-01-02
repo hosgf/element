@@ -6,6 +6,7 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,14 +43,14 @@ func (o *namespaceOperation) Exists(ctx context.Context, namespace string) (bool
 	return o.isExist("", err, "Error occurred while fetching namespace: %v")
 }
 
-func (o *namespaceOperation) Create(ctx context.Context, namespace string) (bool, error) {
+func (o *namespaceOperation) Create(ctx context.Context, namespace, label string) (bool, error) {
 	if o.err != nil {
 		return false, o.err
 	}
 	_, err := o.api.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
 		ObjectMeta: v1.ObjectMeta{
 			Name:   namespace,
-			Labels: map[string]string{types.LabelOwner.String(): "custom"},
+			Labels: map[string]string{types.LabelOwner.String(): util.Any(len(label) > 1, label, "custom")},
 		},
 	}, v1.CreateOptions{})
 	if err == nil {
