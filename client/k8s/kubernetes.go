@@ -56,6 +56,9 @@ func (m *Model) labels(labels map[string]string) {
 	delete(labels, types.LabelOwner.String())
 	delete(labels, types.LabelScope.String())
 	delete(labels, types.LabelGroup.String())
+	if m.Labels == nil {
+		m.Labels = map[string]string{}
+	}
 	for k, v := range labels {
 		m.Labels[k] = v
 	}
