@@ -3,15 +3,19 @@ package k8s
 import (
 	"context"
 	"fmt"
+
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	res "k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	applyconfigurationsappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applyconfigurationscorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	applyconfigurationsmetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 type podsOperation struct {
@@ -25,10 +29,24 @@ type Pod struct {
 	Group       string            `json:"group,omitempty"`
 	Owner       string            `json:"owner,omitempty"`
 	Scope       string            `json:"scope,omitempty"`
+	Replicas    int32             `json:"replicas,omitempty"`
 	RunningNode string            `json:"runningNode,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
 	Status      health.Health     `json:"status,omitempty"`
 	Containers  []Container       `json:"containers,omitempty"`
+}
+
+func (p *Pod) toSelector() map[string]string {
+	return map[string]string{
+		types.LabelGroup.String(): p.Group,
+	}
+}
+
+func (p *Pod) replicas() *int32 {
+	if p.Replicas < 1 {
+		p.Replicas = 1
+	}
+	return &p.Replicas
 }
 
 func (p *Pod) toLabel() map[string]string {
@@ -259,17 +277,23 @@ func (o *podsOperation) Create(ctx context.Context, pod Pod) error {
 		Namespace: pod.Namespace,
 		Labels:    pod.toLabel(),
 	}
-	p := &corev1.PodTemplate{
+	data := &appsv1.Deployment{
 		ObjectMeta: metadata,
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metadata,
-			Spec: corev1.PodSpec{
-				Containers: pod.containers(),
+		Spec: appsv1.DeploymentSpec{
+			Replicas: pod.replicas(),
+			Selector: &v1.LabelSelector{
+				MatchLabels: pod.toSelector(),
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metadata,
+				Spec: corev1.PodSpec{
+					Containers: pod.containers(),
+				},
 			},
 		},
 	}
 	opts := v1.CreateOptions{}
-	_, err := o.api.CoreV1().PodTemplates(pod.Namespace).Create(ctx, p, opts)
+	_, err := o.api.AppsV1().Deployments(pod.Namespace).Create(ctx, data, opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create pod: %v", err)
 	}
@@ -280,11 +304,14 @@ func (o *podsOperation) Apply(ctx context.Context, pod Pod) error {
 	if o.err != nil {
 		return o.err
 	}
-	p := applyconfigurationscorev1.Pod(pod.Name, pod.Namespace)
+	p := applyconfigurationsappsv1.Deployment(pod.Name, pod.Namespace)
 	// 更新Labels
 	p.WithLabels(pod.toLabel())
 	// 更新容器
-	p.Spec.Containers = make([]applyconfigurationscorev1.ContainerApplyConfiguration, 0, len(pod.containers()))
+	deploymentSpec := applyconfigurationsappsv1.DeploymentSpec()
+	deploymentSpec.WithReplicas(pod.Replicas)
+	deploymentSpec.WithSelector(applyconfigurationsmetav1.LabelSelector().WithMatchLabels(pod.toSelector()))
+	podSpec := applyconfigurationscorev1.PodSpec()
 	for _, c := range pod.containers() {
 		ports := make([]*applyconfigurationscorev1.ContainerPortApplyConfiguration, 0, len(c.Ports))
 		for _, p := range c.Ports {
@@ -311,10 +338,13 @@ func (o *podsOperation) Apply(ctx context.Context, pod Pod) error {
 		container.WithArgs(c.Args...)
 		container.WithPorts(ports...)
 		container.WithEnv(envs...)
-		p.Spec.Containers = append(p.Spec.Containers, *container)
+		podSpec.WithContainers(container)
 	}
+	deploymentSpec.WithTemplate(applyconfigurationscorev1.PodTemplateSpec().WithName(pod.Name).WithNamespace(pod.Namespace).WithLabels(pod.toLabel()).WithSpec(podSpec))
+	// 更新容器
+	p.WithSpec(deploymentSpec)
 	opts := v1.ApplyOptions{}
-	_, err := o.api.CoreV1().Pods(pod.Namespace).Apply(ctx, p, opts)
+	_, err := o.api.AppsV1().Deployments(pod.Namespace).Apply(ctx, p, opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
 	}

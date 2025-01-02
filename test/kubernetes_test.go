@@ -3,11 +3,12 @@ package test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/hosgf/element/client/k8s"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
-	"testing"
 )
 
 func client() *k8s.Kubernetes {
@@ -77,7 +78,7 @@ func TestCreatePod(t *testing.T) {
 						Type:    types.ResourceCPU,
 						Unit:    "m",
 						Minimum: 1,
-						Maximum: 2,
+						Maximum: 1,
 					},
 					{
 						Type:    types.ResourceMemory,
