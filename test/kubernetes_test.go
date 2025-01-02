@@ -67,9 +67,9 @@ func TestCreatePod(t *testing.T) {
 				Args:       []string{},
 				Ports: []progress.Port{
 					{
-						Name:     "http",
-						Protocol: types.ProtocolTcp,
-						Port:     3306,
+						Name:       "http",
+						Protocol:   types.ProtocolTcp,
+						TargetPort: 3306,
 					},
 				},
 				Resource: []progress.Resource{
