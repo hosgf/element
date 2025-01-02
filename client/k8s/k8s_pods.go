@@ -20,14 +20,14 @@ type podsOperation struct {
 
 type Pod struct {
 	Namespace   string            `json:"namespace,omitempty"`
+	Name        string            `json:"name,omitempty"`
 	App         string            `json:"app,omitempty"`
 	Group       string            `json:"group,omitempty"`
 	Owner       string            `json:"owner,omitempty"`
 	Scope       string            `json:"scope,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Status      health.Health     `json:"status,omitempty"`
-	Labels      map[string]string `json:"labels,omitempty"`
 	RunningNode string            `json:"runningNode,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Status      health.Health     `json:"status,omitempty"`
 	Containers  []Container       `json:"containers,omitempty"`
 }
 

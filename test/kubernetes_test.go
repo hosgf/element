@@ -50,7 +50,11 @@ func TestCreateNamespace(t *testing.T) {
 
 func TestCreatePod(t *testing.T) {
 	ctx := context.Background()
-	pod := k8s.Pod{}
+	pod := k8s.Pod{
+		Namespace: "test21",
+		Name:      "test21",
+		Namespace: "test21",
+	}
 	kubernetes := client()
 	err := kubernetes.Pod().Create(ctx, pod)
 	if err != nil {
