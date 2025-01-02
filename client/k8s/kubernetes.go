@@ -23,7 +23,7 @@ type nodesInterface interface {
 type namespaceInterface interface {
 	List(ctx context.Context) ([]resource.Namespace, error)
 	Exists(ctx context.Context, namespace string) (bool, error)
-	Create(ctx context.Context, namespace string) (bool, error)
+	Create(ctx context.Context, namespace, label string) (bool, error)
 	Delete(ctx context.Context, namespace string) error
 }
 
