@@ -14,6 +14,7 @@ type operation interface {
 	Pod() podsInterface
 	Job() jobsInterface
 	Storage() storageInterface
+	PodTemplate() podTemplatesInterface
 }
 
 type nodesInterface interface {
@@ -44,6 +45,15 @@ type podsInterface interface {
 	Delete(ctx context.Context, namespace, pod string) error
 	Restart(ctx context.Context, namespace, pod string) error
 	RestartApp(ctx context.Context, namespace, appname string) error
+}
+
+type podTemplatesInterface interface {
+	Get(ctx context.Context, namespace, appname string) ([]Pod, error)
+	List(ctx context.Context, namespace string) ([]Pod, error)
+	Exists(ctx context.Context, namespace, pod string) (bool, error)
+	Create(ctx context.Context, pod Pod) error
+	Apply(ctx context.Context, pod Pod) error
+	Delete(ctx context.Context, namespace, pod string) error
 }
 
 type jobsInterface interface {
