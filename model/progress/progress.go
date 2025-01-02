@@ -64,11 +64,11 @@ type Health struct {
 
 // Port 端口号
 type Port struct {
-	Name       string `json:"name,omitempty"`       // 名称
-	Protocol   string `json:"protocol,omitempty"`   // 协议
-	Port       int32  `json:"port,omitempty"`       // 对外的端口号,外部可访问的
-	TargetPort int32  `json:"targetPort,omitempty"` // 被代理的端口号,应用服务端口号
-	NodePort   int32  `json:"nodePort,omitempty"`   // 代理端口号
+	Name       string             `json:"name,omitempty"`       // 名称
+	Protocol   types.ProtocolType `json:"protocol,omitempty"`   // 协议
+	Port       int32              `json:"port,omitempty"`       // 对外的端口号,外部可访问的
+	TargetPort int32              `json:"targetPort,omitempty"` // 被代理的端口号,应用服务端口号
+	NodePort   int32              `json:"nodePort,omitempty"`   // 代理端口号
 }
 
 // Resource 进程资源

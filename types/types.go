@@ -14,6 +14,18 @@ func (l Label) String() string {
 	return string(l)
 }
 
+// ProtocolType 协议类型
+type ProtocolType string
+
+const (
+	ProtocolTcp ProtocolType = "tcp"
+	ProtocolUdp ProtocolType = "udp"
+)
+
+func (t ProtocolType) String() string {
+	return string(t)
+}
+
 // ResourceType 资源类型
 type ResourceType string
 

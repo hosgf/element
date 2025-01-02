@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/hosgf/element/client/k8s"
+	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
 	"testing"
 )
@@ -52,8 +53,46 @@ func TestCreatePod(t *testing.T) {
 	ctx := context.Background()
 	pod := k8s.Pod{
 		Namespace: "test21",
-		Name:      "test21",
-		Namespace: "test21",
+		Name:      "mysql",
+		App:       "mysqlapp",
+		Group:     "mysqlgroup",
+		Owner:     "mysqlowner",
+		Scope:     "mysqlscope",
+		Containers: []k8s.Container{
+			{
+				Name:       "mysql-sql",
+				Image:      "hub.youede.com/base/mysql:5.7.36-security-v1",
+				PullPolicy: "",
+				Command:    []string{},
+				Args:       []string{},
+				Ports: []progress.Port{
+					{
+						Name:     "http",
+						Protocol: types.ProtocolTcp,
+						Port:     3306,
+					},
+				},
+				Resource: []progress.Resource{
+					{
+						Type:    types.ResourceCPU,
+						Unit:    "m",
+						Minimum: 1,
+						Maximum: 2,
+					},
+					{
+						Type:    types.ResourceMemory,
+						Unit:    "Gi",
+						Minimum: 2,
+						Maximum: 4,
+					},
+				},
+				Env: map[string]string{
+					"MYSQL_USER":          "Yaosu#DB@2024#",
+					"MYSQL_PASSWORD":      "YaoSu",
+					"MYSQL_ROOT_PASSWORD": "Yaosu#DB@2024#",
+				},
+			},
+		},
 	}
 	kubernetes := client()
 	err := kubernetes.Pod().Create(ctx, pod)

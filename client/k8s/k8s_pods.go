@@ -145,7 +145,7 @@ func (c *Container) setPorts(container corev1.Container) {
 		c.Ports = append(c.Ports, progress.Port{
 			Name:       port.Name,
 			TargetPort: port.ContainerPort,
-			Protocol:   string(port.Protocol),
+			Protocol:   types.ProtocolType(port.Protocol),
 		})
 	}
 }
