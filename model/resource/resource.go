@@ -15,14 +15,15 @@ type Namespace struct {
 
 // Resource 资源对象
 type Resource struct {
-	Region    string        `json:"region,omitempty"`
-	Namespace string        `json:"namespace,omitempty"`
-	Type      string        `json:"type,omitempty"`
-	Name      string        `json:"name,omitempty"`
-	Status    health.Health `json:"status,omitempty"`
-	Time      int64         `json:"time,omitempty"`
-	Remark    string        `json:"remark,omitempty"`
-	Nodes     []Node        `json:"nodes,omitempty"`
+	Environment string        `json:"environment,omitempty"`
+	Region      string        `json:"region,omitempty"`
+	Namespace   string        `json:"namespace,omitempty"`
+	Type        string        `json:"type,omitempty"`
+	Name        string        `json:"name,omitempty"`
+	Status      health.Health `json:"status,omitempty"`
+	Time        int64         `json:"time,omitempty"`
+	Remark      string        `json:"remark,omitempty"`
+	Nodes       []Node        `json:"nodes,omitempty"`
 }
 
 func (r *Resource) SetStatus() *Resource {
