@@ -15,7 +15,7 @@ type ProgressGroup struct {
 type Progress struct {
 	Namespace  string                 `json:"namespace,omitempty"`
 	PID        string                 `json:"pid,omitempty"`
-	Svc        string                 `json:"svc,omitempty"`
+	Service    string                 `json:"service,omitempty"`
 	Name       string                 `json:"name,omitempty"`
 	Group      string                 `json:"group,omitempty"`
 	Status     health.Health          `json:"status,omitempty"`
@@ -54,7 +54,7 @@ type GroupHealth struct {
 type Health struct {
 	Namespace string                 `json:"namespace,omitempty"`
 	PID       string                 `json:"pid,omitempty"`
-	Svc       string                 `json:"svc,omitempty"`
+	Service   string                 `json:"service,omitempty"`
 	Name      string                 `json:"name,omitempty"`
 	Group     string                 `json:"group,omitempty"`
 	Status    health.Health          `json:"status,omitempty"`
