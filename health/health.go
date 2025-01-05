@@ -73,7 +73,7 @@ func IsDown(status Health) bool {
 }
 
 func IsUp(status Health) bool {
-	return gstr.Equal(status.String(), DOWN.String())
+	return gstr.Equal(status.String(), UP.String())
 }
 
 func GetHealth(states []string) Health {
