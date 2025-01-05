@@ -6,6 +6,7 @@ import (
 )
 
 type ProgressGroup struct {
+	Region    string        `json:"region,omitempty"`
 	Namespace string        `json:"namespace,omitempty"`
 	Group     string        `json:"group,omitempty"`
 	Status    health.Health `json:"status,omitempty"`
@@ -13,6 +14,7 @@ type ProgressGroup struct {
 }
 
 type Progress struct {
+	Region     string                 `json:"region,omitempty"`
 	Namespace  string                 `json:"namespace,omitempty"`
 	PID        string                 `json:"pid,omitempty"`
 	Service    string                 `json:"service,omitempty"`
@@ -43,6 +45,7 @@ type Database struct {
 
 // GroupHealth  健康检查
 type GroupHealth struct {
+	Region    string        `json:"region,omitempty"`
 	Namespace string        `json:"namespace,omitempty"`
 	Group     string        `json:"group,omitempty"`
 	Status    health.Health `json:"status,omitempty"`
@@ -52,6 +55,7 @@ type GroupHealth struct {
 
 // Health 健康检查
 type Health struct {
+	Region    string                 `json:"region,omitempty"`
 	Namespace string                 `json:"namespace,omitempty"`
 	PID       string                 `json:"pid,omitempty"`
 	Service   string                 `json:"service,omitempty"`

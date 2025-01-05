@@ -6,6 +6,7 @@ import (
 )
 
 type Namespace struct {
+	Region string        `json:"region,omitempty"`
 	Name   string        `json:"name,omitempty"`
 	Label  string        `json:"label,omitempty"`
 	Remark string        `json:"remark,omitempty"`
@@ -14,6 +15,7 @@ type Namespace struct {
 
 // Resource 资源对象
 type Resource struct {
+	Region    string        `json:"region,omitempty"`
 	Namespace string        `json:"namespace,omitempty"`
 	Type      string        `json:"type,omitempty"`
 	Name      string        `json:"name,omitempty"`
