@@ -43,11 +43,11 @@ type Database struct {
 
 // GroupHealth  健康检查
 type GroupHealth struct {
-	Namespace string   `json:"namespace,omitempty"`
-	Group     string   `json:"group,omitempty"`
-	Status    string   `json:"status,omitempty"`
-	Time      int64    `json:"time,omitempty"`
-	Details   []Health `json:"details,omitempty"`
+	Namespace string        `json:"namespace,omitempty"`
+	Group     string        `json:"group,omitempty"`
+	Status    health.Health `json:"status,omitempty"`
+	Time      int64         `json:"time,omitempty"`
+	Details   []Health      `json:"details,omitempty"`
 }
 
 // Health 健康检查
