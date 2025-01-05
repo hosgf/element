@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"path/filepath"
+
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	corev1 "k8s.io/api/core/v1"
@@ -8,7 +10,6 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"path/filepath"
 )
 
 func New(isDebug bool) *Kubernetes {
