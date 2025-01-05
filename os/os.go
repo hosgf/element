@@ -2,12 +2,13 @@ package os
 
 import (
 	"context"
-	"github.com/gogf/gf/v2/os/genv"
-	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/logger"
 	"os/exec"
 	"runtime"
 	"sync"
+
+	"github.com/gogf/gf/v2/os/genv"
+	"github.com/gogf/gf/v2/text/gstr"
+	"github.com/hosgf/element/logger"
 )
 
 // Command 执行命令

@@ -3,14 +3,15 @@ package os
 import (
 	"context"
 	"fmt"
-	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/gogf/gf/v2/os/gfile"
-	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/consts"
-	"github.com/hosgf/element/logger"
 	os1 "os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/gogf/gf/v2/os/gfile"
+	"github.com/gogf/gf/v2/text/gstr"
+	"github.com/hosgf/element/logger"
+	"github.com/hosgf/element/rcode"
 )
 
 const (
@@ -41,7 +42,7 @@ func (os *linux) SetHosts(ctx context.Context, hosts []Host) error {
 	if !gfile.Exists(etcDirectory) {
 		err := gfile.Mkdir(etcDirectory)
 		if err != nil {
-			return gerror.NewCode(consts.FAILURE, fmt.Sprintf("创建目录失败: %s %s", etcDirectory, err.Error()))
+			return gerror.NewCode(rcode.FAILURE, fmt.Sprintf("创建目录失败: %s %s", etcDirectory, err.Error()))
 		}
 	}
 	hostsFile := filepath.Join(etcDirectory, "hosts")
@@ -69,7 +70,7 @@ func (os *linux) SetHosts(ctx context.Context, hosts []Host) error {
 		})
 		err := gfile.RemoveFile(hostsFile)
 		if err != nil {
-			return gerror.NewCode(consts.FAILURE, fmt.Sprintf("删除文件失败: %s %s", hostsFile, err.Error()))
+			return gerror.NewCode(rcode.FAILURE, fmt.Sprintf("删除文件失败: %s %s", hostsFile, err.Error()))
 		}
 	}
 	for _, host := range hosts {

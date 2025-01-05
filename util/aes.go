@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"errors"
 	"fmt"
+
 	"github.com/gogf/gf/v2/encoding/gbase64"
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/config"

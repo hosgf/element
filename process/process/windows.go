@@ -3,10 +3,11 @@ package process
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/cmd"
-	"time"
 )
 
 func newWindows(isDebug bool) *windows {

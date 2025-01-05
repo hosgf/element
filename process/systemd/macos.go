@@ -8,7 +8,7 @@ import (
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/cmd"
-	"github.com/hosgf/element/consts"
+	"github.com/hosgf/element/rcode"
 	"os/exec"
 )
 
@@ -72,5 +72,5 @@ func (m *macos) init(ctx context.Context) {
 		m.cmd = cmd.New(path, isDebug)
 		return
 	}
-	m.err = gerror.NewCode(consts.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
+	m.err = gerror.NewCode(rcode.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
 }

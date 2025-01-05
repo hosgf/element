@@ -1,4 +1,4 @@
-package consts
+package result
 
 import "github.com/gogf/gf/v2/errors/gcode"
 

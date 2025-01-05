@@ -4,7 +4,6 @@ import (
 	"context"
 	rand2 "crypto/rand"
 	"errors"
-	"github.com/hosgf/element/logger"
 	"hash/crc32"
 	"math"
 	"math/big"
@@ -17,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hosgf/element/logger"
 )
 
 func Any(expr bool, a, b string) string {

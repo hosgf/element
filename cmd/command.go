@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gogf/gf/v2/os/glog"
-	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/gogf/gf/v2/os/glog"
+	"github.com/gogf/gf/v2/text/gstr"
+	"github.com/hosgf/element/os"
 )
 
 func New(exe string, isDebug bool) *Cmd {

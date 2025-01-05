@@ -1,9 +1,10 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/grand"
-	"strings"
 )
 
 var (

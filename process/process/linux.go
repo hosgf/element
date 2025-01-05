@@ -3,12 +3,13 @@ package process
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/cmd"
-	"github.com/hosgf/element/consts"
-	"time"
+	"github.com/hosgf/element/rcode"
 )
 
 func newLinux(isDebug bool) *linux {
@@ -30,7 +31,7 @@ func (l *linux) Start(ctx context.Context, config RuntimeConfig, logger *glog.Lo
 	}
 	command := gstr.Trim(gstr.Join(config.Cmd, " "))
 	if len(command) < 1 {
-		return "", gerror.NewCode(consts.FAILURE, fmt.Sprintf("启动 [%s] 的命令脚本不能为空！！！", config.Name))
+		return "", gerror.NewCode(rcode.FAILURE, fmt.Sprintf("启动 [%s] 的命令脚本不能为空！！！", config.Name))
 	}
 	return l.command(ctx, command, logger)
 }

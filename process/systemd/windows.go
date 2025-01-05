@@ -7,7 +7,7 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/consts"
+	"github.com/hosgf/element/rcode"
 )
 
 type windows struct {
@@ -64,5 +64,5 @@ func (w *windows) Reload(ctx context.Context, logger *glog.Logger) (string, erro
 }
 
 func (w *windows) init(ctx context.Context) {
-	w.err = gerror.NewCode(consts.FAILURE, "没有实现的操作")
+	w.err = gerror.NewCode(rcode.FAILURE, "没有实现的操作")
 }

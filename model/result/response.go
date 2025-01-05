@@ -3,9 +3,9 @@ package result
 import (
 	"compress/gzip"
 	"encoding/json"
+
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/net/ghttp"
-	"github.com/hosgf/element/consts"
 )
 
 type Response struct {
@@ -42,7 +42,7 @@ func Success(r *ghttp.Request, data interface{}) {
 }
 
 func Fail(r *ghttp.Request, err error) {
-	response.fail(r, consts.SC_FAILURE, err)
+	response.fail(r, SC_FAILURE, err)
 }
 
 func (res *Response) fail(r *ghttp.Request, code int, err error) {
@@ -53,7 +53,7 @@ func (res *Response) fail(r *ghttp.Request, code int, err error) {
 }
 
 func (res *Response) success(r *ghttp.Request, data interface{}) {
-	res.result(r, consts.SUCCESS, data)
+	res.result(r, SUCCESS, data)
 }
 
 func (res *Response) result(r *ghttp.Request, resultCode gcode.Code, data interface{}) {

@@ -2,12 +2,13 @@ package process
 
 import (
 	"context"
+
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gcache"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/hosgf/element/cmd"
-	"github.com/hosgf/element/consts"
 	"github.com/hosgf/element/os"
+	"github.com/hosgf/element/rcode"
 )
 
 type RuntimeConfig struct {
@@ -106,6 +107,6 @@ func (factory *factory) createInstance(env string, isDebug bool) (Operation, err
 	case os.WINDOWS:
 		return newWindows(isDebug), nil
 	default:
-		return nil, gerror.NewCode(consts.FAILURE, "没有实现的操作")
+		return nil, gerror.NewCode(rcode.FAILURE, "没有实现的操作")
 	}
 }
