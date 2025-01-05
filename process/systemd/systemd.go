@@ -2,12 +2,13 @@ package systemd
 
 import (
 	"context"
+	"path/filepath"
+	"sync"
+
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/hosgf/element/cmd"
 	"github.com/hosgf/element/logger"
 	os1 "github.com/hosgf/element/os"
-	"path/filepath"
-	"sync"
 )
 
 var (

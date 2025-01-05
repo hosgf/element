@@ -3,13 +3,14 @@ package systemd
 import (
 	"context"
 	"fmt"
+	"os/exec"
+
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/cmd"
-	"github.com/hosgf/element/rcode"
-	"os/exec"
+	"github.com/hosgf/element/model/result"
 )
 
 type linux struct {
@@ -72,5 +73,5 @@ func (l *linux) init(ctx context.Context) {
 		l.cmd = cmd.New(path, isDebug)
 		return
 	}
-	l.err = gerror.NewCode(rcode.FAILURE, fmt.Sprintf("[ systemctl ]命令不可用: %s", err.Error()))
+	l.err = gerror.NewCode(result.FAILURE, fmt.Sprintf("[ systemctl ]命令不可用: %s", err.Error()))
 }

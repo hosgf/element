@@ -3,13 +3,14 @@ package systemd
 import (
 	"context"
 	"fmt"
+	"os/exec"
+
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/cmd"
-	"github.com/hosgf/element/rcode"
-	"os/exec"
+	"github.com/hosgf/element/model/result"
 )
 
 type macos struct {
@@ -72,5 +73,5 @@ func (m *macos) init(ctx context.Context) {
 		m.cmd = cmd.New(path, isDebug)
 		return
 	}
-	m.err = gerror.NewCode(rcode.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
+	m.err = gerror.NewCode(result.FAILURE, fmt.Sprintf("[ launchctl ]命令不可用: %s", err.Error()))
 }

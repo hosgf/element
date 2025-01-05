@@ -3,11 +3,12 @@ package systemd
 import (
 	"context"
 	"fmt"
+
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/hosgf/element/rcode"
+	"github.com/hosgf/element/model/result"
 )
 
 type windows struct {
@@ -64,5 +65,5 @@ func (w *windows) Reload(ctx context.Context, logger *glog.Logger) (string, erro
 }
 
 func (w *windows) init(ctx context.Context) {
-	w.err = gerror.NewCode(rcode.FAILURE, "没有实现的操作")
+	w.err = gerror.NewCode(result.FAILURE, "没有实现的操作")
 }

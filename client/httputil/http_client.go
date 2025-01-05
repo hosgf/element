@@ -10,7 +10,6 @@ import (
 
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/result"
-	"github.com/hosgf/element/rcode"
 	"github.com/hosgf/element/util"
 
 	"github.com/gogf/gf/v2/errors/gerror"
@@ -46,7 +45,7 @@ func DoPostJson(ctx context.Context, url string, data interface{}) (response res
 	res := NewJsonHttpClient(DEFAULT_TIMEOUT, -1).PostContent(ctx, url, data)
 	logger.Call(ctx, http.MethodPost, url, DefaultContentType, nil, res, data)
 	if len(res) < 1 {
-		return response, errors.New(rcode.REQ_REJECT.Message())
+		return response, errors.New(result.REQ_REJECT.Message())
 	}
 	err = gconv.Struct(res, &response)
 	return response, err
@@ -56,7 +55,7 @@ func DoPost(ctx context.Context, url string, contentType string, data interface{
 	res := NewHttpClient(DEFAULT_TIMEOUT, -1).ContentType(contentType).PostContent(ctx, url, data)
 	logger.Call(ctx, http.MethodPost, url, contentType, nil, res, data)
 	if len(res) < 1 {
-		return response, errors.New(rcode.REQ_REJECT.Message())
+		return response, errors.New(result.REQ_REJECT.Message())
 	}
 	err = gconv.Struct(res, &response)
 	return response, err
@@ -68,7 +67,7 @@ func doGet(ctx context.Context, url string, isDebug bool) (response result.Respo
 		logger.Call(ctx, http.MethodGet, url, "application/json", nil, res, nil)
 	}
 	if len(res) < 1 {
-		return response, errors.New(rcode.REQ_REJECT.Message())
+		return response, errors.New(result.REQ_REJECT.Message())
 	}
 	err = gconv.Struct(res, &response)
 	return response, err
@@ -94,11 +93,11 @@ func DoRequest(ctx context.Context, method, url string, data, resp interface{}, 
 		logger.Call(ctx, method, url, "", nil, isDebug, data)
 	}
 	if response == nil {
-		return gerror.NewCode(rcode.FAILURE, fmt.Sprintf("【%s】调用失败", url))
+		return gerror.NewCode(result.FAILURE, fmt.Sprintf("【%s】调用失败", url))
 	}
 	if err := json.Unmarshal(r, resp); err != nil {
 		glog.Errorf(ctx, "参数转换异常 \n     %v \n     %s", response, err.Error())
-		return gerror.NewCode(rcode.FAILURE, fmt.Sprintf("【%s】调用失败", url))
+		return gerror.NewCode(result.FAILURE, fmt.Sprintf("【%s】调用失败", url))
 	}
 	return nil
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/gogf/gf/v2/os/gfile"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/logger"
-	"github.com/hosgf/element/rcode"
+	"github.com/hosgf/element/model/result"
 )
 
 const (
@@ -42,7 +42,7 @@ func (os *macos) SetHosts(ctx context.Context, hosts []Host) error {
 	if !gfile.Exists(etcDirectory) {
 		err := gfile.Mkdir(etcDirectory)
 		if err != nil {
-			return gerror.NewCode(rcode.FAILURE, fmt.Sprintf("创建目录失败: %s %s", etcDirectory, err.Error()))
+			return gerror.NewCode(result.FAILURE, fmt.Sprintf("创建目录失败: %s %s", etcDirectory, err.Error()))
 		}
 	}
 	hostsFile := filepath.Join(etcDirectory, "hosts")
@@ -70,7 +70,7 @@ func (os *macos) SetHosts(ctx context.Context, hosts []Host) error {
 		})
 		err := gfile.RemoveFile(hostsFile)
 		if err != nil {
-			return gerror.NewCode(rcode.FAILURE, fmt.Sprintf("删除文件失败: %s %s", hostsFile, err.Error()))
+			return gerror.NewCode(result.FAILURE, fmt.Sprintf("删除文件失败: %s %s", hostsFile, err.Error()))
 		}
 	}
 	for _, host := range hosts {

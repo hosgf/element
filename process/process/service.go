@@ -7,8 +7,8 @@ import (
 	"github.com/gogf/gf/v2/os/gcache"
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/hosgf/element/cmd"
+	"github.com/hosgf/element/model/result"
 	"github.com/hosgf/element/os"
-	"github.com/hosgf/element/rcode"
 )
 
 type RuntimeConfig struct {
@@ -107,6 +107,6 @@ func (factory *factory) createInstance(env string, isDebug bool) (Operation, err
 	case os.WINDOWS:
 		return newWindows(isDebug), nil
 	default:
-		return nil, gerror.NewCode(rcode.FAILURE, "没有实现的操作")
+		return nil, gerror.NewCode(result.FAILURE, "没有实现的操作")
 	}
 }

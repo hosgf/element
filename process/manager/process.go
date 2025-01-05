@@ -12,9 +12,9 @@ import (
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/logger"
+	"github.com/hosgf/element/model/result"
 	os1 "github.com/hosgf/element/os"
 	"github.com/hosgf/element/process/systemd"
-	"github.com/hosgf/element/rcode"
 )
 
 var (
@@ -75,7 +75,7 @@ func (o *operation) Start(ctx context.Context, runtime *RuntimeConfig, logger *g
 	process.Manager = o.manager
 	pid, err := process.Start(ctx)
 	if err != nil {
-		return pid, gerror.NewCode(rcode.FAILURE, fmt.Sprintf("\n -- [ %s ] 进程启动失败: %s", runtime.Name, err.Error()))
+		return pid, gerror.NewCode(result.FAILURE, fmt.Sprintf("\n -- [ %s ] 进程启动失败: %s", runtime.Name, err.Error()))
 	}
 	go func() {
 		defer func() {
@@ -96,7 +96,7 @@ func (o *operation) Restart(ctx context.Context, runtime *RuntimeConfig, logger 
 	}
 	name := runtime.Name
 	if len(name) < 1 {
-		return -1, gerror.NewCode(rcode.FAILURE, "\n -- 进程重启失败，进程名称不能为空")
+		return -1, gerror.NewCode(result.FAILURE, "\n -- 进程重启失败，进程名称不能为空")
 	}
 	pid := o.GetPid(runtime.Name)
 	process := o.manager.GetProcess(pid)
