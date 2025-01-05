@@ -50,18 +50,26 @@ func (h Health) String() string {
 	return [...]string{"UNKNOWN", "PENDING", "READ_ONLY", "DOWN", "STOP", "WARNING", "UP"}[h]
 }
 
-func IsUnknown(status string) bool {
+func IsUnknownStr(status string) bool {
 	if len(status) < 1 {
 		return true
 	}
 	return gstr.Equal(status, UNKNOWN.String())
 }
 
-func IsDown(status string) bool {
+func IsUnknown(status Health) bool {
+	return IsUnknownStr(status.String())
+}
+
+func IsDownStr(status string) bool {
 	if len(status) < 1 {
 		return true
 	}
 	return gstr.Equal(status, DOWN.String())
+}
+
+func IsDown(status Health) bool {
+	return IsDownStr(status.String())
 }
 
 func GetHealth(states []string) Health {
