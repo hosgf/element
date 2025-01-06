@@ -27,28 +27,28 @@ type IndicatorDetails struct {
 }
 
 // Health 健康状态
-type Health int
+type Health string
 
 // Health
 const (
 	// UNKNOWN 未知的，不存在的
-	UNKNOWN Health = iota
+	UNKNOWN Health = "UNKNOWN"
 	// PENDING 启动中,未准备就绪
-	PENDING
+	PENDING Health = "PENDING"
 	// READ_ONLY 只读，不能进行调度
-	READ_ONLY
+	READ_ONLY Health = "READ_ONLY"
 	// DOWN 宕机,下线，有问题的
-	DOWN
+	DOWN Health = "DOWN"
 	// STOP 停止的，不可用的
-	STOP
+	STOP Health = "STOP"
 	// WARNING 告警的，基本可用的
-	WARNING
+	WARNING Health = "WARNING"
 	// UP 正常的，健康的
-	UP
+	UP Health = "UP"
 )
 
 func (h Health) String() string {
-	return [...]string{"UNKNOWN", "PENDING", "READ_ONLY", "DOWN", "STOP", "WARNING", "UP"}[h]
+	return string(h)
 }
 
 func IsUnknownStr(status string) bool {
