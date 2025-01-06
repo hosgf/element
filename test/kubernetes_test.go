@@ -85,14 +85,14 @@ func TestResourceList(t *testing.T) {
 
 func TestCreatePod(t *testing.T) {
 	ctx := context.Background()
-	pod := k8s.Pod{
+	pod := &k8s.Pod{
 		Namespace: "test21",
 		Name:      "mysql",
 		App:       "mysqlapp",
 		Group:     "mysqlgroup",
 		Owner:     "mysqlowner",
 		Scope:     "mysqlscope",
-		Containers: []k8s.Container{
+		Containers: []*k8s.Container{
 			{
 				Name:       "mysql-sql",
 				Image:      "hub.youede.com/base/mysql:5.7.36-security-v1",
