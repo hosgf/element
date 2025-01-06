@@ -112,7 +112,7 @@ func (s *Service) setGroup(svc corev1.Service) {
 	}
 }
 
-func (o *serviceOperation) List(ctx context.Context, namespace string) ([]Service, error) {
+func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Service, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -121,9 +121,9 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]Servic
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Services: %v", err)
 	}
-	services := make([]Service, 0, len(svcs.Items))
+	services := make([]*Service, 0, len(svcs.Items))
 	for _, svc := range svcs.Items {
-		service := Service{
+		service := &Service{
 			Namespace:   namespace,
 			Name:        svc.Name,
 			ServiceType: string(svc.Spec.Type),
@@ -145,7 +145,7 @@ func (o *serviceOperation) Exists(ctx context.Context, namespace, service string
 	return o.isExist(svc, err, "Failed to get Services: %v")
 }
 
-func (o *serviceOperation) Create(ctx context.Context, service Service) error {
+func (o *serviceOperation) Create(ctx context.Context, service *Service) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -178,7 +178,7 @@ func (o *serviceOperation) Create(ctx context.Context, service Service) error {
 	return nil
 }
 
-func (o *serviceOperation) Apply(ctx context.Context, service Service) error {
+func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
 	if o.err != nil {
 		return o.err
 	}

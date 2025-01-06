@@ -25,7 +25,7 @@ type metricsOperation struct {
 	*options
 }
 
-func (o *metricsOperation) List(ctx context.Context, namespace string) ([]Metric, error) {
+func (o *metricsOperation) List(ctx context.Context, namespace string) ([]*Metric, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -34,9 +34,9 @@ func (o *metricsOperation) List(ctx context.Context, namespace string) ([]Metric
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Pod Metricses: %v", err)
 	}
-	metrics := make([]Metric, 0, len(data.Items))
+	metrics := make([]*Metric, 0, len(data.Items))
 	for _, item := range data.Items {
-		metric := Metric{
+		metric := &Metric{
 			Namespace: item.GetNamespace(),
 			Name:      item.GetName(),
 			Items:     make(map[string]map[types.ResourceType]MetricDetails),

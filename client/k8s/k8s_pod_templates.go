@@ -28,7 +28,7 @@ type PodTemplate struct {
 	RunningNode string            `json:"runningNode,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
 	Status      health.Health     `json:"status,omitempty"`
-	Containers  []Container       `json:"containers,omitempty"`
+	Containers  []*Container      `json:"containers,omitempty"`
 }
 
 func (p *PodTemplate) toLabel() map[string]string {
@@ -75,7 +75,7 @@ func (p *PodTemplate) containers() []corev1.Container {
 }
 
 func (p *PodTemplate) toContainer(c corev1.Container) {
-	container := Container{
+	container := &Container{
 		Name:       c.Name,
 		Image:      c.Image,
 		PullPolicy: string(c.ImagePullPolicy),
@@ -91,7 +91,7 @@ func (p *PodTemplate) toContainer(c corev1.Container) {
 	p.Containers = append(p.Containers, container)
 }
 
-func (o *podTemplateOperation) Get(ctx context.Context, namespace, appname string) ([]Pod, error) {
+func (o *podTemplateOperation) Get(ctx context.Context, namespace, appname string) ([]*Pod, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -101,13 +101,11 @@ func (o *podTemplateOperation) Get(ctx context.Context, namespace, appname strin
 	return o.pods(ctx, namespace, opts)
 }
 
-func (o *podTemplateOperation) List(ctx context.Context, namespace string) ([]Pod, error) {
+func (o *podTemplateOperation) List(ctx context.Context, namespace string) ([]*Pod, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
-	opts := v1.ListOptions{
-		//LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
-	}
+	opts := v1.ListOptions{}
 	return o.pods(ctx, namespace, opts)
 }
 
@@ -120,7 +118,7 @@ func (o *podTemplateOperation) Exists(ctx context.Context, namespace, pod string
 	return o.isExist(p, err, "Failed to get Pod: %v")
 }
 
-func (o *podTemplateOperation) Create(ctx context.Context, pod Pod) error {
+func (o *podTemplateOperation) Create(ctx context.Context, pod *Pod) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -146,7 +144,7 @@ func (o *podTemplateOperation) Create(ctx context.Context, pod Pod) error {
 	return nil
 }
 
-func (o *podTemplateOperation) Apply(ctx context.Context, pod Pod) error {
+func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -199,17 +197,17 @@ func (o *podTemplateOperation) Delete(ctx context.Context, namespace, pod string
 	return o.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
 }
 
-func (o *podTemplateOperation) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]Pod, error) {
+func (o *podTemplateOperation) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]*Pod, error) {
 	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
 	}
-	pods := make([]Pod, 0, len(datas.Items))
+	pods := make([]*Pod, 0, len(datas.Items))
 	for _, p := range datas.Items {
-		pod := Pod{
+		pod := &Pod{
 			Namespace:   namespace,
 			Name:        p.Name,
-			Containers:  make([]Container, 0),
+			Containers:  make([]*Container, 0),
 			RunningNode: p.Spec.NodeName,
 			Status:      string(p.Status.Phase),
 		}

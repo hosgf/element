@@ -23,7 +23,7 @@ type operation interface {
 }
 
 type progressInterface interface {
-	List(ctx context.Context, namespace string) ([]progress.Progress, error)
+	List(ctx context.Context, namespace string) ([]*progress.Progress, error)
 }
 
 type resourceInterface interface {
@@ -31,45 +31,45 @@ type resourceInterface interface {
 }
 
 type nodesInterface interface {
-	Top(ctx context.Context) ([]Node, error)
+	Top(ctx context.Context) ([]*Node, error)
 }
 
 type metricsInterface interface {
-	List(ctx context.Context, namespace string) ([]Metric, error)
+	List(ctx context.Context, namespace string) ([]*Metric, error)
 }
 
 type namespaceInterface interface {
-	List(ctx context.Context) ([]resource.Namespace, error)
+	List(ctx context.Context) ([]*resource.Namespace, error)
 	Exists(ctx context.Context, namespace string) (bool, error)
 	Create(ctx context.Context, namespace, label string) (bool, error)
 	Delete(ctx context.Context, namespace string) error
 }
 
 type serviceInterface interface {
-	List(ctx context.Context, namespace string) ([]Service, error)
+	List(ctx context.Context, namespace string) ([]*Service, error)
 	Exists(ctx context.Context, namespace, service string) (bool, error)
-	Create(ctx context.Context, service Service) error
-	Apply(ctx context.Context, service Service) error
+	Create(ctx context.Context, service *Service) error
+	Apply(ctx context.Context, service *Service) error
 	Delete(ctx context.Context, namespace, service string) error
 }
 
 type podsInterface interface {
-	Get(ctx context.Context, namespace, appname string) ([]Pod, error)
-	List(ctx context.Context, namespace string) ([]Pod, error)
+	Get(ctx context.Context, namespace, appname string) ([]*Pod, error)
+	List(ctx context.Context, namespace string) ([]*Pod, error)
 	Exists(ctx context.Context, namespace, pod string) (bool, error)
-	Create(ctx context.Context, pod Pod) error
-	Apply(ctx context.Context, pod Pod) error
+	Create(ctx context.Context, pod *Pod) error
+	Apply(ctx context.Context, pod *Pod) error
 	Delete(ctx context.Context, namespace, pod string) error
 	Restart(ctx context.Context, namespace, pod string) error
 	RestartApp(ctx context.Context, namespace, appname string) error
 }
 
 type podTemplatesInterface interface {
-	Get(ctx context.Context, namespace, appname string) ([]Pod, error)
-	List(ctx context.Context, namespace string) ([]Pod, error)
+	Get(ctx context.Context, namespace, appname string) ([]*Pod, error)
+	List(ctx context.Context, namespace string) ([]*Pod, error)
 	Exists(ctx context.Context, namespace, pod string) (bool, error)
-	Create(ctx context.Context, pod Pod) error
-	Apply(ctx context.Context, pod Pod) error
+	Create(ctx context.Context, pod *Pod) error
+	Apply(ctx context.Context, pod *Pod) error
 	Delete(ctx context.Context, namespace, pod string) error
 }
 

@@ -13,14 +13,14 @@ type progressOperation struct {
 	k8s *Kubernetes
 }
 
-func (o *progressOperation) List(ctx context.Context, namespace string) ([]progress.Progress, error) {
+func (o *progressOperation) List(ctx context.Context, namespace string) ([]*progress.Progress, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
 	var (
-		list    = make([]progress.Progress, 0)
-		metrics = make(map[string]Metric)
-		svcs    = make(map[string][]Service)
+		list    = make([]*progress.Progress, 0)
+		metrics = make(map[string]*Metric)
+		svcs    = make(map[string][]*Service)
 		now     = gtime.Now().Timestamp()
 	)
 	// 获取SVC
@@ -34,7 +34,7 @@ func (o *progressOperation) List(ctx context.Context, namespace string) ([]progr
 		for _, s := range services {
 			svc, ok := svcs[s.Group]
 			if !ok {
-				svc = make([]Service, 0)
+				svc = make([]*Service, 0)
 			}
 			svc = append(svc, s)
 			svcs[s.Group] = svc

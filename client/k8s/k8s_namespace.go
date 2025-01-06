@@ -17,7 +17,7 @@ type namespaceOperation struct {
 	*options
 }
 
-func (o *namespaceOperation) List(ctx context.Context) ([]resource.Namespace, error) {
+func (o *namespaceOperation) List(ctx context.Context) ([]*resource.Namespace, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -25,9 +25,9 @@ func (o *namespaceOperation) List(ctx context.Context) ([]resource.Namespace, er
 	if err != nil {
 		return nil, err
 	}
-	namespaces := make([]resource.Namespace, 0, len(datas.Items))
+	namespaces := make([]*resource.Namespace, 0, len(datas.Items))
 	for _, ns := range datas.Items {
-		namespaces = append(namespaces, resource.Namespace{
+		namespaces = append(namespaces, &resource.Namespace{
 			Name:   ns.Name,
 			Label:  ns.Labels[types.LabelOwner.String()],
 			Status: Status(string(ns.Status.Phase)),

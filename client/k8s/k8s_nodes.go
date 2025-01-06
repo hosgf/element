@@ -44,7 +44,7 @@ type nodesOperation struct {
 	*options
 }
 
-func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
+func (o *nodesOperation) Top(ctx context.Context) ([]*Node, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -52,9 +52,9 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get nodes: %v", err)
 	}
-	nodes := make([]Node, 0, len(datas.Items))
+	nodes := make([]*Node, 0, len(datas.Items))
 	for _, n := range datas.Items {
-		node := Node{
+		node := &Node{
 			Name:       n.Name,
 			Cpu:        resource.Details{},
 			Memory:     resource.Details{},
