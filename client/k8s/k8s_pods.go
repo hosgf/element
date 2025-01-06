@@ -169,6 +169,9 @@ func (pod *Pod) labels(labels map[string]string) {
 
 	delete(labels, "pod-template-hash")
 
+	if labels == nil || len(labels) < 1 {
+		return
+	}
 	if pod.Labels == nil {
 		pod.Labels = map[string]string{}
 	}
