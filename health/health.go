@@ -9,10 +9,11 @@ import (
 type Indicator string
 
 const (
-	IndicatorNodeStatus    Indicator = "NodeStatus"
-	IndicatorMemoryStatus  Indicator = "MemoryStatus"
-	IndicatorNetworkStatus Indicator = "NetworkStatus"
-	IndicatorDiskStatus    Indicator = "DiskStatus"
+	IndicatorNodeStatus      Indicator = "NodeStatus"
+	IndicatorMemoryStatus    Indicator = "MemoryStatus"
+	IndicatorNetworkStatus   Indicator = "NetworkStatus"
+	IndicatorDiskStatus      Indicator = "DiskStatus"
+	IndicatorNodePIDPressure Indicator = "NodePIDStatus"
 )
 
 func (t Indicator) String() string {

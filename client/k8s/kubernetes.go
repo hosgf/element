@@ -18,10 +18,16 @@ type operation interface {
 	Storage() storageInterface
 	Metrics() metricsInterface
 	PodTemplate() podTemplatesInterface
+	Progress() progressInterface
+	Resource() resourceInterface
 }
 
 type progressInterface interface {
 	List(ctx context.Context, namespace string) ([]progress.Progress, error)
+}
+
+type resourceInterface interface {
+	Get(ctx context.Context) (*resource.Resource, error)
 }
 
 type nodesInterface interface {

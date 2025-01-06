@@ -72,6 +72,17 @@ func TestProgressList(t *testing.T) {
 	g.Dump(datas)
 }
 
+func TestResourceList(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	datas, err := kubernetes.Resource().Get(ctx)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	g.Dump(datas)
+}
+
 func TestCreatePod(t *testing.T) {
 	ctx := context.Background()
 	pod := k8s.Pod{

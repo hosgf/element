@@ -20,8 +20,8 @@ const (
 	// Failed 异常停止
 	Failed = "failed"
 	Evicte = "evicte"
-	// Unkonwn 未知状态
-	Unkonwn = "unkonwn"
+	// Unknown 未知状态
+	Unknown = "unknown"
 	// CrashLoopBackOff 容器退出，kubelet正在将它重启
 	CrashLoopBackOff = "crashloopbackoff"
 	// InvalidImageName 无法解析镜像名称
@@ -80,7 +80,7 @@ func Status(status string) health.Health {
 		CrashLoopBackOff,
 		Evicte:
 		return health.STOP
-	case Unkonwn:
+	case Unknown:
 		return health.UNKNOWN
 	default:
 		return health.DOWN
@@ -95,7 +95,7 @@ func NodeStatus(status string) health.Health {
 	case
 		"false":
 		return health.DOWN
-	case Unkonwn:
+	case Unknown:
 		return health.UNKNOWN
 	default:
 		return health.DOWN

@@ -16,15 +16,14 @@ type Namespace struct {
 
 // Resource 资源对象
 type Resource struct {
-	Environment string        `json:"environment,omitempty"`
-	Region      string        `json:"region,omitempty"`
-	Namespace   string        `json:"namespace,omitempty"`
-	Type        string        `json:"type,omitempty"`
-	Name        string        `json:"name,omitempty"`
-	Status      health.Health `json:"status,omitempty"`
-	Time        int64         `json:"time,omitempty"`
-	Remark      string        `json:"remark,omitempty"`
-	Nodes       []Node        `json:"nodes,omitempty"`
+	Region    string        `json:"region,omitempty"`
+	Namespace string        `json:"namespace,omitempty"`
+	Type      string        `json:"type,omitempty"`
+	Name      string        `json:"name,omitempty"`
+	Status    health.Health `json:"status,omitempty"`
+	Time      int64         `json:"time,omitempty"`
+	Remark    string        `json:"remark,omitempty"`
+	Nodes     []Node        `json:"nodes,omitempty"`
 }
 
 func (r *Resource) SetStatus() *Resource {
@@ -35,7 +34,7 @@ func (r *Resource) SetStatus() *Resource {
 	healths := gset.NewSet()
 	for _, node := range r.Nodes {
 		status := node.Status
-		if len(status) < 1 {
+		if len(status.String()) < 1 {
 			// 节点没有设置状态，则认为是当宕机的
 			if !healths.Contains(health.DOWN) {
 				healths.Add(health.DOWN)
@@ -90,9 +89,9 @@ func (r *Resource) SetStatus() *Resource {
 }
 
 type Node struct {
-	Env        string                 `json:"env"`
 	Name       string                 `json:"name"`
-	Status     string                 `json:"status"`
+	Roles      string                 `json:"roles"`
+	Status     health.Health          `json:"status"`
 	Time       int64                  `json:"time"`
 	Indicators map[string]interface{} `json:"indicators"`
 }

@@ -20,7 +20,24 @@ type Node struct {
 	Status     health.Health                                `json:"status,omitempty"`
 	Cpu        resource.Details                             `json:"cpu,omitempty"`
 	Memory     resource.Details                             `json:"memory,omitempty"`
+	Time       int64                                        `json:"time"`
 	Indicators map[health.Indicator]health.IndicatorDetails `json:"indicators,omitempty"` // 指标
+}
+
+func (n *Node) ToNode() resource.Node {
+	node := resource.Node{
+		Name:   n.Name,
+		Status: n.Status,
+		Roles:  n.Roles,
+		Time:   n.Time,
+		Indicators: map[string]interface{}{
+			"address": n.Address,
+		},
+	}
+	for k, v := range n.Indicators {
+		node.Indicators[k.String()] = v
+	}
+	return node
 }
 
 type nodesOperation struct {
@@ -49,11 +66,17 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 				node.Address = address.Address
 			}
 		}
-		for k, _ := range n.Labels {
-			if gstr.HasPrefix(k, "node-role.kubernetes.io/") {
-				node.Roles = strings.TrimPrefix(k, "node-role.kubernetes.io/")
+		if role, ok := n.Labels["kubernetes.io/role"]; ok {
+			node.Roles = role
+		} else {
+			for k, _ := range n.Labels {
+				if gstr.HasPrefix(k, "node-role.kubernetes.io/") {
+					node.Roles = strings.TrimPrefix(k, "node-role.kubernetes.io/")
+					break
+				}
 			}
 		}
+
 		// 资源总量
 		for name, quantity := range n.Status.Capacity {
 			switch name {
@@ -84,6 +107,7 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 			}
 			switch condition.Type {
 			case corev1.NodeReady:
+				node.Time = condition.LastTransitionTime.Unix()
 				node.Status = NodeStatus(status)
 				node.Indicators[health.IndicatorNodeStatus] = details
 			case corev1.NodeMemoryPressure:
@@ -92,6 +116,8 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 				node.Indicators[health.IndicatorDiskStatus] = details
 			case corev1.NodeNetworkUnavailable:
 				node.Indicators[health.IndicatorNetworkStatus] = details
+			case corev1.NodePIDPressure:
+				node.Indicators[health.IndicatorNodePIDPressure] = details
 			}
 		}
 		nodes = append(nodes, node)
