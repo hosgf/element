@@ -104,8 +104,8 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 	return list
 }
 
-func (pod *Pod) toLabels() progress.ProgressLabels {
-	return progress.ProgressLabels{
+func (pod *Pod) toLabels() *progress.ProgressLabels {
+	return &progress.ProgressLabels{
 		App:    pod.App,
 		Group:  pod.Group,
 		Owner:  pod.Owner,
