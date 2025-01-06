@@ -21,6 +21,7 @@ func (o *resourceOperation) Get(ctx context.Context) (*resource.Resource, error)
 		return nil, err
 	}
 	res := &resource.Resource{
+		Env:   "k8s",
 		Time:  gtime.Now().Timestamp(),
 		Nodes: make([]resource.Node, 0),
 	}

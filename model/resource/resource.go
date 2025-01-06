@@ -16,6 +16,7 @@ type Namespace struct {
 
 // Resource 资源对象
 type Resource struct {
+	Env       string        `json:"env,omitempty"`
 	Region    string        `json:"region,omitempty"`
 	Namespace string        `json:"namespace,omitempty"`
 	Type      string        `json:"type,omitempty"`
