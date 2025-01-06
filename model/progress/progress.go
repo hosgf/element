@@ -11,6 +11,7 @@ type ProgressGroup struct {
 	GroupID   string         `json:"groupId,omitempty"`
 	Labels    ProgressLabels `json:"labels,omitempty"`
 	Status    health.Health  `json:"status,omitempty"`
+	Time      int64          `json:"time,omitempty"`
 	Details   []Progress     `json:"details,omitempty"`
 }
 
