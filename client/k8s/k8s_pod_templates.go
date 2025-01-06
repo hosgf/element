@@ -211,7 +211,7 @@ func (o *podTemplateOperation) pods(ctx context.Context, namespace string, opts 
 			Name:        p.Name,
 			Containers:  make([]Container, 0),
 			RunningNode: p.Spec.NodeName,
-			Status:      Status(string(p.Status.Phase)),
+			Status:      string(p.Status.Phase),
 		}
 		pod.labels(p.Labels)
 		for _, c := range p.Spec.Containers {

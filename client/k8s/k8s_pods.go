@@ -34,7 +34,8 @@ type Pod struct {
 	Replicas    int32             `json:"replicas,omitempty"`
 	RunningNode string            `json:"runningNode,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
-	Status      health.Health     `json:"status,omitempty"`
+	GroupLabel  string            `json:"groupLabel,omitempty"`
+	Status      string            `json:"status,omitempty"`
 	Containers  []Container       `json:"containers,omitempty"`
 }
 
@@ -46,32 +47,54 @@ func (pod *Pod) ToProgress(svcs []Service, metric Metric, now int64) []progress.
 	}
 	labels := pod.toLabels()
 	items := metric.Items
+	status := Status(pod.Status)
+	group := progress.Details{
+		Details: map[string]string{pod.Name: pod.Status},
+		Status:  status,
+	}
 	for _, c := range cs {
-		p := c.toProgress(now)
-		p.Namespace = pod.Namespace
-		p.PID = pod.Name
-		p.Status = pod.Status
-		p.Labels = labels
+		p := progress.Progress{
+			Namespace:  pod.Namespace,
+			PID:        pod.Name,
+			Name:       c.Name,
+			Status:     status,
+			Labels:     labels,
+			Indicators: make(map[string]interface{}),
+			Details:    make(map[string]interface{}),
+			Time:       now,
+		}
+
 		metrics := items[c.Name]
 		for _, res := range c.Resource {
 			r := metrics[res.Type]
 			p.Indicators[res.Type.String()] = resource.Details{
-				Total: res.Maximum,
 				Unit:  r.Unit,
+				Free:  -1,
+				Total: res.Maximum,
 				Usage: r.Usage,
 			}
 		}
+
 		if len(svcs) < 1 {
 			list = append(list, p)
 			continue
 		}
+		service := progress.Details{
+			Details: map[string]string{},
+			Status:  health.UNKNOWN,
+		}
 		for _, svc := range svcs {
 			if gstr.Contains(svc.Group, p.Name) || gstr.Contains(svc.Group, pod.Group) || svc.Name == pod.Group {
 				p.Service = svc.Name
+				service.Details[svc.Name] = svc.Status
+				service.Status = health.UP
 				break
 			}
 		}
-		p.Indicators["address"] = p.Service
+
+		p.Indicators["address"] = fmt.Sprintf("%s.%s.svc.cluster.local", p.Service, p.Namespace)
+		p.Details["group"] = group
+		p.Details["service"] = service
 		list = append(list, p)
 	}
 	return list
@@ -120,13 +143,28 @@ func (pod *Pod) labels(labels map[string]string) {
 		return
 	}
 	pod.App = labels[types.LabelApp.String()]
-	pod.Owner = labels[types.LabelOwner.String()]
-	pod.Scope = labels[types.LabelScope.String()]
-	pod.Group = labels[types.LabelGroup.String()]
 	delete(labels, types.LabelApp.String())
+
+	pod.Owner = labels[types.LabelOwner.String()]
 	delete(labels, types.LabelOwner.String())
+
+	pod.Scope = labels[types.LabelScope.String()]
 	delete(labels, types.LabelScope.String())
-	delete(labels, types.LabelGroup.String())
+
+	if len(pod.Group) < 1 {
+		pod.Group = labels[types.LabelGroup.String()]
+		pod.GroupLabel = types.LabelGroup.String()
+		delete(labels, pod.GroupLabel)
+	}
+
+	if len(pod.Group) < 1 {
+		pod.Group = labels["app"]
+		pod.GroupLabel = "app"
+		delete(labels, pod.GroupLabel)
+	}
+
+	delete(labels, "pod-template-hash")
+
 	if pod.Labels == nil {
 		pod.Labels = map[string]string{}
 	}
@@ -169,16 +207,6 @@ type Container struct {
 	Ports      []progress.Port     `json:"ports,omitempty"`
 	Resource   []progress.Resource `json:"resource,omitempty"`
 	Env        map[string]string   `json:"env,omitempty"`
-}
-
-func (c *Container) toProgress(now int64) progress.Progress {
-	p := progress.Progress{
-		Name:       c.Name,
-		Time:       now,
-		Indicators: make(map[string]interface{}),
-		Details:    make(map[string]interface{}),
-	}
-	return p
 }
 
 func (c *Container) toContainer() corev1.Container {
@@ -460,7 +488,7 @@ func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.List
 			Name:        p.Name,
 			Containers:  make([]Container, 0),
 			RunningNode: p.Spec.NodeName,
-			Status:      Status(string(p.Status.Phase)),
+			Status:      string(p.Status.Phase),
 		}
 		pod.labels(p.Labels)
 		for _, c := range p.Spec.Containers {

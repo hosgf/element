@@ -39,6 +39,11 @@ type Db struct {
 	Status  health.Health `json:"status"`
 	Details Database      `json:"details"`
 }
+type Details struct {
+	Status  health.Health     `json:"status"`
+	Details map[string]string `json:"details"`
+}
+
 type Ping struct {
 	Status health.Health `json:"status"`
 }

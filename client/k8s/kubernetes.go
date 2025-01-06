@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 
+	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/model/resource"
 )
 
@@ -17,6 +18,10 @@ type operation interface {
 	Storage() storageInterface
 	Metrics() metricsInterface
 	PodTemplate() podTemplatesInterface
+}
+
+type progressInterface interface {
+	List(ctx context.Context, namespace string) ([]progress.Progress, error)
 }
 
 type nodesInterface interface {

@@ -61,6 +61,17 @@ func TestMetrics(t *testing.T) {
 	g.Dump(datas)
 }
 
+func TestProgressList(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	datas, err := kubernetes.Progress().List(ctx, "dataos")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	g.Dump(datas)
+}
+
 func TestCreatePod(t *testing.T) {
 	ctx := context.Background()
 	pod := k8s.Pod{

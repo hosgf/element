@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
@@ -27,7 +28,8 @@ type Service struct {
 	Owner       string            `json:"owner,omitempty"`
 	Scope       string            `json:"scope,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
-	Status      health.Health     `json:"status,omitempty"`
+	GroupLabel  string            `json:"groupLabel,omitempty"`
+	Status      string            `json:"status,omitempty"`
 	Ports       []progress.Port   `json:"ports,omitempty"`
 }
 
@@ -51,16 +53,30 @@ func (s *Service) labels(labels map[string]string) {
 		return
 	}
 	s.App = labels[types.LabelApp.String()]
-	s.Owner = labels[types.LabelOwner.String()]
-	s.Scope = labels[types.LabelScope.String()]
-	s.Group = labels[types.LabelGroup.String()]
 	delete(labels, types.LabelApp.String())
+
+	s.Owner = labels[types.LabelOwner.String()]
 	delete(labels, types.LabelOwner.String())
+
+	s.Scope = labels[types.LabelScope.String()]
 	delete(labels, types.LabelScope.String())
-	delete(labels, types.LabelGroup.String())
+
+	if len(s.Group) < 1 {
+		s.Group = labels[types.LabelGroup.String()]
+		s.GroupLabel = types.LabelGroup.String()
+		delete(labels, s.GroupLabel)
+	}
+
+	if len(s.Group) < 1 {
+		s.Group = labels["app"]
+		s.GroupLabel = "app"
+		delete(labels, s.GroupLabel)
+	}
+
 	if s.Labels == nil {
 		s.Labels = map[string]string{}
 	}
+
 	for k, v := range labels {
 		s.Labels[k] = v
 	}
@@ -69,6 +85,30 @@ func (s *Service) labels(labels map[string]string) {
 func (s *Service) toSelector() map[string]string {
 	return map[string]string{
 		types.LabelGroup.String(): s.Group,
+	}
+}
+
+func (s *Service) setGroup(svc corev1.Service) {
+	selector := svc.Spec.Selector
+	if selector == nil {
+		return
+	}
+	if v, ok := selector[types.LabelGroup.String()]; ok {
+		s.Group = v
+		s.GroupLabel = types.LabelGroup.String()
+		return
+	}
+	if v, ok := selector["app"]; ok {
+		s.Group = v
+		s.GroupLabel = "app"
+		return
+	}
+	for k, v := range selector {
+		if gstr.Contains(k, "app") {
+			s.Group = v
+			s.GroupLabel = k
+			return
+		}
 	}
 }
 
@@ -84,11 +124,12 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]Servic
 	services := make([]Service, 0, len(svcs.Items))
 	for _, svc := range svcs.Items {
 		service := Service{
-			Namespace: namespace,
-			Name:      svc.Name,
-			Group:     svc.Spec.Selector[types.LabelGroup.String()],
-			Status:    Status(svc.Status.String()),
+			Namespace:   namespace,
+			Name:        svc.Name,
+			ServiceType: string(svc.Spec.Type),
+			Status:      health.UP.String(),
 		}
+		service.setGroup(svc)
 		service.labels(svc.Labels)
 		services = append(services, service)
 	}

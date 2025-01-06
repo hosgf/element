@@ -21,6 +21,7 @@ func New(isDebug bool) *Kubernetes {
 	k.service = &serviceOperation{k.options}
 	k.pods = &podsOperation{k.options}
 	k.metrics = &metricsOperation{k.options}
+	k.progress = &progressOperation{k8s: k, options: k.options}
 	return k
 }
 
@@ -38,6 +39,7 @@ type Kubernetes struct {
 	service   *serviceOperation
 	pods      *podsOperation
 	metrics   *metricsOperation
+	progress  *progressOperation
 }
 
 func (k *Kubernetes) Nodes() *nodesOperation {
@@ -58,6 +60,10 @@ func (k *Kubernetes) Service() *serviceOperation {
 
 func (k *Kubernetes) Pod() *podsOperation {
 	return k.pods
+}
+
+func (k *Kubernetes) Progress() *progressOperation {
+	return k.progress
 }
 
 func (k *Kubernetes) Init(homePath string) error {
