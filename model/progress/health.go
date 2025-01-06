@@ -5,7 +5,7 @@ import (
 	"github.com/hosgf/element/health"
 )
 
-func GetHealth(progresss []*Progress) health.Health {
+func GetHealth(progresss []Progress) health.Health {
 	if nil == progresss || len(progresss) < 1 {
 		return health.UNKNOWN
 	}
