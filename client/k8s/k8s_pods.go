@@ -46,7 +46,12 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 		return list
 	}
 	labels := pod.toLabels()
-	items := metric.Items
+	var items map[string]map[types.ResourceType]MetricDetails
+	if nil == metric {
+		items = make(map[string]map[types.ResourceType]MetricDetails)
+	} else {
+		items = metric.Items
+	}
 	status := Status(pod.Status)
 	group := progress.Details{
 		Details: map[string]string{pod.Name: pod.Status},
@@ -63,7 +68,6 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 			Details:    make(map[string]interface{}),
 			Time:       now,
 		}
-
 		metrics := items[c.Name]
 		for _, res := range c.Resource {
 			r := metrics[res.Type]
