@@ -45,11 +45,13 @@ func (o *metricsOperation) List(ctx context.Context, namespace string) ([]Metric
 				case corev1.ResourceCPU:
 					resources[types.ResourceCPU] = resource.Details{
 						Type:  types.ResourceCPU,
+						Unit:  unit,
 						Usage: types.FormatCpu(value, unit),
 					}
 				case corev1.ResourceMemory:
 					resources[types.ResourceMemory] = resource.Details{
 						Type:  types.ResourceMemory,
+						Unit:  unit,
 						Usage: types.FormatMemory(value, unit),
 					}
 				}
