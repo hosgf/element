@@ -10,6 +10,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 func New(isDebug bool) *Kubernetes {
@@ -19,13 +20,15 @@ func New(isDebug bool) *Kubernetes {
 	k.namespace = &namespaceOperation{k.options}
 	k.service = &serviceOperation{k.options}
 	k.pods = &podsOperation{k.options}
+	k.metrics = &metricsOperation{k.options}
 	return k
 }
 
 type options struct {
-	isDebug bool
-	err     error
-	api     *k8s.Clientset
+	isDebug    bool
+	err        error
+	api        *k8s.Clientset
+	metricsApi *metricsv.Clientset
 }
 
 type Kubernetes struct {
@@ -34,6 +37,7 @@ type Kubernetes struct {
 	namespace *namespaceOperation
 	service   *serviceOperation
 	pods      *podsOperation
+	metrics   *metricsOperation
 }
 
 func (k *Kubernetes) Nodes() *nodesOperation {
@@ -42,6 +46,10 @@ func (k *Kubernetes) Nodes() *nodesOperation {
 
 func (k *Kubernetes) Namespace() *namespaceOperation {
 	return k.namespace
+}
+
+func (k *Kubernetes) Metrics() *metricsOperation {
+	return k.metrics
 }
 
 func (k *Kubernetes) Service() *serviceOperation {
@@ -59,12 +67,16 @@ func (k *Kubernetes) Init(homePath string) error {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to build kubeconfig: %v", err)
 		return k.err
 	}
-	clientset, err := k8s.NewForConfig(config)
+	k.api, err = k8s.NewForConfig(config)
 	if err != nil {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create Kubernetes client: %v", err)
 		return k.err
 	}
-	k.api = clientset
+	k.metricsApi, err = metricsv.NewForConfig(config)
+	if err != nil {
+		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create Kubernetes client: %v", err)
+		return k.err
+	}
 	return nil
 }
 

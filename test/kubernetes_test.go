@@ -50,6 +50,17 @@ func TestCreateNamespace(t *testing.T) {
 	g.Dump(isOk)
 }
 
+func TestMetrics(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	datas, err := kubernetes.Metrics().List(ctx, "kube-system")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	g.Dump(datas)
+}
+
 func TestCreatePod(t *testing.T) {
 	ctx := context.Background()
 	pod := k8s.Pod{

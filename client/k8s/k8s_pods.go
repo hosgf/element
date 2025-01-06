@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
@@ -36,63 +37,110 @@ type Pod struct {
 	Containers  []Container       `json:"containers,omitempty"`
 }
 
-func (p *Pod) toSelector() map[string]string {
+func (pod *Pod) ToProgress(svcs []Service, metric Metric, now int64) []progress.Progress {
+	list := make([]progress.Progress, 0)
+	cs := pod.Containers
+	if len(cs) == 0 {
+		return list
+	}
+	labels := pod.toLabels()
+	items := metric.Items
+	for _, c := range cs {
+		p := c.toProgress(now)
+		p.Namespace = pod.Namespace
+		p.PID = pod.Name
+		p.Status = pod.Status
+		p.Labels = labels
+		metrics := items[c.Name]
+		for _, res := range c.Resource {
+			r := metrics[res.Type]
+			r.Total = res.Maximum
+			p.Indicators[res.Type.String()] = r
+		}
+
+		if len(svcs) < 1 {
+			list = append(list, p)
+			continue
+		}
+		for _, svc := range svcs {
+			if gstr.Contains(svc.Group, p.Name) || gstr.Contains(svc.Group, pod.Group) || svc.Name == pod.Group {
+				p.Service = svc.Name
+				break
+			}
+		}
+		p.Indicators["address"] = p.Service
+		list = append(list, p)
+	}
+	return list
+}
+
+func (pod *Pod) toLabels() progress.ProgressLabels {
+	return progress.ProgressLabels{
+		App:    pod.App,
+		Group:  pod.Group,
+		Owner:  pod.Owner,
+		Scope:  pod.Scope,
+		Labels: pod.Labels,
+	}
+}
+
+func (pod *Pod) toSelector() map[string]string {
 	return map[string]string{
-		types.LabelGroup.String(): p.Group,
+		types.LabelGroup.String(): pod.Group,
 	}
 }
 
-func (p *Pod) replicas() *int32 {
-	if p.Replicas < 1 {
-		p.Replicas = 1
+func (pod *Pod) replicas() *int32 {
+	if pod.Replicas < 1 {
+		pod.Replicas = 1
 	}
-	return &p.Replicas
+	return &pod.Replicas
 }
 
-func (p *Pod) toLabel() map[string]string {
+func (pod *Pod) toLabel() map[string]string {
 	labels := map[string]string{
-		types.LabelApp.String():   p.App,
-		types.LabelOwner.String(): p.Owner,
-		types.LabelScope.String(): p.Scope,
-		types.LabelGroup.String(): p.Group,
+		types.LabelApp.String():   pod.App,
+		types.LabelOwner.String(): pod.Owner,
+		types.LabelScope.String(): pod.Scope,
+		types.LabelGroup.String(): pod.Group,
 	}
-	if p.Labels != nil {
-		for k, v := range p.Labels {
+	if pod.Labels != nil {
+		for k, v := range pod.Labels {
 			labels[k] = v
 		}
 	}
 	return labels
 }
 
-func (p *Pod) labels(labels map[string]string) {
+func (pod *Pod) labels(labels map[string]string) {
 	if len(labels) < 1 {
 		return
 	}
-	p.App = labels[types.LabelApp.String()]
-	p.Owner = labels[types.LabelOwner.String()]
-	p.Scope = labels[types.LabelScope.String()]
-	p.Group = labels[types.LabelGroup.String()]
+	pod.App = labels[types.LabelApp.String()]
+	pod.Owner = labels[types.LabelOwner.String()]
+	pod.Scope = labels[types.LabelScope.String()]
+	pod.Group = labels[types.LabelGroup.String()]
 	delete(labels, types.LabelApp.String())
 	delete(labels, types.LabelOwner.String())
 	delete(labels, types.LabelScope.String())
 	delete(labels, types.LabelGroup.String())
-	if p.Labels == nil {
-		p.Labels = map[string]string{}
+	if pod.Labels == nil {
+		pod.Labels = map[string]string{}
 	}
 	for k, v := range labels {
-		p.Labels[k] = v
+		pod.Labels[k] = v
 	}
 }
 
-func (p *Pod) containers() []corev1.Container {
-	containers := make([]corev1.Container, 0, len(p.Containers))
-	for _, c := range p.Containers {
+func (pod *Pod) containers() []corev1.Container {
+	containers := make([]corev1.Container, 0, len(pod.Containers))
+	for _, c := range pod.Containers {
 		containers = append(containers, c.toContainer())
 	}
 	return containers
 }
 
-func (p *Pod) toContainer(c corev1.Container) {
+func (pod *Pod) toContainer(c corev1.Container) {
 	container := Container{
 		Name:       c.Name,
 		Image:      c.Image,
@@ -106,7 +154,7 @@ func (p *Pod) toContainer(c corev1.Container) {
 	container.setResource(c)
 	container.setEnv(c)
 	container.setPorts(c)
-	p.Containers = append(p.Containers, container)
+	pod.Containers = append(pod.Containers, container)
 }
 
 type Container struct {
@@ -118,6 +166,16 @@ type Container struct {
 	Ports      []progress.Port     `json:"ports,omitempty"`
 	Resource   []progress.Resource `json:"resource,omitempty"`
 	Env        map[string]string   `json:"env,omitempty"`
+}
+
+func (c *Container) toProgress(now int64) progress.Progress {
+	p := progress.Progress{
+		Name:       c.Name,
+		Time:       now,
+		Indicators: make(map[string]interface{}),
+		Details:    make(map[string]interface{}),
+	}
+	return p
 }
 
 func (c *Container) toContainer() corev1.Container {

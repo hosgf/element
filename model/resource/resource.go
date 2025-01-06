@@ -3,6 +3,7 @@ package resource
 import (
 	"github.com/gogf/gf/v2/container/gset"
 	"github.com/hosgf/element/health"
+	"github.com/hosgf/element/types"
 )
 
 type Namespace struct {
@@ -97,6 +98,48 @@ type Node struct {
 }
 
 type Details struct {
-	Total int64 `json:"total"`
-	Free  int64 `json:"free"`
+	Type  types.ResourceType `json:"type,omitempty"` // 资源类型(RAM OR CPU)
+	Unit  string             `json:"unit,omitempty"` // 单位
+	Total int64              `json:"total,omitempty"`
+	Free  int64              `json:"free,omitempty"`
+	Usage int64              `json:"usage,omitempty"`
+}
+
+func (d *Details) SetTotal(data string) {
+	if len(data) < 1 {
+		return
+	}
+	value, unit := types.Parse(data)
+	if len(d.Unit) < 1 {
+		d.Unit = unit
+	}
+	if value > 0 {
+		d.Total = value
+	}
+}
+
+func (d *Details) SetFree(data string) {
+	if len(data) < 1 {
+		return
+	}
+	value, unit := types.Parse(data)
+	if len(d.Unit) < 1 {
+		d.Unit = unit
+	}
+	if value > 0 {
+		d.Free = value
+	}
+}
+
+func (d *Details) SetUsage(data string) {
+	if len(data) < 1 {
+		return
+	}
+	value, unit := types.Parse(data)
+	if len(d.Unit) < 1 {
+		d.Unit = unit
+	}
+	if value > 0 {
+		d.Usage = value
+	}
 }

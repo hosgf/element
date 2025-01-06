@@ -40,8 +40,8 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 	for _, n := range datas.Items {
 		node := Node{
 			Name:       n.Name,
-			Cpu:        resource.Details{},
-			Memory:     resource.Details{},
+			Cpu:        resource.Details{Type: types.ResourceCPU},
+			Memory:     resource.Details{Type: types.ResourceMemory},
 			Indicators: map[health.Indicator]health.IndicatorDetails{},
 		}
 		for _, address := range n.Status.Addresses {
@@ -57,22 +57,22 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 		}
 		// 资源总量
 		for name, quantity := range n.Status.Capacity {
-			value, unit := types.Parse(quantity.String())
 			switch name {
 			case corev1.ResourceCPU:
-				node.Cpu.Total = types.FormatCpu(value, unit)
+				node.Cpu.SetTotal(quantity.String())
 			case corev1.ResourceMemory:
-				node.Memory.Total = types.FormatMemory(value, unit)
+				node.Memory.SetTotal(quantity.String())
 			}
 		}
 		// 空闲资源
 		for name, quantity := range n.Status.Allocatable {
-			value, unit := types.Parse(quantity.String())
 			switch name {
 			case corev1.ResourceCPU:
-				node.Cpu.Free = types.FormatCpu(value, unit)
+				node.Cpu.SetFree(quantity.String())
+				node.Cpu.Usage = node.Cpu.Total - node.Cpu.Free
 			case corev1.ResourceMemory:
-				node.Memory.Free = types.FormatMemory(value, unit)
+				node.Memory.SetFree(quantity.String())
+				node.Memory.Usage = node.Memory.Total - node.Memory.Free
 			}
 		}
 		// 状态

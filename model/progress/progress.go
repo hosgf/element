@@ -6,11 +6,20 @@ import (
 )
 
 type ProgressGroup struct {
-	Region    string        `json:"region,omitempty"`
-	Namespace string        `json:"namespace,omitempty"`
-	Group     string        `json:"group,omitempty"`
-	Status    health.Health `json:"status,omitempty"`
-	Details   []Progress    `json:"details,omitempty"`
+	Region    string         `json:"region,omitempty"`
+	Namespace string         `json:"namespace,omitempty"`
+	GroupID   string         `json:"groupId,omitempty"`
+	Labels    ProgressLabels `json:"labels,omitempty"`
+	Status    health.Health  `json:"status,omitempty"`
+	Details   []Progress     `json:"details,omitempty"`
+}
+
+type ProgressLabels struct {
+	App    string            `json:"app,omitempty"`    // 所属应用
+	Group  string            `json:"group,omitempty"`  // 所属进程组
+	Owner  string            `json:"owner,omitempty"`  // 所属人
+	Scope  string            `json:"scope,omitempty"`  // 作用范围
+	Labels map[string]string `json:"labels,omitempty"` // 标签
 }
 
 type Progress struct {
@@ -19,7 +28,7 @@ type Progress struct {
 	PID        string                 `json:"pid,omitempty"`
 	Service    string                 `json:"service,omitempty"`
 	Name       string                 `json:"name,omitempty"`
-	Group      string                 `json:"group,omitempty"`
+	Labels     ProgressLabels         `json:"labels,omitempty"`
 	Status     health.Health          `json:"status,omitempty"`
 	Time       int64                  `json:"time,omitempty"`
 	Indicators map[string]interface{} `json:"indicators,omitempty"`

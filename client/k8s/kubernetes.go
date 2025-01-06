@@ -15,11 +15,16 @@ type operation interface {
 	Pod() podsInterface
 	Job() jobsInterface
 	Storage() storageInterface
+	Metrics() metricsInterface
 	PodTemplate() podTemplatesInterface
 }
 
 type nodesInterface interface {
 	Top(ctx context.Context) ([]Node, error)
+}
+
+type metricsInterface interface {
+	List(ctx context.Context, namespace string) ([]Metric, error)
 }
 
 type namespaceInterface interface {
