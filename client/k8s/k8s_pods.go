@@ -9,6 +9,7 @@ import (
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -54,10 +55,12 @@ func (pod *Pod) ToProgress(svcs []Service, metric Metric, now int64) []progress.
 		metrics := items[c.Name]
 		for _, res := range c.Resource {
 			r := metrics[res.Type]
-			r.Total = res.Maximum
-			p.Indicators[res.Type.String()] = r
+			p.Indicators[res.Type.String()] = resource.Details{
+				Total: res.Maximum,
+				Unit:  r.Unit,
+				Usage: r.Usage,
+			}
 		}
-
 		if len(svcs) < 1 {
 			list = append(list, p)
 			continue

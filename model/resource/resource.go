@@ -98,11 +98,10 @@ type Node struct {
 }
 
 type Details struct {
-	Type  types.ResourceType `json:"type,omitempty"` // 资源类型(RAM OR CPU)
-	Unit  string             `json:"unit,omitempty"` // 单位
-	Total int64              `json:"total,omitempty"`
-	Free  int64              `json:"free,omitempty"`
-	Usage int64              `json:"usage,omitempty"`
+	Unit  string `json:"unit,omitempty"` // 单位
+	Total int64  `json:"total,omitempty"`
+	Free  int64  `json:"free,omitempty"`
+	Usage int64  `json:"usage,omitempty"`
 }
 
 func (d *Details) SetTotal(data string) {

@@ -5,16 +5,20 @@ import (
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Metric struct {
-	Namespace string                                             `json:"namespace,omitempty"`
-	Name      string                                             `json:"name,omitempty"`
-	Items     map[string]map[types.ResourceType]resource.Details `json:"items,omitempty"`
+	Namespace string                                          `json:"namespace,omitempty"`
+	Name      string                                          `json:"name,omitempty"`
+	Items     map[string]map[types.ResourceType]MetricDetails `json:"items,omitempty"`
+}
+
+type MetricDetails struct {
+	Unit  string `json:"unit,omitempty"`
+	Usage int64  `json:"usage,omitempty"`
 }
 
 type metricsOperation struct {
@@ -35,22 +39,20 @@ func (o *metricsOperation) List(ctx context.Context, namespace string) ([]Metric
 		metric := Metric{
 			Namespace: item.GetNamespace(),
 			Name:      item.GetName(),
-			Items:     make(map[string]map[types.ResourceType]resource.Details),
+			Items:     make(map[string]map[types.ResourceType]MetricDetails),
 		}
 		for _, c := range item.Containers {
-			resources := make(map[types.ResourceType]resource.Details)
+			resources := make(map[types.ResourceType]MetricDetails)
 			for name, quantity := range c.Usage {
 				value, unit := types.Parse(quantity.String())
 				switch name {
 				case corev1.ResourceCPU:
-					resources[types.ResourceCPU] = resource.Details{
-						Type:  types.ResourceCPU,
+					resources[types.ResourceCPU] = MetricDetails{
 						Unit:  unit,
 						Usage: types.FormatCpu(value, unit),
 					}
 				case corev1.ResourceMemory:
-					resources[types.ResourceMemory] = resource.Details{
-						Type:  types.ResourceMemory,
+					resources[types.ResourceMemory] = MetricDetails{
 						Unit:  unit,
 						Usage: types.FormatMemory(value, unit),
 					}
@@ -58,7 +60,6 @@ func (o *metricsOperation) List(ctx context.Context, namespace string) ([]Metric
 			}
 			metric.Items[c.Name] = resources
 		}
-
 		metrics = append(metrics, metric)
 	}
 	return metrics, nil
