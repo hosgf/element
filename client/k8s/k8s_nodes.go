@@ -9,7 +9,6 @@ import (
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/resource"
-	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -40,8 +39,8 @@ func (o *nodesOperation) Top(ctx context.Context) ([]Node, error) {
 	for _, n := range datas.Items {
 		node := Node{
 			Name:       n.Name,
-			Cpu:        resource.Details{Type: types.ResourceCPU},
-			Memory:     resource.Details{Type: types.ResourceMemory},
+			Cpu:        resource.Details{},
+			Memory:     resource.Details{},
 			Indicators: map[health.Indicator]health.IndicatorDetails{},
 		}
 		for _, address := range n.Status.Addresses {
