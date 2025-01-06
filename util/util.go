@@ -20,6 +20,22 @@ import (
 	"github.com/hosgf/element/logger"
 )
 
+func FilterDuplicates(datas []string) []string {
+	var uniqueDatas []string
+	seen := make(map[string]bool)
+	for _, str := range datas {
+		if len(str) < 1 {
+			continue
+		}
+		if seen[str] {
+			continue
+		}
+		uniqueDatas = append(uniqueDatas, str)
+		seen[str] = true
+	}
+	return uniqueDatas
+}
+
 func Any(expr bool, a, b string) string {
 	if expr {
 		return a
