@@ -342,9 +342,7 @@ func (o *podsOperation) List(ctx context.Context, namespace string) ([]Pod, erro
 	if o.err != nil {
 		return nil, o.err
 	}
-	opts := v1.ListOptions{
-		//LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
-	}
+	opts := v1.ListOptions{}
 	return o.pods(ctx, namespace, opts)
 }
 
@@ -453,7 +451,8 @@ func (o *podsOperation) Restart(ctx context.Context, namespace, pod string) erro
 	if err != nil || !exist {
 		return err
 	}
-	return o.api.CoreV1().Pods(namespace).Delete(ctx, pod, v1.DeleteOptions{})
+	opts := v1.DeleteOptions{}
+	return o.api.AppsV1().Deployments(namespace).Delete(ctx, pod, opts)
 }
 
 func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname string) error {
