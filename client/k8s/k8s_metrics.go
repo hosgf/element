@@ -26,7 +26,7 @@ func (o *metricsOperation) List(ctx context.Context, namespace string) ([]Metric
 		return nil, o.err
 	}
 	opts := v1.ListOptions{}
-	data, err := o.metricsApi.MetricsV1alpha1().PodMetricses(namespace).List(ctx, opts)
+	data, err := o.metricsApi.MetricsV1beta1().PodMetricses(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Pod Metricses: %v", err)
 	}
