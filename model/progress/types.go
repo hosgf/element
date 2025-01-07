@@ -1,6 +1,8 @@
 package progress
 
 import (
+	"strings"
+
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/types"
 )
@@ -64,6 +66,10 @@ func (p *Progress) ToHealth() Health {
 		Address:   p.GetAddress(),
 		Ports:     p.GetPorts(),
 	}
+}
+
+func (p *Progress) matchGroup(group string) bool {
+	return strings.EqualFold(p.GetGroup(), group)
 }
 
 func (p *Progress) GetGroup() string {
