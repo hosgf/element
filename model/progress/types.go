@@ -28,6 +28,29 @@ type Progress struct {
 	Details    map[string]interface{} `json:"details,omitempty"`
 }
 
+func (p *Progress) ToGroupProgress() Progress {
+	return Progress{
+		PID:        p.PID,
+		Service:    p.Service,
+		Name:       p.Name,
+		Status:     p.Status,
+		Indicators: p.Indicators,
+		Details:    p.Details,
+	}
+}
+
+func (p *Progress) ToGroup() ProgressGroup {
+	return ProgressGroup{
+		Namespace: p.Namespace,
+		Region:    p.Region,
+		Labels:    p.Labels,
+		GroupID:   p.PID,
+		Time:      p.Time,
+		Status:    health.UNKNOWN,
+		Details:   []Progress{p.ToGroupProgress()},
+	}
+}
+
 func (p *Progress) ToHealth() Health {
 	return Health{
 		Namespace: p.Namespace,
