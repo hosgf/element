@@ -17,6 +17,10 @@ type ProgressGroup struct {
 	Details   []Progress      `json:"details,omitempty"`
 }
 
+func (p *ProgressGroup) MatchNamespace(namespace string) bool {
+	return strings.EqualFold(p.Namespace, namespace)
+}
+
 type Progress struct {
 	Region     string                 `json:"region,omitempty"`
 	Namespace  string                 `json:"namespace,omitempty"`
@@ -70,6 +74,10 @@ func (p *Progress) ToHealth() Health {
 
 func (p *Progress) MatchGroup(group string) bool {
 	return strings.EqualFold(p.GetGroup(), group)
+}
+
+func (p *Progress) MatchNamespace(namespace string) bool {
+	return strings.EqualFold(p.Namespace, namespace)
 }
 
 func (p *Progress) GetGroup() string {

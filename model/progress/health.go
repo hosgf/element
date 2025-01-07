@@ -17,6 +17,10 @@ type GroupHealth struct {
 	Details   []Health      `json:"details,omitempty"`
 }
 
+func (h *GroupHealth) MatchNamespace(namespace string) bool {
+	return strings.EqualFold(h.Namespace, namespace)
+}
+
 // Health 健康检查
 type Health struct {
 	Region    string          `json:"region,omitempty"`
@@ -31,8 +35,12 @@ type Health struct {
 	Time      int64           `json:"time,omitempty"`
 }
 
-func (p *Health) MatchGroup(group string) bool {
-	return strings.EqualFold(p.Group, group)
+func (h *Health) MatchNamespace(namespace string) bool {
+	return strings.EqualFold(h.Namespace, namespace)
+}
+
+func (h *Health) MatchGroup(group string) bool {
+	return strings.EqualFold(h.Group, group)
 }
 
 func GetHealth(ps []Progress) health.Health {
