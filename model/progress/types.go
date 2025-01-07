@@ -57,18 +57,18 @@ func (p *Progress) GetAddress() string {
 	return p.Indicators["address"].(string)
 }
 
+func (p *Progress) GetPorts() []*ProgressPort {
+	if p.Details == nil {
+		return nil
+	}
+	return p.Details["ports"].([]*ProgressPort)
+}
+
 func (p *Progress) SetAddress(address string) {
 	if p.Indicators == nil {
 		p.Indicators = make(map[string]interface{})
 	}
 	p.Indicators["address"] = address
-}
-
-func (p *Progress) GetPorts() []*ProgressPort {
-	if p.Details == nil {
-		p.Details = make(map[string]interface{})
-	}
-	return p.Indicators["ports"].([]*ProgressPort)
 }
 
 func (p *Progress) SetPorts(ports []*ProgressPort) {
