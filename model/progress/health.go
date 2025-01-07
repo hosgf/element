@@ -17,15 +17,16 @@ type GroupHealth struct {
 
 // Health 健康检查
 type Health struct {
-	Region    string                 `json:"region,omitempty"`
-	Namespace string                 `json:"namespace,omitempty"`
-	PID       string                 `json:"pid,omitempty"`
-	Service   string                 `json:"service,omitempty"`
-	Name      string                 `json:"name,omitempty"`
-	Group     string                 `json:"group,omitempty"`
-	Status    health.Health          `json:"status,omitempty"`
-	Time      int64                  `json:"time,omitempty"`
-	Details   map[string]interface{} `json:"details,omitempty"`
+	Region    string          `json:"region,omitempty"`
+	Namespace string          `json:"namespace,omitempty"`
+	PID       string          `json:"pid,omitempty"`
+	Service   string          `json:"service,omitempty"`
+	Name      string          `json:"name,omitempty"`
+	Group     string          `json:"group,omitempty"`
+	Address   string          `json:"address,omitempty"`
+	Ports     []*ProgressPort `json:"ports,omitempty"`
+	Status    health.Health   `json:"status,omitempty"`
+	Time      int64           `json:"time,omitempty"`
 }
 
 func GetHealth(ps []Progress) health.Health {

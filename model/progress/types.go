@@ -28,6 +28,28 @@ type Progress struct {
 	Details    map[string]interface{} `json:"details,omitempty"`
 }
 
+func (p *Progress) ToHealth() Health {
+	return Health{
+		Namespace: p.Namespace,
+		Region:    p.Region,
+		PID:       p.PID,
+		Name:      p.Name,
+		Service:   p.Service,
+		Status:    p.Status,
+		Time:      p.Time,
+		Group:     p.GetGroup(),
+		Address:   p.GetAddress(),
+		Ports:     p.GetPorts(),
+	}
+}
+
+func (p *Progress) GetGroup() string {
+	if p.Labels == nil {
+		return ""
+	}
+	return p.Labels.Group
+}
+
 func (p *Progress) GetAddress() string {
 	if p.Indicators == nil {
 		return ""
@@ -42,14 +64,14 @@ func (p *Progress) SetAddress(address string) {
 	p.Indicators["address"] = address
 }
 
-func (p *Progress) GetPorts() []ProgressPort {
+func (p *Progress) GetPorts() []*ProgressPort {
 	if p.Details == nil {
 		p.Details = make(map[string]interface{})
 	}
-	return p.Indicators["ports"].([]ProgressPort)
+	return p.Indicators["ports"].([]*ProgressPort)
 }
 
-func (p *Progress) SetPorts(ports []ProgressPort) {
+func (p *Progress) SetPorts(ports []*ProgressPort) {
 	if p.Details == nil {
 		p.Details = make(map[string]interface{})
 	}
