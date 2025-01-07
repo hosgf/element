@@ -95,8 +95,9 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 				break
 			}
 		}
-
-		p.Indicators["address"] = fmt.Sprintf("%s.%s.svc.cluster.local", p.Service, p.Namespace)
+		if len(p.Service) > 0 {
+			p.SetAddress(fmt.Sprintf("%s.%s.svc.cluster.local", p.Service, p.Namespace))
+		}
 		p.Details["group"] = group
 		p.Details["service"] = service
 		list = append(list, p)

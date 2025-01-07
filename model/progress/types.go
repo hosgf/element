@@ -15,14 +15,6 @@ type ProgressGroup struct {
 	Details   []Progress      `json:"details,omitempty"`
 }
 
-type ProgressLabels struct {
-	App    string            `json:"app,omitempty"`    // 所属应用
-	Group  string            `json:"group,omitempty"`  // 所属进程组
-	Owner  string            `json:"owner,omitempty"`  // 所属人
-	Scope  string            `json:"scope,omitempty"`  // 作用范围
-	Labels map[string]string `json:"labels,omitempty"` // 标签
-}
-
 type Progress struct {
 	Region     string                 `json:"region,omitempty"`
 	Namespace  string                 `json:"namespace,omitempty"`
@@ -34,6 +26,22 @@ type Progress struct {
 	Time       int64                  `json:"time,omitempty"`
 	Indicators map[string]interface{} `json:"indicators,omitempty"`
 	Details    map[string]interface{} `json:"details,omitempty"`
+}
+
+func (p Progress) GetAddress() string {
+	return p.Indicators["address"].(string)
+}
+
+func (p Progress) SetAddress(address string) {
+	p.Indicators["address"] = address
+}
+
+type ProgressLabels struct {
+	App    string            `json:"app,omitempty"`    // 所属应用
+	Group  string            `json:"group,omitempty"`  // 所属进程组
+	Owner  string            `json:"owner,omitempty"`  // 所属人
+	Scope  string            `json:"scope,omitempty"`  // 作用范围
+	Labels map[string]string `json:"labels,omitempty"` // 标签
 }
 
 type Db struct {
@@ -56,29 +64,6 @@ type RefreshScope struct {
 type Database struct {
 	Database string `json:"database"`
 	Select   string `json:"select * "`
-}
-
-// GroupHealth  健康检查
-type GroupHealth struct {
-	Region    string        `json:"region,omitempty"`
-	Namespace string        `json:"namespace,omitempty"`
-	Group     string        `json:"group,omitempty"`
-	Status    health.Health `json:"status,omitempty"`
-	Time      int64         `json:"time,omitempty"`
-	Details   []Health      `json:"details,omitempty"`
-}
-
-// Health 健康检查
-type Health struct {
-	Region    string                 `json:"region,omitempty"`
-	Namespace string                 `json:"namespace,omitempty"`
-	PID       string                 `json:"pid,omitempty"`
-	Service   string                 `json:"service,omitempty"`
-	Name      string                 `json:"name,omitempty"`
-	Group     string                 `json:"group,omitempty"`
-	Status    health.Health          `json:"status,omitempty"`
-	Time      int64                  `json:"time,omitempty"`
-	Details   map[string]interface{} `json:"details,omitempty"`
 }
 
 // Port 端口号
