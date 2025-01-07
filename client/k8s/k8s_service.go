@@ -33,6 +33,22 @@ type Service struct {
 	Ports       []progress.Port   `json:"ports,omitempty"`
 }
 
+func (s *Service) toProgressPort() []progress.ProgressPort {
+	ports := make([]progress.ProgressPort, 0)
+	if len(s.Ports) == 0 {
+		return ports
+	}
+	for _, port := range s.Ports {
+		p := progress.ProgressPort{
+			Name:     port.Name,
+			Protocol: port.Protocol,
+			Port:     port.Port,
+		}
+		ports = append(ports, p)
+	}
+	return ports
+}
+
 func (s *Service) toLabel() map[string]string {
 	labels := map[string]string{
 		types.LabelApp.String():   s.App,
