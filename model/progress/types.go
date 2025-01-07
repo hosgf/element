@@ -29,10 +29,16 @@ type Progress struct {
 }
 
 func (p Progress) GetAddress() string {
+	if p.Indicators == nil {
+		return ""
+	}
 	return p.Indicators["address"].(string)
 }
 
 func (p Progress) SetAddress(address string) {
+	if p.Indicators == nil {
+		p.Indicators = make(map[string]interface{})
+	}
 	p.Indicators["address"] = address
 }
 
