@@ -68,7 +68,7 @@ func (p *Progress) ToHealth() Health {
 	}
 }
 
-func (p *Progress) matchGroup(group string) bool {
+func (p *Progress) MatchGroup(group string) bool {
 	return strings.EqualFold(p.GetGroup(), group)
 }
 

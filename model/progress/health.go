@@ -31,7 +31,7 @@ type Health struct {
 	Time      int64           `json:"time,omitempty"`
 }
 
-func (p *Health) matchGroup(group string) bool {
+func (p *Health) MatchGroup(group string) bool {
 	return strings.EqualFold(p.Group, group)
 }
 
