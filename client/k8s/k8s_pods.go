@@ -83,6 +83,7 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 			list = append(list, p)
 			continue
 		}
+		ports := make([]progress.ProgressPort, 0)
 		service := progress.Details{
 			Details: map[string]string{},
 			Status:  health.UNKNOWN,
@@ -92,6 +93,16 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 				p.Service = svc.Name
 				service.Details[svc.Name] = svc.Status
 				service.Status = health.UP
+				svcPorts := svc.Ports
+				if len(svcPorts) > 0 {
+					for _, port := range svcPorts {
+						ports = append(ports, progress.ProgressPort{
+							Name:     port.Name,
+							Protocol: port.Protocol,
+							Port:     port.Port,
+						})
+					}
+				}
 				break
 			}
 		}
@@ -100,6 +111,9 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 		}
 		p.Details["group"] = group
 		p.Details["service"] = service
+		if len(ports) > 1 {
+			p.Details["ports"] = ports
+		}
 		list = append(list, p)
 	}
 	return list

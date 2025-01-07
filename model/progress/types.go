@@ -28,18 +28,32 @@ type Progress struct {
 	Details    map[string]interface{} `json:"details,omitempty"`
 }
 
-func (p Progress) GetAddress() string {
+func (p *Progress) GetAddress() string {
 	if p.Indicators == nil {
 		return ""
 	}
 	return p.Indicators["address"].(string)
 }
 
-func (p Progress) SetAddress(address string) {
+func (p *Progress) SetAddress(address string) {
 	if p.Indicators == nil {
 		p.Indicators = make(map[string]interface{})
 	}
 	p.Indicators["address"] = address
+}
+
+func (p *Progress) GetPorts() []ProgressPort {
+	if p.Details == nil {
+		p.Details = make(map[string]interface{})
+	}
+	return p.Indicators["ports"].([]ProgressPort)
+}
+
+func (p *Progress) SetPorts(ports []ProgressPort) {
+	if p.Details == nil {
+		p.Details = make(map[string]interface{})
+	}
+	p.Details["ports"] = ports
 }
 
 type ProgressLabels struct {
@@ -70,6 +84,12 @@ type RefreshScope struct {
 type Database struct {
 	Database string `json:"database"`
 	Select   string `json:"select * "`
+}
+
+type ProgressPort struct {
+	Name     string             `json:"name,omitempty"`     // 名称
+	Protocol types.ProtocolType `json:"protocol,omitempty"` // 协议
+	Port     int32              `json:"port,omitempty"`     // 对外的端口号,外部可访问的
 }
 
 // Port 端口号
