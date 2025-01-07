@@ -28,12 +28,12 @@ type Health struct {
 	Details   map[string]interface{} `json:"details,omitempty"`
 }
 
-func GetHealth(progresss []Progress) health.Health {
-	if nil == progresss || len(progresss) < 1 {
+func GetHealth(ps []Progress) health.Health {
+	if nil == ps || len(ps) < 1 {
 		return health.UNKNOWN
 	}
 	healths := gset.NewSet()
-	for _, p := range progresss {
+	for _, p := range ps {
 		healths.Add(p.Status)
 	}
 	if healths.Size() < 1 {

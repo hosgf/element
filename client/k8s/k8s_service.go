@@ -30,7 +30,7 @@ type Service struct {
 	Labels      map[string]string `json:"labels,omitempty"`
 	GroupLabel  string            `json:"groupLabel,omitempty"`
 	Status      string            `json:"status,omitempty"`
-	Ports       []progress.Port   `json:"ports,omitempty"`
+	Ports       []*progress.Port  `json:"ports,omitempty"`
 }
 
 func (s *Service) toProgressPort() []progress.ProgressPort {
@@ -64,7 +64,7 @@ func (s *Service) toLabel() map[string]string {
 	return labels
 }
 
-func (s *Service) labels(labels map[string]string) {
+func (s *Service) setLabels(labels map[string]string) {
 	if len(labels) < 1 {
 		return
 	}
@@ -98,10 +98,22 @@ func (s *Service) labels(labels map[string]string) {
 	}
 }
 
-func (s *Service) toSelector() map[string]string {
-	return map[string]string{
-		types.LabelGroup.String(): s.Group,
+func (s *Service) setPorts(svc corev1.Service) {
+	if len(svc.Spec.Ports) == 0 {
+		return
 	}
+	ports := make([]*progress.Port, 0)
+	for _, p := range svc.Spec.Ports {
+		port := &progress.Port{
+			Name:       p.Name,
+			Protocol:   types.ProtocolType(p.Protocol),
+			Port:       p.Port,
+			TargetPort: p.TargetPort.IntVal,
+			NodePort:   p.NodePort,
+		}
+		ports = append(ports, port)
+	}
+	s.Ports = ports
 }
 
 func (s *Service) setGroup(svc corev1.Service) {
@@ -128,6 +140,12 @@ func (s *Service) setGroup(svc corev1.Service) {
 	}
 }
 
+func (s *Service) toSelector() map[string]string {
+	return map[string]string{
+		types.LabelGroup.String(): s.Group,
+	}
+}
+
 func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Service, error) {
 	if o.err != nil {
 		return nil, o.err
@@ -145,8 +163,9 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Servi
 			ServiceType: string(svc.Spec.Type),
 			Status:      health.UP.String(),
 		}
+		service.setPorts(svc)
 		service.setGroup(svc)
-		service.labels(svc.Labels)
+		service.setLabels(svc.Labels)
 		services = append(services, service)
 	}
 	return services, nil
@@ -168,6 +187,7 @@ func (o *serviceOperation) Create(ctx context.Context, service *Service) error {
 	ports := make([]corev1.ServicePort, 0, len(service.Ports))
 	for _, p := range service.Ports {
 		ports = append(ports, corev1.ServicePort{
+			Name:       p.Name,
 			Protocol:   corev1.Protocol(p.Protocol),
 			Port:       p.Port,                         // 对外暴露的端口
 			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
