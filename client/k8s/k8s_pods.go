@@ -34,9 +34,9 @@ type Pod struct {
 	Replicas    int32             `json:"replicas,omitempty"`
 	RunningNode string            `json:"runningNode,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
-	GroupLabel  string            `json:"groupLabel,omitempty"`
 	Status      string            `json:"status,omitempty"`
 	Containers  []*Container      `json:"containers,omitempty"`
+	groupLabel  string            `json:"groupLabel,omitempty"`
 }
 
 func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progress.Progress {
@@ -164,14 +164,14 @@ func (pod *Pod) labels(labels map[string]string) {
 
 	if len(pod.Group) < 1 {
 		pod.Group = labels[types.LabelGroup.String()]
-		pod.GroupLabel = types.LabelGroup.String()
-		delete(labels, pod.GroupLabel)
+		pod.groupLabel = types.LabelGroup.String()
+		delete(labels, pod.groupLabel)
 	}
 
 	if len(pod.Group) < 1 {
 		pod.Group = labels["app"]
-		pod.GroupLabel = "app"
-		delete(labels, pod.GroupLabel)
+		pod.groupLabel = "app"
+		delete(labels, pod.groupLabel)
 	}
 
 	delete(labels, "pod-template-hash")
