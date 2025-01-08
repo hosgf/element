@@ -27,6 +27,17 @@ type Resource struct {
 	Nodes     []Node        `json:"nodes,omitempty"`
 }
 
+func (r *Resource) ToResourceItem() Resource {
+	return Resource{
+		Name:   r.Name,
+		Remark: r.Remark,
+		Type:   r.Type,
+		Status: r.Status,
+		Time:   r.Time,
+		Nodes:  r.Nodes,
+	}
+}
+
 func (r *Resource) SetStatus() *Resource {
 	if len(r.Nodes) < 1 {
 		r.Status = health.UNKNOWN
