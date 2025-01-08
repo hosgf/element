@@ -87,11 +87,18 @@ func (p *Progress) GetGroup() string {
 	return p.Labels.Group
 }
 
-func (p *Progress) GetAddress() string {
-	if p.Indicators == nil {
+func (p *Progress) GetRunningNode() string {
+	if p.Details == nil {
 		return ""
 	}
-	return p.Indicators["address"].(string)
+	return p.Details["runningNode"].(string)
+}
+
+func (p *Progress) GetAddress() string {
+	if p.Details == nil {
+		return ""
+	}
+	return p.Details["address"].(string)
 }
 
 func (p *Progress) GetPorts() []*ProgressPort {
@@ -101,11 +108,18 @@ func (p *Progress) GetPorts() []*ProgressPort {
 	return p.Details["ports"].([]*ProgressPort)
 }
 
-func (p *Progress) SetAddress(address string) {
-	if p.Indicators == nil {
-		p.Indicators = make(map[string]interface{})
+func (p *Progress) SetRunningNode(runningNode string) {
+	if p.Details == nil {
+		p.Details = make(map[string]interface{})
 	}
-	p.Indicators["address"] = address
+	p.Details["runningNode"] = runningNode
+}
+
+func (p *Progress) SetAddress(address string) {
+	if p.Details == nil {
+		p.Details = make(map[string]interface{})
+	}
+	p.Details["address"] = address
 }
 
 func (p *Progress) SetPorts(ports []*ProgressPort) {
