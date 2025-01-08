@@ -68,6 +68,7 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 			Details:    make(map[string]interface{}),
 			Time:       now,
 		}
+		p.Details["runningNode"] = pod.RunningNode
 		metrics := items[c.Name]
 		for _, res := range c.Resource {
 			r := metrics[res.Type]
