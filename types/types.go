@@ -52,9 +52,9 @@ type Namespace struct {
 
 // Environment 环境变量
 type Environment struct {
-	Name string            `json:"name,omitempty"` // 环境变量名称
-	Path string            `json:"path,omitempty"` // 映射地址
-	Env  map[string]string `json:"env,omitempty"`  // 变量信息
+	Name  string            `json:"name,omitempty"`  // 环境变量名称
+	Path  string            `json:"path,omitempty"`  // 映射地址
+	Items map[string]string `json:"items,omitempty"` // 变量信息
 }
 
 // Labels 标签信息
