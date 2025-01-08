@@ -1,6 +1,8 @@
 package progress
 
 import (
+	"strings"
+
 	"github.com/gogf/gf/v2/container/gset"
 	"github.com/hosgf/element/health"
 )
@@ -15,6 +17,10 @@ type GroupHealth struct {
 	Details   []Health      `json:"details,omitempty"`
 }
 
+func (h *GroupHealth) MatchNamespace(namespace string) bool {
+	return strings.EqualFold(h.Namespace, namespace)
+}
+
 // Health 健康检查
 type Health struct {
 	Region    string          `json:"region,omitempty"`
@@ -27,6 +33,14 @@ type Health struct {
 	Ports     []*ProgressPort `json:"ports,omitempty"`
 	Status    health.Health   `json:"status,omitempty"`
 	Time      int64           `json:"time,omitempty"`
+}
+
+func (h *Health) MatchNamespace(namespace string) bool {
+	return strings.EqualFold(h.Namespace, namespace)
+}
+
+func (h *Health) MatchGroup(group string) bool {
+	return strings.EqualFold(h.Group, group)
 }
 
 func GetHealth(ps []Progress) health.Health {

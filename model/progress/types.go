@@ -1,6 +1,8 @@
 package progress
 
 import (
+	"strings"
+
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/types"
 )
@@ -13,6 +15,10 @@ type ProgressGroup struct {
 	Status    health.Health   `json:"status,omitempty"`
 	Time      int64           `json:"time,omitempty"`
 	Details   []Progress      `json:"details,omitempty"`
+}
+
+func (p *ProgressGroup) MatchNamespace(namespace string) bool {
+	return strings.EqualFold(p.Namespace, namespace)
 }
 
 type Progress struct {
@@ -64,6 +70,14 @@ func (p *Progress) ToHealth() Health {
 		Address:   p.GetAddress(),
 		Ports:     p.GetPorts(),
 	}
+}
+
+func (p *Progress) MatchGroup(group string) bool {
+	return strings.EqualFold(p.GetGroup(), group)
+}
+
+func (p *Progress) MatchNamespace(namespace string) bool {
+	return strings.EqualFold(p.Namespace, namespace)
 }
 
 func (p *Progress) GetGroup() string {
