@@ -2,10 +2,8 @@ package k8s
 
 import (
 	"context"
-
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
 	"github.com/hosgf/element/util"
 	corev1 "k8s.io/api/core/v1"
@@ -17,7 +15,7 @@ type namespaceOperation struct {
 	*options
 }
 
-func (o *namespaceOperation) List(ctx context.Context) ([]*resource.Namespace, error) {
+func (o *namespaceOperation) List(ctx context.Context) ([]*types.Namespace, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -25,9 +23,9 @@ func (o *namespaceOperation) List(ctx context.Context) ([]*resource.Namespace, e
 	if err != nil {
 		return nil, err
 	}
-	namespaces := make([]*resource.Namespace, 0, len(datas.Items))
+	namespaces := make([]*types.Namespace, 0, len(datas.Items))
 	for _, ns := range datas.Items {
-		namespaces = append(namespaces, &resource.Namespace{
+		namespaces = append(namespaces, &types.Namespace{
 			Name:   ns.Name,
 			Label:  ns.Labels[types.LabelOwner.String()],
 			Status: Status(string(ns.Status.Phase)),

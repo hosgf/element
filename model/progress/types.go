@@ -8,13 +8,13 @@ import (
 )
 
 type ProgressGroup struct {
-	Region    string          `json:"region,omitempty"`
-	Namespace string          `json:"namespace,omitempty"`
-	GroupID   string          `json:"groupId,omitempty"`
-	Labels    *ProgressLabels `json:"labels,omitempty"`
-	Status    health.Health   `json:"status,omitempty"`
-	Time      int64           `json:"time,omitempty"`
-	Details   []Progress      `json:"details,omitempty"`
+	Region    string        `json:"region,omitempty"`
+	Namespace string        `json:"namespace,omitempty"`
+	GroupID   string        `json:"groupId,omitempty"`
+	Labels    *types.Labels `json:"labels,omitempty"`
+	Status    health.Health `json:"status,omitempty"`
+	Time      int64         `json:"time,omitempty"`
+	Details   []Progress    `json:"details,omitempty"`
 }
 
 func (p *ProgressGroup) MatchNamespace(namespace string) bool {
@@ -27,7 +27,7 @@ type Progress struct {
 	PID        string                 `json:"pid,omitempty"`
 	Service    string                 `json:"service,omitempty"`
 	Name       string                 `json:"name,omitempty"`
-	Labels     *ProgressLabels        `json:"labels,omitempty"`
+	Labels     *types.Labels          `json:"labels,omitempty"`
 	Status     health.Health          `json:"status,omitempty"`
 	Time       int64                  `json:"time,omitempty"`
 	Indicators map[string]interface{} `json:"indicators,omitempty"`
@@ -127,14 +127,6 @@ func (p *Progress) SetPorts(ports []*ProgressPort) {
 		p.Details = make(map[string]interface{})
 	}
 	p.Details["ports"] = ports
-}
-
-type ProgressLabels struct {
-	App    string            `json:"app,omitempty"`    // 所属应用
-	Group  string            `json:"group,omitempty"`  // 所属进程组
-	Owner  string            `json:"owner,omitempty"`  // 所属人
-	Scope  string            `json:"scope,omitempty"`  // 作用范围
-	Labels map[string]string `json:"labels,omitempty"` // 标签
 }
 
 type Db struct {

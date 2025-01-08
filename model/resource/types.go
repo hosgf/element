@@ -6,14 +6,6 @@ import (
 	"github.com/hosgf/element/types"
 )
 
-type Namespace struct {
-	Region string        `json:"region,omitempty"`
-	Name   string        `json:"name,omitempty"`
-	Label  string        `json:"label,omitempty"`
-	Remark string        `json:"remark,omitempty"`
-	Status health.Health `json:"status,omitempty"`
-}
-
 // Resource 资源对象
 type Resource struct {
 	Env       string        `json:"env,omitempty"`

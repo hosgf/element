@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"github.com/hosgf/element/types"
 
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/model/resource"
@@ -39,7 +40,7 @@ type metricsInterface interface {
 }
 
 type namespaceInterface interface {
-	List(ctx context.Context) ([]*resource.Namespace, error)
+	List(ctx context.Context) ([]*types.Namespace, error)
 	Exists(ctx context.Context, namespace string) (bool, error)
 	Create(ctx context.Context, namespace, label string) (bool, error)
 	Delete(ctx context.Context, namespace string) error
