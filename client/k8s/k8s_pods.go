@@ -29,6 +29,17 @@ type Pod struct {
 	Containers  []*Container `json:"containers,omitempty"`
 }
 
+func (pod *Pod) updateAppsDeployment(deployment *appsv1.Deployment) *appsv1.Deployment {
+	for k, v := range pod.labels() {
+		deployment.ObjectMeta.Labels[k] = v
+		deployment.Spec.Template.ObjectMeta.Labels[k] = v
+	}
+	deployment.Spec.Replicas = pod.replicas()
+	deployment.Spec.Selector.MatchLabels = pod.toSelector()
+	deployment.Spec.Template.Spec.Containers = pod.containers()
+	return deployment
+}
+
 func (pod *Pod) toAppsDeployment() *appsv1.Deployment {
 	metadata := v1.ObjectMeta{
 		Name:      pod.Name, // Pod 名称
@@ -385,12 +396,12 @@ func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
 	if o.err != nil {
 		return o.err
 	}
-	if has, err := o.deploymentExists(ctx, pod.Namespace, pod.Name); has {
+	if has, d, err := o.deploymentExists(ctx, pod.Namespace, pod.Name); has {
 		if err != nil {
 			return err
 		}
 		if pod.AllowUpdate {
-			return o.update(ctx, pod)
+			return o.update(ctx, d, pod)
 		}
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Pod: %s 已存在!", pod.Namespace, pod.Name)
 	}
@@ -517,14 +528,15 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 	return err
 }
 
-func (o *podsOperation) deploymentExists(ctx context.Context, namespace string, group string) (bool, error) {
+func (o *podsOperation) deploymentExists(ctx context.Context, namespace string, group string) (bool, *appsv1.Deployment, error) {
 	opts := v1.GetOptions{}
 	d, err := o.api.AppsV1().Deployments(namespace).Get(ctx, group, opts)
-	return o.isExist(d, err, "Failed to get Pod: %v")
+	has, err := o.isExist(d, err, "Failed to get Pod: %v")
+	return has, d, err
 }
 
 func (o *podsOperation) deleteDeployment(ctx context.Context, namespace string, group string) error {
-	if has, err := o.deploymentExists(ctx, namespace, group); has {
+	if has, _, err := o.deploymentExists(ctx, namespace, group); has {
 		if err != nil {
 			return err
 		}
@@ -545,9 +557,9 @@ func (o *podsOperation) create(ctx context.Context, pod *Pod) error {
 	return nil
 }
 
-func (o *podsOperation) update(ctx context.Context, pod *Pod) error {
+func (o *podsOperation) update(ctx context.Context, deployment *appsv1.Deployment, pod *Pod) error {
 	opts := v1.UpdateOptions{}
-	_, err := o.api.AppsV1().Deployments(pod.Namespace).Update(ctx, pod.toAppsDeployment(), opts)
+	_, err := o.api.AppsV1().Deployments(pod.Namespace).Update(ctx, pod.updateAppsDeployment(deployment), opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps deployment: %v", err)
 	}

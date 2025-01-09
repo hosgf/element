@@ -26,6 +26,26 @@ type Service struct {
 	Ports       []*progress.Port `json:"ports,omitempty"`
 }
 
+func (s *Service) updateCoreService(svc *corev1.Service) *corev1.Service {
+	ports := make([]corev1.ServicePort, 0, len(s.Ports))
+	for _, p := range s.Ports {
+		ports = append(ports, corev1.ServicePort{
+			Name:       p.GetName(),
+			Protocol:   corev1.Protocol(p.Protocol.String()),
+			Port:       p.Port,                         // 对外暴露的端口
+			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
+			NodePort:   p.NodePort,
+		})
+	}
+	svc.Spec.Ports = ports
+	svc.Spec.Selector = s.toSelector()
+	svc.Spec.Type = corev1.ServiceType(toServiceType(s.ServiceType)) // 默认为 ClusterIP 类型
+	for k, v := range s.labels() {
+		svc.ObjectMeta.Labels[k] = v
+	}
+	return svc
+}
+
 func (s *Service) toCoreService() *corev1.Service {
 	ports := make([]corev1.ServicePort, 0, len(s.Ports))
 	for _, p := range s.Ports {
@@ -165,24 +185,20 @@ func (o *serviceOperation) List(ctx context.Context, namespace string, groups ..
 }
 
 func (o *serviceOperation) Exists(ctx context.Context, namespace, service string) (bool, error) {
-	if o.err != nil {
-		return false, o.err
-	}
-	opts := v1.GetOptions{}
-	svc, err := o.api.CoreV1().Services(namespace).Get(ctx, service, opts)
-	return o.isExist(svc, err, "Failed to get Services: %v")
+	has, _, err := o.exists(ctx, namespace, service)
+	return has, err
 }
 
 func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
 	if o.err != nil {
 		return o.err
 	}
-	if has, err := o.Exists(ctx, service.Namespace, service.Name); has {
+	if has, svc, err := o.exists(ctx, service.Namespace, service.Name); has {
 		if err != nil {
 			return err
 		}
 		if service.AllowUpdate {
-			return o.update(ctx, service)
+			return o.update(ctx, svc, service)
 		}
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Service: %s 已存在!", service.Namespace, service.Name)
 	}
@@ -267,9 +283,12 @@ func (o *serviceOperation) create(ctx context.Context, service *Service) error {
 	return nil
 }
 
-func (o *serviceOperation) update(ctx context.Context, service *Service) error {
+func (o *serviceOperation) update(ctx context.Context, svc *corev1.Service, service *Service) error {
+	if svc == nil {
+		return nil
+	}
 	opts := v1.UpdateOptions{}
-	_, err := o.api.CoreV1().Services(service.Namespace).Update(ctx, service.toCoreService(), opts)
+	_, err := o.api.CoreV1().Services(service.Namespace).Update(ctx, service.updateCoreService(svc), opts)
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update service: %v", err)
 	}
@@ -283,6 +302,16 @@ func (o *serviceOperation) delete(ctx context.Context, namespace string, service
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete service: %v", err)
 	}
 	return nil
+}
+
+func (o *serviceOperation) exists(ctx context.Context, namespace, service string) (bool, *corev1.Service, error) {
+	if o.err != nil {
+		return false, nil, o.err
+	}
+	opts := v1.GetOptions{}
+	svc, err := o.api.CoreV1().Services(namespace).Get(ctx, service, opts)
+	has, err := o.isExist(svc, err, "Failed to get Services: %v")
+	return has, svc, err
 }
 
 func (o *serviceOperation) list(ctx context.Context, namespace string, group string) (*corev1.ServiceList, error) {
