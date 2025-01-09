@@ -3,6 +3,8 @@ package k8s
 import (
 	"context"
 
+	"github.com/gogf/gf/v2/errors/gcode"
+	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/progress"
@@ -112,6 +114,22 @@ func (o *progressOperation) Apply(ctx context.Context, config *ProcessGroupConfi
 		return nil
 	}
 	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *progressOperation) Destroy(ctx context.Context, namespace string, groups ...string) error {
+	if o.err != nil {
+		return o.err
+	}
+	if groups == nil || len(groups) < 1 {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "请传入要删除的进程组名称")
+	}
+	if err := o.k8s.Service().DeleteGroup(ctx, namespace, groups...); err != nil {
+		return err
+	}
+	if err := o.k8s.Pod().DeleteGroup(ctx, namespace, groups...); err != nil {
 		return err
 	}
 	return nil

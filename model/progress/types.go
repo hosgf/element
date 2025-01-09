@@ -1,6 +1,7 @@
 package progress
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gogf/gf/v2/util/gconv"
@@ -182,6 +183,30 @@ type Port struct {
 	Port       int32              `json:"port,omitempty"`       // 对外的端口号,外部可访问的
 	TargetPort int32              `json:"targetPort,omitempty"` // 被代理的端口号,应用服务端口号
 	NodePort   int32              `json:"nodePort,omitempty"`   // 代理端口号
+}
+
+func (p *Port) GetName() string {
+	p.Format()
+	if p.Name == "" {
+		return string(p.Port)
+	}
+	return fmt.Sprintf("%s-%d", p.Name, p.Port)
+}
+
+func (p *Port) Format() {
+	port := p.Port
+	targetPort := p.TargetPort
+	if targetPort > 0 && port > 0 {
+		return
+	}
+	if targetPort < 1 {
+		targetPort = port
+	}
+	if port < 1 {
+		port = targetPort
+	}
+	p.Port = port
+	p.TargetPort = targetPort
 }
 
 // Resource 进程资源

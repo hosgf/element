@@ -1,11 +1,14 @@
 package types
 
 import (
+	"strings"
+
 	"github.com/hosgf/element/health"
 )
 
 var (
 	DefaultServiceType string = "ClusterIP"
+	DefaultGroupLabel  string = "app"
 )
 
 // Label 标签类型
@@ -32,7 +35,7 @@ const (
 )
 
 func (t ProtocolType) String() string {
-	return string(t)
+	return strings.ToUpper(string(t))
 }
 
 // ResourceType 资源类型

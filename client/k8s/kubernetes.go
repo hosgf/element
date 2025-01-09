@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hosgf/element/types"
 
@@ -29,6 +30,7 @@ type progressInterface interface {
 	Running(ctx context.Context, config *ProcessGroupConfig) error
 	Create(ctx context.Context, config *ProcessGroupConfig) error
 	Apply(ctx context.Context, config *ProcessGroupConfig) error
+	Destroy(ctx context.Context, namespace string, groups ...string) error
 }
 
 type resourceInterface interface {
@@ -51,20 +53,22 @@ type namespaceInterface interface {
 }
 
 type serviceInterface interface {
-	List(ctx context.Context, namespace string) ([]*Service, error)
+	List(ctx context.Context, namespace string, groups ...string) ([]*Service, error)
 	Exists(ctx context.Context, namespace, service string) (bool, error)
 	Create(ctx context.Context, service *Service) error
 	Apply(ctx context.Context, service *Service) error
 	Delete(ctx context.Context, namespace, service string) error
+	DeleteGroup(ctx context.Context, namespace string, groups ...string) error
 }
 
 type podsInterface interface {
 	Get(ctx context.Context, namespace, appname string) ([]*Pod, error)
-	List(ctx context.Context, namespace string) ([]*Pod, error)
+	List(ctx context.Context, namespace string, groups ...string) ([]*Pod, error)
 	Exists(ctx context.Context, namespace, pod string) (bool, error)
 	Create(ctx context.Context, pod *Pod) error
 	Apply(ctx context.Context, pod *Pod) error
 	Delete(ctx context.Context, namespace, pod string) error
+	DeleteGroup(ctx context.Context, namespace string, groups ...string) error
 	Restart(ctx context.Context, namespace, pod string) error
 	RestartApp(ctx context.Context, namespace, appname string) error
 }
@@ -95,6 +99,10 @@ type Model struct {
 	groupLabel string            `json:"groupLabel,omitempty"`
 }
 
+func (m *Model) Key() string {
+	return fmt.Sprintf("%s.%s", m.Name, m.Namespace)
+}
+
 func (m *Model) toSelector() map[string]string {
 	return map[string]string{
 		types.LabelGroup.String(): m.Group,
@@ -111,23 +119,30 @@ func (m *Model) toLabels() *types.Labels {
 	}
 }
 
-func (s *Service) setTypesLabels(labels *types.Labels) {
+func (m *Model) setTypesLabels(labels *types.Labels) {
 	if nil == labels {
 		return
 	}
-	s.App = labels.App
-	s.Owner = labels.Owner
-	s.Scope = labels.Scope
-	s.Group = labels.Group
-	s.Labels = labels.Labels
+	m.App = labels.App
+	m.Owner = labels.Owner
+	m.Scope = labels.Scope
+	m.Group = labels.Group
+	m.Labels = labels.Labels
 }
 
 func (m *Model) labels() map[string]string {
-	labels := map[string]string{
-		types.LabelApp.String():   m.App,
-		types.LabelOwner.String(): m.Owner,
-		types.LabelScope.String(): m.Scope,
-		types.LabelGroup.String(): m.Group,
+	labels := make(map[string]string)
+	if len(m.App) > 0 {
+		labels[types.LabelApp.String()] = m.App
+	}
+	if len(m.Owner) > 0 {
+		labels[types.LabelOwner.String()] = m.Owner
+	}
+	if len(m.Scope) > 0 {
+		labels[types.LabelScope.String()] = m.Scope
+	}
+	if len(m.Group) > 0 {
+		labels[types.LabelGroup.String()] = m.Group
 	}
 	if m.Labels != nil {
 		for k, v := range m.Labels {
@@ -157,8 +172,8 @@ func (m *Model) setLabels(labels map[string]string) {
 	}
 
 	if len(m.Group) < 1 {
-		m.Group = labels["app"]
-		m.groupLabel = "app"
+		m.Group = labels[types.DefaultGroupLabel]
+		m.groupLabel = types.DefaultGroupLabel
 		delete(labels, m.groupLabel)
 	}
 
@@ -179,8 +194,8 @@ func (m *Model) setLabels(labels map[string]string) {
 
 // ProcessGroupConfig 进程组配置对象
 type ProcessGroupConfig struct {
-	GroupName   string          `json:"groupName,omitempty"`   // 进程组名称
 	Namespace   string          `json:"namespace,omitempty"`   // 运行进程的资源空间
+	GroupName   string          `json:"groupName,omitempty"`   // 进程组名称
 	Labels      types.Labels    `json:"labels,omitempty"`      // 进程组标签
 	RunningNode string          `json:"runningNode,omitempty"` // 运行节点,可为空
 	Replicas    int32           `json:"replicas,omitempty"`    // 节点数，以进程组为纬度 默认为 1

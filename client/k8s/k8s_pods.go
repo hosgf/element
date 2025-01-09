@@ -183,7 +183,7 @@ func (c *Container) ports(container *corev1.Container) {
 	for _, p := range list {
 		ports = append(ports, corev1.ContainerPort{
 			Name:          p.Name,
-			Protocol:      corev1.Protocol(p.Protocol),
+			Protocol:      corev1.Protocol(p.Protocol.String()),
 			ContainerPort: p.TargetPort,
 		})
 	}
@@ -285,6 +285,7 @@ func (pg *ProcessGroupConfig) toPod() *Pod {
 		RunningNode: pg.RunningNode,
 		Containers:  make([]*Container, 0),
 	}
+	pod.setTypesLabels(labels)
 	for _, p := range pg.Process {
 		c := p.toContainer()
 		if c == nil {
@@ -324,12 +325,26 @@ func (o *podsOperation) Get(ctx context.Context, namespace, appname string) ([]*
 	return o.pods(ctx, namespace, opts)
 }
 
-func (o *podsOperation) List(ctx context.Context, namespace string) ([]*Pod, error) {
+func (o *podsOperation) List(ctx context.Context, namespace string, groups ...string) ([]*Pod, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
-	opts := v1.ListOptions{}
-	return o.pods(ctx, namespace, opts)
+	if groups == nil || len(groups) == 0 {
+		datas, err := o.list(ctx, namespace, "")
+		return o.toPods(namespace, datas), err
+	}
+	pods := make([]*Pod, 0)
+	for _, g := range groups {
+		if len(g) < 1 {
+			continue
+		}
+		datas, err := o.list(ctx, namespace, g)
+		if err != nil {
+			return nil, err
+		}
+		pods = append(pods, o.toPods(namespace, datas)...)
+	}
+	return pods, nil
 }
 
 func (o *podsOperation) Exists(ctx context.Context, namespace, pod string) (bool, error) {
@@ -428,8 +443,40 @@ func (o *podsOperation) Delete(ctx context.Context, namespace, pod string) error
 	if o.err != nil {
 		return o.err
 	}
-	opts := v1.DeleteOptions{}
-	return o.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
+	if has, err := o.Exists(ctx, namespace, pod); has {
+		if err != nil {
+			return err
+		}
+		return o.delete(ctx, namespace, pod)
+	}
+	return nil
+}
+
+func (o *podsOperation) DeleteGroup(ctx context.Context, namespace string, groups ...string) error {
+	if o.err != nil {
+		return o.err
+	}
+	for _, group := range groups {
+		if len(group) < 1 {
+			continue
+		}
+		if err := o.deleteDeployment(ctx, namespace, group); err != nil {
+			return err
+		}
+		datas, err := o.list(ctx, namespace, group)
+		if err != nil {
+			return err
+		}
+		if datas.Items == nil || len(datas.Items) == 0 {
+			continue
+		}
+		for _, data := range datas.Items {
+			if err := o.delete(ctx, namespace, data.Name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (o *podsOperation) Restart(ctx context.Context, namespace, pod string) error {
@@ -461,10 +508,50 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 	return err
 }
 
+func (o *podsOperation) deploymentExists(ctx context.Context, namespace string, group string) (bool, error) {
+	opts := v1.GetOptions{}
+	d, err := o.api.AppsV1().Deployments(namespace).Get(ctx, group, opts)
+	return o.isExist(d, err, "Failed to get Pod: %v")
+}
+
+func (o *podsOperation) deleteDeployment(ctx context.Context, namespace string, group string) error {
+	if has, err := o.deploymentExists(ctx, namespace, group); has {
+		if err != nil {
+			return err
+		}
+		return o.api.AppsV1().Deployments(namespace).Delete(ctx, group, v1.DeleteOptions{})
+	}
+	return nil
+}
+
+func (o *podsOperation) delete(ctx context.Context, namespace string, pod string) error {
+	opts := v1.DeleteOptions{}
+	return o.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
+}
+
+func (o *podsOperation) list(ctx context.Context, namespace string, group string) (*corev1.PodList, error) {
+	opts := v1.ListOptions{}
+	if len(group) > 0 {
+		opts.LabelSelector = fmt.Sprintf("%s=%s", types.LabelGroup, group)
+	}
+	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
+	if err != nil {
+		return datas, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
+	}
+	return datas, nil
+}
+
 func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]*Pod, error) {
 	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
+	}
+	return o.toPods(namespace, datas), nil
+}
+
+func (o *podsOperation) toPods(namespace string, datas *corev1.PodList) []*Pod {
+	if datas == nil {
+		return nil
 	}
 	pods := make([]*Pod, 0, len(datas.Items))
 	for _, p := range datas.Items {
@@ -480,5 +567,5 @@ func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.List
 		}
 		pods = append(pods, pod)
 	}
-	return pods, nil
+	return pods
 }

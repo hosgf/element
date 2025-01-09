@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
@@ -24,35 +25,6 @@ type Service struct {
 	ServiceType string           `json:"serviceType,omitempty"`
 	Status      string           `json:"status,omitempty"`
 	Ports       []*progress.Port `json:"ports,omitempty"`
-}
-
-func (pg *ProcessGroupConfig) toServices() []*Service {
-	if pg.Process == nil || len(pg.Process) < 1 {
-		return nil
-	}
-	labels := &pg.Labels
-	if len(labels.Group) < 1 {
-		labels.Group = pg.GroupName
-	}
-	svcs := make([]*Service, 0)
-	for _, p := range pg.Process {
-		ports := p.Ports
-		if len(p.Service) < 1 || ports == nil || len(ports) < 1 {
-			continue
-		}
-		svc := &Service{
-			Model:       Model{Namespace: pg.Namespace, Name: p.Service},
-			ServiceType: p.ServiceType,
-			Ports:       make([]*progress.Port, 0),
-		}
-		for _, p := range ports {
-			svc.Ports = append(svc.Ports, &p)
-		}
-
-		svc.setTypesLabels(labels)
-		svcs = append(svcs, svc)
-	}
-	return svcs
 }
 
 func (s *Service) toProgressPort() []progress.ProgressPort {
@@ -99,13 +71,13 @@ func (s *Service) setGroup(svc corev1.Service) {
 		s.groupLabel = types.LabelGroup.String()
 		return
 	}
-	if v, ok := selector["app"]; ok {
+	if v, ok := selector[types.DefaultGroupLabel]; ok {
 		s.Group = v
-		s.groupLabel = "app"
+		s.groupLabel = types.DefaultGroupLabel
 		return
 	}
 	for k, v := range selector {
-		if gstr.Contains(k, "app") {
+		if gstr.Contains(k, types.DefaultGroupLabel) {
 			s.Group = v
 			s.groupLabel = k
 			return
@@ -113,26 +85,57 @@ func (s *Service) setGroup(svc corev1.Service) {
 	}
 }
 
-func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Service, error) {
+func (pg *ProcessGroupConfig) toServices() []*Service {
+	if pg.Process == nil || len(pg.Process) < 1 {
+		return nil
+	}
+	labels := &pg.Labels
+	if len(labels.Group) < 1 {
+		labels.Group = pg.GroupName
+	}
+	svcmap := make(map[string]*Service)
+	for _, p := range pg.Process {
+		ports := p.Ports
+		if len(p.Service) < 1 || ports == nil || len(ports) < 1 {
+			continue
+		}
+		model := Model{Namespace: pg.Namespace, Name: p.Service}
+		key := model.Key()
+		svc := svcmap[key]
+		if svc == nil {
+			svc = &Service{Model: model, ServiceType: p.ServiceType, Ports: make([]*progress.Port, 0)}
+			svc.setTypesLabels(labels)
+		}
+		for _, p := range ports {
+			svc.Ports = append(svc.Ports, &p)
+		}
+		svcmap[key] = svc
+	}
+	svcs := make([]*Service, 0)
+	for _, v := range svcmap {
+		svcs = append(svcs, v)
+	}
+	return svcs
+}
+
+func (o *serviceOperation) List(ctx context.Context, namespace string, groups ...string) ([]*Service, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
-	opts := v1.ListOptions{}
-	svcs, err := o.api.CoreV1().Services(namespace).List(ctx, opts)
-	if err != nil {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Services: %v", err)
+	if groups == nil || len(groups) == 0 {
+		svcs, err := o.list(ctx, namespace, "")
+		return o.toServices(namespace, svcs), err
 	}
-	services := make([]*Service, 0, len(svcs.Items))
-	for _, svc := range svcs.Items {
-		service := &Service{
-			Model:       Model{Namespace: namespace, Name: svc.Name},
-			Status:      health.UP.String(),
-			ServiceType: string(svc.Spec.Type),
+	services := make([]*Service, 0)
+	for _, g := range groups {
+		if len(g) < 1 {
+			continue
 		}
-		service.setPorts(svc)
-		service.setGroup(svc)
-		service.setLabels(svc.Labels)
-		services = append(services, service)
+		svcs, err := o.list(ctx, namespace, g)
+		if err != nil {
+			return nil, err
+		}
+		services = append(services, o.toServices(namespace, svcs)...)
 	}
 	return services, nil
 }
@@ -150,11 +153,18 @@ func (o *serviceOperation) Create(ctx context.Context, service *Service) error {
 	if o.err != nil {
 		return o.err
 	}
+	if has, err := o.Exists(ctx, service.Namespace, service.Name); has {
+		if err != nil {
+			return err
+		}
+		return nil
+		//return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Service: %s 已存在!", service.Namespace, service.Name)
+	}
 	ports := make([]corev1.ServicePort, 0, len(service.Ports))
 	for _, p := range service.Ports {
 		ports = append(ports, corev1.ServicePort{
-			Name:       p.Name,
-			Protocol:   corev1.Protocol(p.Protocol),
+			Name:       p.GetName(),
+			Protocol:   corev1.Protocol(p.Protocol.String()),
 			Port:       p.Port,                         // 对外暴露的端口
 			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
 			NodePort:   p.NodePort,
@@ -191,11 +201,13 @@ func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
 	svc.Spec.Selector = service.toSelector()
 	svc.Spec.Ports = make([]applyconfigurationscorev1.ServicePortApplyConfiguration, 0, len(service.Ports))
 	for _, p := range service.Ports {
-		protocol := corev1.Protocol(p.Protocol)
+		protocol := corev1.Protocol(p.Protocol.String())
+		name := p.GetName()
 		port := p.Port
 		targetPort := intstr.FromInt32(p.TargetPort)
 		nodePort := p.NodePort
 		svc.Spec.Ports = append(svc.Spec.Ports, applyconfigurationscorev1.ServicePortApplyConfiguration{
+			Name:       &name,
 			Protocol:   &protocol,
 			Port:       &port,       // 对外暴露的端口
 			TargetPort: &targetPort, // Pod 内部服务监听的端口
@@ -214,6 +226,71 @@ func (o *serviceOperation) Delete(ctx context.Context, namespace, service string
 	if o.err != nil {
 		return o.err
 	}
+	if has, err := o.Exists(ctx, namespace, service); has {
+		if err != nil {
+			return err
+		}
+		return o.delete(ctx, namespace, service)
+	}
+	return nil
+}
+
+func (o *serviceOperation) DeleteGroup(ctx context.Context, namespace string, groups ...string) error {
+	if o.err != nil {
+		return o.err
+	}
+	for _, group := range groups {
+		if len(group) < 1 {
+			continue
+		}
+		svcs, err := o.list(ctx, namespace, group)
+		if err != nil {
+			return err
+		}
+		if svcs.Items == nil || len(svcs.Items) == 0 {
+			continue
+		}
+		for _, svc := range svcs.Items {
+			if err := o.delete(ctx, namespace, svc.Name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (o *serviceOperation) delete(ctx context.Context, namespace string, service string) error {
 	opts := v1.DeleteOptions{}
 	return o.api.CoreV1().Services(namespace).Delete(ctx, service, opts)
+}
+
+func (o *serviceOperation) list(ctx context.Context, namespace string, group string) (*corev1.ServiceList, error) {
+	opts := v1.ListOptions{}
+	if len(group) > 0 {
+		opts.LabelSelector = fmt.Sprintf("%s=%s", types.LabelGroup, group)
+	}
+	datas, err := o.api.CoreV1().Services(namespace).List(ctx, opts)
+	if err != nil {
+		return datas, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Services: %v", err)
+	}
+	return datas, nil
+}
+
+func (o *serviceOperation) toServices(namespace string, svcs *corev1.ServiceList) []*Service {
+	if svcs == nil {
+		return nil
+	}
+	services := make([]*Service, 0, len(svcs.Items))
+	for _, svc := range svcs.Items {
+		service := &Service{
+			Model:       Model{Namespace: namespace, Name: svc.Name},
+			Status:      health.UP.String(),
+			ServiceType: string(svc.Spec.Type),
+		}
+		service.setPorts(svc)
+		service.setGroup(svc)
+		service.setLabels(svc.Labels)
+		services = append(services, service)
+	}
+	return services
 }
