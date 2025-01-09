@@ -3,6 +3,7 @@ package progress
 import (
 	"strings"
 
+	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/types"
 )
@@ -25,13 +26,30 @@ type Progress struct {
 	Region     string                 `json:"region,omitempty"`
 	Namespace  string                 `json:"namespace,omitempty"`
 	PID        string                 `json:"pid,omitempty"`
-	Service    string                 `json:"service,omitempty"`
 	Name       string                 `json:"name,omitempty"`
+	Service    string                 `json:"service,omitempty"`
 	Labels     *types.Labels          `json:"labels,omitempty"`
 	Status     health.Health          `json:"status,omitempty"`
 	Time       int64                  `json:"time,omitempty"`
 	Indicators map[string]interface{} `json:"indicators,omitempty"`
 	Details    map[string]interface{} `json:"details,omitempty"`
+}
+
+func (p *Progress) GetServiceType() string {
+	if p.Details == nil || len(p.Details) < 1 {
+		return ""
+	}
+	if svc, ok := p.Details["service"]; ok {
+		var details Details
+		if err := gconv.Struct(svc, &details); err != nil {
+			return ""
+		}
+		if details.Details == nil || len(details.Details) < 1 {
+			return ""
+		}
+		return details.Details["serviceType"]
+	}
+	return ""
 }
 
 func (p *Progress) ToGroupProgress() Progress {

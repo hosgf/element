@@ -69,3 +69,50 @@ func (o *progressOperation) List(ctx context.Context, namespace string) ([]*prog
 	}
 	return list, nil
 }
+
+func (o *progressOperation) Running(ctx context.Context, config *ProcessGroupConfig) error {
+	if config.AllowUpdate {
+		return o.Apply(ctx, config)
+	}
+	return o.Create(ctx, config)
+}
+
+func (o *progressOperation) Create(ctx context.Context, config *ProcessGroupConfig) error {
+	if o.err != nil {
+		return o.err
+	}
+	svcs := config.toServices()
+	for _, s := range svcs {
+		if err := o.k8s.Service().Create(ctx, s); err != nil {
+			return err
+		}
+	}
+	pod := config.toPod()
+	if pod == nil {
+		return nil
+	}
+	if err := o.k8s.Pod().Create(ctx, pod); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *progressOperation) Apply(ctx context.Context, config *ProcessGroupConfig) error {
+	if o.err != nil {
+		return o.err
+	}
+	svcs := config.toServices()
+	for _, s := range svcs {
+		if err := o.k8s.Service().Apply(ctx, s); err != nil {
+			return err
+		}
+	}
+	pod := config.toPod()
+	if pod == nil {
+		return nil
+	}
+	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
+		return err
+	}
+	return nil
+}

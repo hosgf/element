@@ -19,31 +19,10 @@ type podTemplateOperation struct {
 }
 
 type PodTemplate struct {
-	Namespace   string            `json:"namespace,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	App         string            `json:"app,omitempty"`
-	Group       string            `json:"group,omitempty"`
-	Owner       string            `json:"owner,omitempty"`
-	Scope       string            `json:"scope,omitempty"`
-	RunningNode string            `json:"runningNode,omitempty"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	Status      health.Health     `json:"status,omitempty"`
-	Containers  []*Container      `json:"containers,omitempty"`
-}
-
-func (p *PodTemplate) toLabel() map[string]string {
-	labels := map[string]string{
-		types.LabelApp.String():   p.App,
-		types.LabelOwner.String(): p.Owner,
-		types.LabelScope.String(): p.Scope,
-		types.LabelGroup.String(): p.Group,
-	}
-	if p.Labels != nil {
-		for k, v := range p.Labels {
-			labels[k] = v
-		}
-	}
-	return labels
+	Model
+	RunningNode string        `json:"runningNode,omitempty"`
+	Status      health.Health `json:"status,omitempty"`
+	Containers  []*Container  `json:"containers,omitempty"`
 }
 
 func (p *PodTemplate) labels(labels map[string]string) {
@@ -125,7 +104,7 @@ func (o *podTemplateOperation) Create(ctx context.Context, pod *Pod) error {
 	metadata := v1.ObjectMeta{
 		Name:      pod.Name, // Pod 名称
 		Namespace: pod.Namespace,
-		Labels:    pod.toLabel(),
+		Labels:    pod.labels(),
 	}
 	p := &corev1.PodTemplate{
 		ObjectMeta: metadata,
@@ -150,7 +129,7 @@ func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
 	}
 	p := applyconfigurationscorev1.Pod(pod.Name, pod.Namespace)
 	// 更新Labels
-	p.WithLabels(pod.toLabel())
+	p.WithLabels(pod.labels())
 	// 更新容器
 	p.Spec.Containers = make([]applyconfigurationscorev1.ContainerApplyConfiguration, 0, len(pod.containers()))
 	for _, c := range pod.containers() {
@@ -205,13 +184,15 @@ func (o *podTemplateOperation) pods(ctx context.Context, namespace string, opts 
 	pods := make([]*Pod, 0, len(datas.Items))
 	for _, p := range datas.Items {
 		pod := &Pod{
-			Namespace:   namespace,
-			Name:        p.Name,
+			Model: Model{
+				Namespace: namespace,
+				Name:      p.Name,
+			},
 			Containers:  make([]*Container, 0),
 			RunningNode: p.Spec.NodeName,
 			Status:      string(p.Status.Phase),
 		}
-		pod.labels(p.Labels)
+		pod.setLabels(p.Labels)
 		for _, c := range p.Spec.Containers {
 			pod.toContainer(c)
 		}

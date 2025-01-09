@@ -25,18 +25,11 @@ type podsOperation struct {
 }
 
 type Pod struct {
-	Namespace   string            `json:"namespace,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	App         string            `json:"app,omitempty"`
-	Group       string            `json:"group,omitempty"`
-	Owner       string            `json:"owner,omitempty"`
-	Scope       string            `json:"scope,omitempty"`
-	Replicas    int32             `json:"replicas,omitempty"`
-	RunningNode string            `json:"runningNode,omitempty"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	Status      string            `json:"status,omitempty"`
-	Containers  []*Container      `json:"containers,omitempty"`
-	groupLabel  string            `json:"groupLabel,omitempty"`
+	Model
+	Replicas    int32        `json:"replicas,omitempty"`
+	RunningNode string       `json:"runningNode,omitempty"`
+	Status      string       `json:"status,omitempty"`
+	Containers  []*Container `json:"containers,omitempty"`
 }
 
 func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progress.Progress {
@@ -93,6 +86,7 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 			if gstr.Contains(svc.Group, p.Name) || gstr.Contains(svc.Group, pod.Group) || svc.Name == pod.Group {
 				p.Service = svc.Name
 				service.Details[svc.Name] = svc.Status
+				service.Details["serviceType"] = svc.ServiceType
 				service.Status = health.UP
 				ports = append(ports, svc.toProgressPort()...)
 				break
@@ -111,80 +105,11 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 	return list
 }
 
-func (pod *Pod) toLabels() *types.Labels {
-	return &types.Labels{
-		App:    pod.App,
-		Group:  pod.Group,
-		Owner:  pod.Owner,
-		Scope:  pod.Scope,
-		Labels: pod.Labels,
-	}
-}
-
-func (pod *Pod) toSelector() map[string]string {
-	return map[string]string{
-		types.LabelGroup.String(): pod.Group,
-	}
-}
-
 func (pod *Pod) replicas() *int32 {
 	if pod.Replicas < 1 {
 		pod.Replicas = 1
 	}
 	return &pod.Replicas
-}
-
-func (pod *Pod) toLabel() map[string]string {
-	labels := map[string]string{
-		types.LabelApp.String():   pod.App,
-		types.LabelOwner.String(): pod.Owner,
-		types.LabelScope.String(): pod.Scope,
-		types.LabelGroup.String(): pod.Group,
-	}
-	if pod.Labels != nil {
-		for k, v := range pod.Labels {
-			labels[k] = v
-		}
-	}
-	return labels
-}
-
-func (pod *Pod) labels(labels map[string]string) {
-	if len(labels) < 1 {
-		return
-	}
-	pod.App = labels[types.LabelApp.String()]
-	delete(labels, types.LabelApp.String())
-
-	pod.Owner = labels[types.LabelOwner.String()]
-	delete(labels, types.LabelOwner.String())
-
-	pod.Scope = labels[types.LabelScope.String()]
-	delete(labels, types.LabelScope.String())
-
-	if len(pod.Group) < 1 {
-		pod.Group = labels[types.LabelGroup.String()]
-		pod.groupLabel = types.LabelGroup.String()
-		delete(labels, pod.groupLabel)
-	}
-
-	if len(pod.Group) < 1 {
-		pod.Group = labels["app"]
-		pod.groupLabel = "app"
-		delete(labels, pod.groupLabel)
-	}
-
-	delete(labels, "pod-template-hash")
-
-	if labels == nil || len(labels) < 1 {
-		return
-	}
-	if pod.Labels == nil {
-		pod.Labels = map[string]string{}
-	}
-	for k, v := range labels {
-		pod.Labels[k] = v
-	}
 }
 
 func (pod *Pod) containers() []corev1.Container {
@@ -213,14 +138,18 @@ func (pod *Pod) toContainer(c corev1.Container) {
 }
 
 type Container struct {
-	Name       string              `json:"name,omitempty"`
-	Image      string              `json:"image,omitempty"`
-	PullPolicy string              `json:"string,omitempty"`
-	Command    []string            `json:"command,omitempty"`
-	Args       []string            `json:"args,omitempty"`
-	Ports      []progress.Port     `json:"ports,omitempty"`
-	Resource   []progress.Resource `json:"resource,omitempty"`
-	Env        map[string]string   `json:"env,omitempty"`
+	Name         string              `json:"name,omitempty"`
+	Image        string              `json:"image,omitempty"`
+	PullPolicy   string              `json:"string,omitempty"`
+	Command      []string            `json:"command,omitempty"`
+	Args         []string            `json:"args,omitempty"`
+	Ports        []progress.Port     `json:"ports,omitempty"`
+	Resource     []progress.Resource `json:"resource,omitempty"`
+	Env          map[string]string   `json:"env,omitempty"`
+	Config       []types.Environment `json:"config,omitempty"`
+	Storage      Storage             `json:"storage,omitempty"`
+	VolumeMounts []VolumeMount       `json:"volumeMounts,omitempty"`
+	Probe        ProbeConfig         `json:"probe,omitempty"`
 }
 
 func (c *Container) toContainer() corev1.Container {
@@ -342,6 +271,49 @@ func (c *Container) setEnv(container corev1.Container) {
 	}
 }
 
+func (pg *ProcessGroupConfig) toPod() *Pod {
+	if pg.Process == nil || len(pg.Process) < 1 {
+		return nil
+	}
+	labels := &pg.Labels
+	if len(labels.Group) < 1 {
+		labels.Group = pg.GroupName
+	}
+	pod := &Pod{
+		Model:       Model{Namespace: pg.Namespace, Name: pg.GroupName},
+		Replicas:    pg.Replicas,
+		RunningNode: pg.RunningNode,
+		Containers:  make([]*Container, 0),
+	}
+	for _, p := range pg.Process {
+		c := p.toContainer()
+		if c == nil {
+			continue
+		}
+		pod.Containers = append(pod.Containers, c)
+	}
+	return pod
+}
+
+func (p *ProcessConfig) toContainer() *Container {
+	env, config := p.ToEnvConfig()
+	c := &Container{
+		Name:         p.Name,
+		Image:        p.Source,
+		PullPolicy:   p.PullPolicy,
+		Command:      p.Command,
+		Args:         p.Args,
+		Ports:        p.Ports,
+		Resource:     p.Resource,
+		Env:          env,
+		Config:       config,
+		Storage:      p.Storage,
+		VolumeMounts: p.VolumeMounts,
+		Probe:        p.Probe,
+	}
+	return c
+}
+
 func (o *podsOperation) Get(ctx context.Context, namespace, appname string) ([]*Pod, error) {
 	if o.err != nil {
 		return nil, o.err
@@ -376,7 +348,7 @@ func (o *podsOperation) Create(ctx context.Context, pod *Pod) error {
 	metadata := v1.ObjectMeta{
 		Name:      pod.Name, // Pod 名称
 		Namespace: pod.Namespace,
-		Labels:    pod.toLabel(),
+		Labels:    pod.labels(),
 	}
 	data := &appsv1.Deployment{
 		ObjectMeta: metadata,
@@ -407,7 +379,7 @@ func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
 	}
 	p := applyconfigurationsappsv1.Deployment(pod.Name, pod.Namespace)
 	// 更新Labels
-	p.WithLabels(pod.toLabel())
+	p.WithLabels(pod.labels())
 	// 更新容器
 	deploymentSpec := applyconfigurationsappsv1.DeploymentSpec()
 	deploymentSpec.WithReplicas(pod.Replicas)
@@ -441,7 +413,7 @@ func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
 		container.WithEnv(envs...)
 		podSpec.WithContainers(container)
 	}
-	deploymentSpec.WithTemplate(applyconfigurationscorev1.PodTemplateSpec().WithName(pod.Name).WithNamespace(pod.Namespace).WithLabels(pod.toLabel()).WithSpec(podSpec))
+	deploymentSpec.WithTemplate(applyconfigurationscorev1.PodTemplateSpec().WithName(pod.Name).WithNamespace(pod.Namespace).WithLabels(pod.labels()).WithSpec(podSpec))
 	// 更新容器
 	p.WithSpec(deploymentSpec)
 	opts := v1.ApplyOptions{}
@@ -497,13 +469,12 @@ func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.List
 	pods := make([]*Pod, 0, len(datas.Items))
 	for _, p := range datas.Items {
 		pod := &Pod{
-			Namespace:   namespace,
-			Name:        p.Name,
+			Model:       Model{Namespace: namespace, Name: p.Name},
+			Status:      string(p.Status.Phase),
 			Containers:  make([]*Container, 0),
 			RunningNode: p.Spec.NodeName,
-			Status:      string(p.Status.Phase),
 		}
-		pod.labels(p.Labels)
+		pod.setLabels(p.Labels)
 		for _, c := range p.Spec.Containers {
 			pod.toContainer(c)
 		}

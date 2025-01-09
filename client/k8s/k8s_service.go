@@ -20,17 +20,39 @@ type serviceOperation struct {
 }
 
 type Service struct {
-	Namespace   string            `json:"namespace,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	ServiceType string            `json:"serviceType,omitempty"`
-	App         string            `json:"app,omitempty"`
-	Group       string            `json:"group,omitempty"`
-	Owner       string            `json:"owner,omitempty"`
-	Scope       string            `json:"scope,omitempty"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	GroupLabel  string            `json:"groupLabel,omitempty"`
-	Status      string            `json:"status,omitempty"`
-	Ports       []*progress.Port  `json:"ports,omitempty"`
+	Model
+	ServiceType string           `json:"serviceType,omitempty"`
+	Status      string           `json:"status,omitempty"`
+	Ports       []*progress.Port `json:"ports,omitempty"`
+}
+
+func (pg *ProcessGroupConfig) toServices() []*Service {
+	if pg.Process == nil || len(pg.Process) < 1 {
+		return nil
+	}
+	labels := &pg.Labels
+	if len(labels.Group) < 1 {
+		labels.Group = pg.GroupName
+	}
+	svcs := make([]*Service, 0)
+	for _, p := range pg.Process {
+		ports := p.Ports
+		if len(p.Service) < 1 || ports == nil || len(ports) < 1 {
+			continue
+		}
+		svc := &Service{
+			Model:       Model{Namespace: pg.Namespace, Name: p.Service},
+			ServiceType: p.ServiceType,
+			Ports:       make([]*progress.Port, 0),
+		}
+		for _, p := range ports {
+			svc.Ports = append(svc.Ports, &p)
+		}
+
+		svc.setTypesLabels(labels)
+		svcs = append(svcs, svc)
+	}
+	return svcs
 }
 
 func (s *Service) toProgressPort() []progress.ProgressPort {
@@ -47,55 +69,6 @@ func (s *Service) toProgressPort() []progress.ProgressPort {
 		ports = append(ports, p)
 	}
 	return ports
-}
-
-func (s *Service) toLabel() map[string]string {
-	labels := map[string]string{
-		types.LabelApp.String():   s.App,
-		types.LabelOwner.String(): s.Owner,
-		types.LabelScope.String(): s.Scope,
-		types.LabelGroup.String(): s.Group,
-	}
-	if s.Labels != nil {
-		for k, v := range s.Labels {
-			labels[k] = v
-		}
-	}
-	return labels
-}
-
-func (s *Service) setLabels(labels map[string]string) {
-	if len(labels) < 1 {
-		return
-	}
-	s.App = labels[types.LabelApp.String()]
-	delete(labels, types.LabelApp.String())
-
-	s.Owner = labels[types.LabelOwner.String()]
-	delete(labels, types.LabelOwner.String())
-
-	s.Scope = labels[types.LabelScope.String()]
-	delete(labels, types.LabelScope.String())
-
-	if len(s.Group) < 1 {
-		s.Group = labels[types.LabelGroup.String()]
-		s.GroupLabel = types.LabelGroup.String()
-		delete(labels, s.GroupLabel)
-	}
-
-	if len(s.Group) < 1 {
-		s.Group = labels["app"]
-		s.GroupLabel = "app"
-		delete(labels, s.GroupLabel)
-	}
-
-	if s.Labels == nil {
-		s.Labels = map[string]string{}
-	}
-
-	for k, v := range labels {
-		s.Labels[k] = v
-	}
 }
 
 func (s *Service) setPorts(svc corev1.Service) {
@@ -123,26 +96,20 @@ func (s *Service) setGroup(svc corev1.Service) {
 	}
 	if v, ok := selector[types.LabelGroup.String()]; ok {
 		s.Group = v
-		s.GroupLabel = types.LabelGroup.String()
+		s.groupLabel = types.LabelGroup.String()
 		return
 	}
 	if v, ok := selector["app"]; ok {
 		s.Group = v
-		s.GroupLabel = "app"
+		s.groupLabel = "app"
 		return
 	}
 	for k, v := range selector {
 		if gstr.Contains(k, "app") {
 			s.Group = v
-			s.GroupLabel = k
+			s.groupLabel = k
 			return
 		}
-	}
-}
-
-func (s *Service) toSelector() map[string]string {
-	return map[string]string{
-		types.LabelGroup.String(): s.Group,
 	}
 }
 
@@ -158,10 +125,9 @@ func (o *serviceOperation) List(ctx context.Context, namespace string) ([]*Servi
 	services := make([]*Service, 0, len(svcs.Items))
 	for _, svc := range svcs.Items {
 		service := &Service{
-			Namespace:   namespace,
-			Name:        svc.Name,
-			ServiceType: string(svc.Spec.Type),
+			Model:       Model{Namespace: namespace, Name: svc.Name},
 			Status:      health.UP.String(),
+			ServiceType: string(svc.Spec.Type),
 		}
 		service.setPorts(svc)
 		service.setGroup(svc)
@@ -198,12 +164,12 @@ func (o *serviceOperation) Create(ctx context.Context, service *Service) error {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      service.Name,      // Service 名称
 			Namespace: service.Namespace, // Service 所在的 Namespace
-			Labels:    service.toLabel(),
+			Labels:    service.labels(),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: service.toSelector(),
 			Ports:    ports,
-			Type:     any(len(service.ServiceType) < 1, corev1.ServiceTypeClusterIP, corev1.ServiceType(service.ServiceType)), // 默认为 ClusterIP 类型
+			Type:     corev1.ServiceType(toServiceType(service.ServiceType)), // 默认为 ClusterIP 类型
 		},
 	}
 	opts := v1.CreateOptions{}
@@ -219,8 +185,8 @@ func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
 		return o.err
 	}
 	svc := applyconfigurationscorev1.Service(service.Name, service.Namespace)
-	svc.WithLabels(service.toLabel())
-	t := any(len(service.ServiceType) < 1, corev1.ServiceTypeClusterIP, corev1.ServiceType(service.ServiceType))
+	svc.WithLabels(service.labels())
+	t := corev1.ServiceType(toServiceType(service.ServiceType))
 	svc.Spec.Type = &t
 	svc.Spec.Selector = service.toSelector()
 	svc.Spec.Ports = make([]applyconfigurationscorev1.ServicePortApplyConfiguration, 0, len(service.Ports))

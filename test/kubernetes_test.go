@@ -61,17 +61,6 @@ func TestMetrics(t *testing.T) {
 	g.Dump(datas)
 }
 
-func TestProgressList(t *testing.T) {
-	ctx := context.Background()
-	kubernetes := client()
-	datas, err := kubernetes.Progress().List(ctx, "dataos")
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	g.Dump(datas)
-}
-
 func TestResourceList(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
@@ -83,15 +72,28 @@ func TestResourceList(t *testing.T) {
 	g.Dump(datas)
 }
 
+func TestPodList(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	datas, err := kubernetes.Pod().List(ctx, "kube-system")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	g.Dump(datas)
+}
+
 func TestCreatePod(t *testing.T) {
 	ctx := context.Background()
 	pod := &k8s.Pod{
-		Namespace: "test21",
-		Name:      "mysql",
-		App:       "mysqlapp",
-		Group:     "mysqlgroup",
-		Owner:     "mysqlowner",
-		Scope:     "mysqlscope",
+		Model: k8s.Model{
+			Namespace: "test21",
+			Name:      "mysql",
+			App:       "mysqlapp",
+			Group:     "mysqlgroup",
+			Owner:     "mysqlowner",
+			Scope:     "mysqlscope",
+		},
 		Containers: []*k8s.Container{
 			{
 				Name:       "mysql-sql",
@@ -135,17 +137,6 @@ func TestCreatePod(t *testing.T) {
 		return
 	}
 	println("--------------------------------------------")
-}
-
-func TestPodList(t *testing.T) {
-	ctx := context.Background()
-	kubernetes := client()
-	datas, err := kubernetes.Pod().List(ctx, "kube-system")
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	g.Dump(datas)
 }
 
 func TestParse(t *testing.T) {

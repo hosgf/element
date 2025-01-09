@@ -1,6 +1,12 @@
 package types
 
-import "github.com/hosgf/element/health"
+import (
+	"github.com/hosgf/element/health"
+)
+
+var (
+	DefaultServiceType string = "ClusterIP"
+)
 
 // Label 标签类型
 type Label string

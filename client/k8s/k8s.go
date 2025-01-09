@@ -5,7 +5,7 @@ import (
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/hosgf/element/types"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -113,11 +113,11 @@ func (k *Kubernetes) config(homePath string) string {
 	return ""
 }
 
-func any(expr bool, a, b corev1.ServiceType) corev1.ServiceType {
-	if expr {
-		return a
+func toServiceType(serviceType string) string {
+	if len(serviceType) < 1 {
+		return types.DefaultServiceType
 	}
-	return b
+	return serviceType
 }
 
 func (o *options) isExist(value interface{}, err error, format string) (bool, error) {
