@@ -7,8 +7,12 @@ import (
 )
 
 var (
-	DefaultServiceType string = "ClusterIP"
-	DefaultGroupLabel  string = "app"
+	DefaultServiceType   string = "ClusterIP"
+	DefaultGroupLabel    string = "app"
+	DefaultMinimumCpu    int64  = 100
+	DefaultMinimumMemory int64  = 30
+	DefaultMaximumCpu    int64  = -1
+	DefaultMaximumMemory int64  = 2048
 )
 
 // Label 标签类型

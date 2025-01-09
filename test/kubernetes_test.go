@@ -42,7 +42,7 @@ func TestNamespaces(t *testing.T) {
 func TestCreateNamespace(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
-	isOk, err := kubernetes.Namespace().Create(ctx, "test21", "test21")
+	isOk, err := kubernetes.Namespace().Apply(ctx, "test21", "test21")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -131,7 +131,7 @@ func TestCreatePod(t *testing.T) {
 		},
 	}
 	kubernetes := client()
-	err := kubernetes.Pod().Create(ctx, pod)
+	err := kubernetes.Pod().Apply(ctx, pod)
 	if err != nil {
 		t.Fatal(err)
 		return

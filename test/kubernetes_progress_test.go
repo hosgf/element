@@ -38,7 +38,7 @@ func TestRunningProgress(t *testing.T) {
 	config := &k8s.ProcessGroupConfig{
 		Namespace:   "local",
 		GroupName:   "driver-dm-10",
-		AllowUpdate: false,
+		AllowUpdate: true,
 		Labels: types.Labels{
 			App:   "driver-container-10",
 			Owner: "driver-manage",
@@ -81,13 +81,11 @@ func toProgress1() k8s.ProcessConfig {
 				Type:    types.ResourceCPU,
 				Unit:    "m",
 				Minimum: 100,
-				Maximum: 200,
 			},
 			{
 				Type:    types.ResourceMemory,
 				Unit:    "Mi",
 				Minimum: 50,
-				Maximum: 2048,
 			},
 		},
 		Env: []types.Environment{
@@ -128,13 +126,11 @@ func toProgress2() k8s.ProcessConfig {
 				Type:    types.ResourceCPU,
 				Unit:    "m",
 				Minimum: 100,
-				Maximum: 200,
 			},
 			{
 				Type:    types.ResourceMemory,
 				Unit:    "Mi",
 				Minimum: 50,
-				Maximum: 2048,
 			},
 		},
 		Env: []types.Environment{

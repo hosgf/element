@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/types"
@@ -42,7 +43,7 @@ func (o *namespaceOperation) Exists(ctx context.Context, namespace string) (bool
 	return o.isExist("", err, "Error occurred while fetching namespace: %v")
 }
 
-func (o *namespaceOperation) Create(ctx context.Context, namespace, label string) (bool, error) {
+func (o *namespaceOperation) Apply(ctx context.Context, namespace, label string) (bool, error) {
 	if o.err != nil {
 		return false, o.err
 	}

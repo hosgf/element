@@ -15,9 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	res "k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	applyconfigurationsappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
-	applyconfigurationscorev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	applyconfigurationsmetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 type podsOperation struct {
@@ -30,6 +27,29 @@ type Pod struct {
 	RunningNode string       `json:"runningNode,omitempty"`
 	Status      string       `json:"status,omitempty"`
 	Containers  []*Container `json:"containers,omitempty"`
+}
+
+func (pod *Pod) toAppsDeployment() *appsv1.Deployment {
+	metadata := v1.ObjectMeta{
+		Name:      pod.Name, // Pod 名称
+		Namespace: pod.Namespace,
+		Labels:    pod.labels(),
+	}
+	return &appsv1.Deployment{
+		ObjectMeta: metadata,
+		Spec: appsv1.DeploymentSpec{
+			Replicas: pod.replicas(),
+			Selector: &v1.LabelSelector{
+				MatchLabels: pod.toSelector(),
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metadata,
+				Spec: corev1.PodSpec{
+					Containers: pod.containers(),
+				},
+			},
+		},
+	}
 }
 
 func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progress.Progress {
@@ -205,17 +225,17 @@ func (c *Container) resource(container *corev1.Container) {
 		cpu = progress.Resource{
 			Type:    types.ResourceCPU,
 			Unit:    "m",
-			Minimum: 500,
-			Maximum: 1000,
+			Minimum: types.DefaultMinimumCpu,
+			Maximum: types.DefaultMaximumCpu,
 		}
 		memory = progress.Resource{
 			Type:    types.ResourceMemory,
 			Unit:    "Mi",
-			Minimum: 30,
-			Maximum: 500,
+			Minimum: types.DefaultMinimumMemory,
+			Maximum: types.DefaultMaximumMemory,
 		}
 	)
-	if len(c.Resource) < 1 {
+	if len(c.Resource) > 0 {
 		for _, r := range c.Resource {
 			switch r.Type {
 			case types.ResourceCPU:
@@ -225,16 +245,21 @@ func (c *Container) resource(container *corev1.Container) {
 			}
 		}
 	}
-	container.Resources = corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    *res.NewQuantity(types.FormatCpu(cpu.Minimum, cpu.Unit), res.DecimalSI),
-			corev1.ResourceMemory: *res.NewQuantity(types.FormatMemory(cpu.Minimum, cpu.Unit), res.DecimalSI),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    *res.NewQuantity(types.FormatCpu(cpu.Maximum, cpu.Unit), res.DecimalSI),
-			corev1.ResourceMemory: *res.NewQuantity(types.FormatMemory(cpu.Maximum, cpu.Unit), res.DecimalSI),
-		},
+	requests := corev1.ResourceList{}
+	if cpu.Minimum > 1 {
+		requests[corev1.ResourceCPU] = *res.NewQuantity(types.FormatCpu(cpu.Minimum, cpu.Unit), res.DecimalExponent)
 	}
+	if memory.Minimum > 1 {
+		requests[corev1.ResourceMemory] = *res.NewQuantity(types.FormatMemory(memory.Minimum, memory.Unit), res.DecimalExponent)
+	}
+	limits := corev1.ResourceList{}
+	if cpu.Maximum > 1 {
+		limits[corev1.ResourceCPU] = *res.NewQuantity(types.FormatCpu(cpu.Maximum, cpu.Unit), res.DecimalExponent)
+	}
+	if memory.Maximum > 1 {
+		limits[corev1.ResourceMemory] = *res.NewQuantity(types.FormatMemory(memory.Maximum, memory.Unit), res.DecimalExponent)
+	}
+	container.Resources = corev1.ResourceRequirements{Requests: requests, Limits: limits}
 }
 
 func (c *Container) setResource(container corev1.Container) {
@@ -280,7 +305,7 @@ func (pg *ProcessGroupConfig) toPod() *Pod {
 		labels.Group = pg.GroupName
 	}
 	pod := &Pod{
-		Model:       Model{Namespace: pg.Namespace, Name: pg.GroupName},
+		Model:       Model{Namespace: pg.Namespace, Name: pg.GroupName, AllowUpdate: pg.AllowUpdate},
 		Replicas:    pg.Replicas,
 		RunningNode: pg.RunningNode,
 		Containers:  make([]*Container, 0),
@@ -356,88 +381,72 @@ func (o *podsOperation) Exists(ctx context.Context, namespace, pod string) (bool
 	return o.isExist(p, err, "Failed to get Pod: %v")
 }
 
-func (o *podsOperation) Create(ctx context.Context, pod *Pod) error {
-	if o.err != nil {
-		return o.err
-	}
-	metadata := v1.ObjectMeta{
-		Name:      pod.Name, // Pod 名称
-		Namespace: pod.Namespace,
-		Labels:    pod.labels(),
-	}
-	data := &appsv1.Deployment{
-		ObjectMeta: metadata,
-		Spec: appsv1.DeploymentSpec{
-			Replicas: pod.replicas(),
-			Selector: &v1.LabelSelector{
-				MatchLabels: pod.toSelector(),
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metadata,
-				Spec: corev1.PodSpec{
-					Containers: pod.containers(),
-				},
-			},
-		},
-	}
-	opts := v1.CreateOptions{}
-	_, err := o.api.AppsV1().Deployments(pod.Namespace).Create(ctx, data, opts)
-	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create pod: %v", err)
-	}
-	return nil
-}
-
 func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
 	if o.err != nil {
 		return o.err
 	}
-	p := applyconfigurationsappsv1.Deployment(pod.Name, pod.Namespace)
-	// 更新Labels
-	p.WithLabels(pod.labels())
-	// 更新容器
-	deploymentSpec := applyconfigurationsappsv1.DeploymentSpec()
-	deploymentSpec.WithReplicas(pod.Replicas)
-	deploymentSpec.WithSelector(applyconfigurationsmetav1.LabelSelector().WithMatchLabels(pod.toSelector()))
-	podSpec := applyconfigurationscorev1.PodSpec()
-	for _, c := range pod.containers() {
-		ports := make([]*applyconfigurationscorev1.ContainerPortApplyConfiguration, 0, len(c.Ports))
-		for _, p := range c.Ports {
-			port := applyconfigurationscorev1.ContainerPort()
-			port.WithName(p.Name)
-			port.WithProtocol(p.Protocol)
-			port.WithHostPort(p.HostPort)
-			port.WithHostIP(p.HostIP)
-			port.WithContainerPort(p.ContainerPort)
-			ports = append(ports, port)
+	if has, err := o.deploymentExists(ctx, pod.Namespace, pod.Name); has {
+		if err != nil {
+			return err
 		}
-		envs := make([]*applyconfigurationscorev1.EnvVarApplyConfiguration, 0, len(c.Env))
-		for _, e := range c.Env {
-			env := applyconfigurationscorev1.EnvVar()
-			env.WithName(e.Name)
-			env.WithValue(e.Value)
-			envs = append(envs, env)
+		if pod.AllowUpdate {
+			return o.update(ctx, pod)
 		}
-		container := applyconfigurationscorev1.Container()
-		container.WithName(c.Name)
-		container.WithImage(c.Image)
-		container.WithImagePullPolicy(c.ImagePullPolicy)
-		container.WithCommand(c.Command...)
-		container.WithArgs(c.Args...)
-		container.WithPorts(ports...)
-		container.WithEnv(envs...)
-		podSpec.WithContainers(container)
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Pod: %s 已存在!", pod.Namespace, pod.Name)
 	}
-	deploymentSpec.WithTemplate(applyconfigurationscorev1.PodTemplateSpec().WithName(pod.Name).WithNamespace(pod.Namespace).WithLabels(pod.labels()).WithSpec(podSpec))
-	// 更新容器
-	p.WithSpec(deploymentSpec)
-	opts := v1.ApplyOptions{}
-	_, err := o.api.AppsV1().Deployments(pod.Namespace).Apply(ctx, p, opts)
-	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
-	}
-	return nil
+	return o.create(ctx, pod)
 }
+
+//func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
+//	if o.err != nil {
+//		return o.err
+//	}
+//	p := applyconfigurationsappsv1.Deployment(pod.Name, pod.Namespace)
+//	// 更新Labels
+//	p.WithLabels(pod.labels())
+//	// 更新容器
+//	deploymentSpec := applyconfigurationsappsv1.DeploymentSpec()
+//	deploymentSpec.WithReplicas(pod.Replicas)
+//	deploymentSpec.WithSelector(applyconfigurationsmetav1.LabelSelector().WithMatchLabels(pod.toSelector()))
+//	podSpec := applyconfigurationscorev1.PodSpec()
+//	for _, c := range pod.containers() {
+//		ports := make([]*applyconfigurationscorev1.ContainerPortApplyConfiguration, 0, len(c.Ports))
+//		for _, p := range c.Ports {
+//			port := applyconfigurationscorev1.ContainerPort()
+//			port.WithName(p.Name)
+//			port.WithProtocol(p.Protocol)
+//			port.WithHostPort(p.HostPort)
+//			port.WithHostIP(p.HostIP)
+//			port.WithContainerPort(p.ContainerPort)
+//			ports = append(ports, port)
+//		}
+//		envs := make([]*applyconfigurationscorev1.EnvVarApplyConfiguration, 0, len(c.Env))
+//		for _, e := range c.Env {
+//			env := applyconfigurationscorev1.EnvVar()
+//			env.WithName(e.Name)
+//			env.WithValue(e.Value)
+//			envs = append(envs, env)
+//		}
+//		container := applyconfigurationscorev1.Container()
+//		container.WithName(c.Name)
+//		container.WithImage(c.Image)
+//		container.WithImagePullPolicy(c.ImagePullPolicy)
+//		container.WithCommand(c.Command...)
+//		container.WithArgs(c.Args...)
+//		container.WithPorts(ports...)
+//		container.WithEnv(envs...)
+//		podSpec.WithContainers(container)
+//	}
+//	deploymentSpec.WithTemplate(applyconfigurationscorev1.PodTemplateSpec().WithName(pod.Name).WithNamespace(pod.Namespace).WithLabels(pod.labels()).WithSpec(podSpec))
+//	// 更新容器
+//	p.WithSpec(deploymentSpec)
+//	opts := v1.ApplyOptions{}
+//	_, err := o.api.AppsV1().Deployments(pod.Namespace).Apply(ctx, p, opts)
+//	if err != nil {
+//		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
+//	}
+//	return nil
+//}
 
 func (o *podsOperation) Delete(ctx context.Context, namespace, pod string) error {
 	if o.err != nil {
@@ -519,14 +528,39 @@ func (o *podsOperation) deleteDeployment(ctx context.Context, namespace string, 
 		if err != nil {
 			return err
 		}
-		return o.api.AppsV1().Deployments(namespace).Delete(ctx, group, v1.DeleteOptions{})
+		err := o.api.AppsV1().Deployments(namespace).Delete(ctx, group, v1.DeleteOptions{})
+		if err != nil {
+			return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete apps deployment: %v", err)
+		}
+	}
+	return nil
+}
+
+func (o *podsOperation) create(ctx context.Context, pod *Pod) error {
+	opts := v1.CreateOptions{}
+	_, err := o.api.AppsV1().Deployments(pod.Namespace).Create(ctx, pod.toAppsDeployment(), opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create apps deployment: %v", err)
+	}
+	return nil
+}
+
+func (o *podsOperation) update(ctx context.Context, pod *Pod) error {
+	opts := v1.UpdateOptions{}
+	_, err := o.api.AppsV1().Deployments(pod.Namespace).Update(ctx, pod.toAppsDeployment(), opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps deployment: %v", err)
 	}
 	return nil
 }
 
 func (o *podsOperation) delete(ctx context.Context, namespace string, pod string) error {
 	opts := v1.DeleteOptions{}
-	return o.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
+	err := o.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete pod: %v", err)
+	}
+	return nil
 }
 
 func (o *podsOperation) list(ctx context.Context, namespace string, group string) (*corev1.PodList, error) {

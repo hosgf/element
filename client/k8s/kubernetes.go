@@ -48,14 +48,13 @@ type metricsInterface interface {
 type namespaceInterface interface {
 	List(ctx context.Context) ([]*types.Namespace, error)
 	Exists(ctx context.Context, namespace string) (bool, error)
-	Create(ctx context.Context, namespace, label string) (bool, error)
+	Apply(ctx context.Context, namespace, label string) (bool, error)
 	Delete(ctx context.Context, namespace string) error
 }
 
 type serviceInterface interface {
 	List(ctx context.Context, namespace string, groups ...string) ([]*Service, error)
 	Exists(ctx context.Context, namespace, service string) (bool, error)
-	Create(ctx context.Context, service *Service) error
 	Apply(ctx context.Context, service *Service) error
 	Delete(ctx context.Context, namespace, service string) error
 	DeleteGroup(ctx context.Context, namespace string, groups ...string) error
@@ -65,7 +64,6 @@ type podsInterface interface {
 	Get(ctx context.Context, namespace, appname string) ([]*Pod, error)
 	List(ctx context.Context, namespace string, groups ...string) ([]*Pod, error)
 	Exists(ctx context.Context, namespace, pod string) (bool, error)
-	Create(ctx context.Context, pod *Pod) error
 	Apply(ctx context.Context, pod *Pod) error
 	Delete(ctx context.Context, namespace, pod string) error
 	DeleteGroup(ctx context.Context, namespace string, groups ...string) error
@@ -77,7 +75,6 @@ type podTemplatesInterface interface {
 	Get(ctx context.Context, namespace, appname string) ([]*Pod, error)
 	List(ctx context.Context, namespace string) ([]*Pod, error)
 	Exists(ctx context.Context, namespace, pod string) (bool, error)
-	Create(ctx context.Context, pod *Pod) error
 	Apply(ctx context.Context, pod *Pod) error
 	Delete(ctx context.Context, namespace, pod string) error
 }
@@ -89,14 +86,15 @@ type storageInterface interface {
 }
 
 type Model struct {
-	Namespace  string            `json:"namespace,omitempty"`
-	Name       string            `json:"name,omitempty"`
-	App        string            `json:"app,omitempty"`
-	Group      string            `json:"group,omitempty"`
-	Owner      string            `json:"owner,omitempty"`
-	Scope      string            `json:"scope,omitempty"`
-	Labels     map[string]string `json:"labels,omitempty"`
-	groupLabel string            `json:"groupLabel,omitempty"`
+	AllowUpdate bool              `json:"allowUpdate,omitempty"` // 是否允许更新,进程存在则更新
+	Namespace   string            `json:"namespace,omitempty"`
+	Name        string            `json:"name,omitempty"`
+	App         string            `json:"app,omitempty"`
+	Group       string            `json:"group,omitempty"`
+	Owner       string            `json:"owner,omitempty"`
+	Scope       string            `json:"scope,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	groupLabel  string            `json:"groupLabel,omitempty"`
 }
 
 func (m *Model) Key() string {

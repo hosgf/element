@@ -79,6 +79,15 @@ func (k *Kubernetes) Init(homePath string) error {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to build kubeconfig: %v", err)
 		return k.err
 	}
+	//if k.isDebug {
+	//	klog.InitFlags(nil)
+	//	logr := klog.NewKlogr()
+	//	klog.SetLogger(logr)
+	//	klog.ContextualLogger(true)
+	//	klog.EnableContextualLogging(true)
+	//	klog.LogToStderr(true)
+	//	klog.SetOutput(os.Stdout)
+	//}
 	k.api, err = k8s.NewForConfig(config)
 	if err != nil {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create Kubernetes client: %v", err)

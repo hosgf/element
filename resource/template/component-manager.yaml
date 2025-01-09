@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: component-manager
+  namespace: dataosmt
+  labels:
+    app: component-manager
+spec:
+   replicas: 1
+   selector:
+     matchLabels:
+       app: component-manager
+   template:
+     metadata:
+       labels:
+         app: component-manager
+     spec:
+       hostPID: true
+       initContainers:
+       - name: init-kong-admin-service
+         image: 172.16.4.64:1180/base/busybox:1.33.0
+         command: ['sh', '-c', "result=''; while [[ ${#result} -lt  5  ]]; do sleep 20; result=$(wget   http://kong-admin-service:18005/api/v2/konga/automatic/svcRegResult -qO- | grep '\"data\":\"true\"'); echo $result;  done"]
+       containers:
+       - name: component-manager
+         image: 172.16.4.64:1180/dataos_kernel_deploy/component-manage:v4.2.4
+         command: [ "/bin/sh", "-c", "java -jar -javaagent:/component-manage-1.0.jar -XX:+UseG1GC   -Xmx1024M -Xms1024M  /component-manage-1.0.jar" ]
+         imagePullPolicy: Always
+         resources:
+           requests:
+             cpu: 100m
+             memory: 1024Mi
+         livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 18015
+          timeoutSeconds: 1
+         ports:
+         - containerPort: 18015
+         volumeMounts:
+         - name: timezone
+           mountPath: /etc/timezone:ro
+         - name: localtime
+           mountPath: /etc/localtime:ro
+       volumes:
+       - name: timezone
+         hostPath:
+           path: /usr/share/zoneinfo/Asia/Shanghai
+       - name: localtime
+         hostPath:
+           path: /etc/localtime
+       imagePullSecrets:
+       - name: harbor-daas
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: component-manager-service
+  namespace: dataosmt
+  labels:
+    app: component-manager
+spec:
+  type: NodePort
+  ports:
+   - port: 18015
+     targetPort: 18015
+     protocol: TCP
+  selector:
+    app: component-manager

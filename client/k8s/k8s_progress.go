@@ -85,7 +85,7 @@ func (o *progressOperation) Create(ctx context.Context, config *ProcessGroupConf
 	}
 	svcs := config.toServices()
 	for _, s := range svcs {
-		if err := o.k8s.Service().Create(ctx, s); err != nil {
+		if err := o.k8s.Service().Apply(ctx, s); err != nil {
 			return err
 		}
 	}
@@ -93,7 +93,7 @@ func (o *progressOperation) Create(ctx context.Context, config *ProcessGroupConf
 	if pod == nil {
 		return nil
 	}
-	if err := o.k8s.Pod().Create(ctx, pod); err != nil {
+	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
 		return err
 	}
 	return nil

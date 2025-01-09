@@ -11,7 +11,6 @@ import (
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	applyconfigurationscorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
 type podTemplateOperation struct {
@@ -97,7 +96,7 @@ func (o *podTemplateOperation) Exists(ctx context.Context, namespace, pod string
 	return o.isExist(p, err, "Failed to get Pod: %v")
 }
 
-func (o *podTemplateOperation) Create(ctx context.Context, pod *Pod) error {
+func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -123,50 +122,50 @@ func (o *podTemplateOperation) Create(ctx context.Context, pod *Pod) error {
 	return nil
 }
 
-func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
-	if o.err != nil {
-		return o.err
-	}
-	p := applyconfigurationscorev1.Pod(pod.Name, pod.Namespace)
-	// 更新Labels
-	p.WithLabels(pod.labels())
-	// 更新容器
-	p.Spec.Containers = make([]applyconfigurationscorev1.ContainerApplyConfiguration, 0, len(pod.containers()))
-	for _, c := range pod.containers() {
-		ports := make([]*applyconfigurationscorev1.ContainerPortApplyConfiguration, 0, len(c.Ports))
-		for _, p := range c.Ports {
-			port := applyconfigurationscorev1.ContainerPort()
-			port.WithName(p.Name)
-			port.WithProtocol(p.Protocol)
-			port.WithHostPort(p.HostPort)
-			port.WithHostIP(p.HostIP)
-			port.WithContainerPort(p.ContainerPort)
-			ports = append(ports, port)
-		}
-		envs := make([]*applyconfigurationscorev1.EnvVarApplyConfiguration, 0, len(c.Env))
-		for _, e := range c.Env {
-			env := applyconfigurationscorev1.EnvVar()
-			env.WithName(e.Name)
-			env.WithValue(e.Value)
-			envs = append(envs, env)
-		}
-		container := applyconfigurationscorev1.Container()
-		container.WithName(c.Name)
-		container.WithImage(c.Image)
-		container.WithImagePullPolicy(c.ImagePullPolicy)
-		container.WithCommand(c.Command...)
-		container.WithArgs(c.Args...)
-		container.WithPorts(ports...)
-		container.WithEnv(envs...)
-		p.Spec.Containers = append(p.Spec.Containers, *container)
-	}
-	opts := v1.ApplyOptions{}
-	_, err := o.api.CoreV1().Pods(pod.Namespace).Apply(ctx, p, opts)
-	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
-	}
-	return nil
-}
+//func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
+//	if o.err != nil {
+//		return o.err
+//	}
+//	p := applyconfigurationscorev1.Pod(pod.Name, pod.Namespace)
+//	// 更新Labels
+//	p.WithLabels(pod.labels())
+//	// 更新容器
+//	p.Spec.Containers = make([]applyconfigurationscorev1.ContainerApplyConfiguration, 0, len(pod.containers()))
+//	for _, c := range pod.containers() {
+//		ports := make([]*applyconfigurationscorev1.ContainerPortApplyConfiguration, 0, len(c.Ports))
+//		for _, p := range c.Ports {
+//			port := applyconfigurationscorev1.ContainerPort()
+//			port.WithName(p.Name)
+//			port.WithProtocol(p.Protocol)
+//			port.WithHostPort(p.HostPort)
+//			port.WithHostIP(p.HostIP)
+//			port.WithContainerPort(p.ContainerPort)
+//			ports = append(ports, port)
+//		}
+//		envs := make([]*applyconfigurationscorev1.EnvVarApplyConfiguration, 0, len(c.Env))
+//		for _, e := range c.Env {
+//			env := applyconfigurationscorev1.EnvVar()
+//			env.WithName(e.Name)
+//			env.WithValue(e.Value)
+//			envs = append(envs, env)
+//		}
+//		container := applyconfigurationscorev1.Container()
+//		container.WithName(c.Name)
+//		container.WithImage(c.Image)
+//		container.WithImagePullPolicy(c.ImagePullPolicy)
+//		container.WithCommand(c.Command...)
+//		container.WithArgs(c.Args...)
+//		container.WithPorts(ports...)
+//		container.WithEnv(envs...)
+//		p.Spec.Containers = append(p.Spec.Containers, *container)
+//	}
+//	opts := v1.ApplyOptions{}
+//	_, err := o.api.CoreV1().Pods(pod.Namespace).Apply(ctx, p, opts)
+//	if err != nil {
+//		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
+//	}
+//	return nil
+//}
 
 func (o *podTemplateOperation) Delete(ctx context.Context, namespace, pod string) error {
 	if o.err != nil {

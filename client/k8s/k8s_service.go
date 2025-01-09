@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	applyconfigurationscorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
 type serviceOperation struct {
@@ -25,6 +24,31 @@ type Service struct {
 	ServiceType string           `json:"serviceType,omitempty"`
 	Status      string           `json:"status,omitempty"`
 	Ports       []*progress.Port `json:"ports,omitempty"`
+}
+
+func (s *Service) toCoreService() *corev1.Service {
+	ports := make([]corev1.ServicePort, 0, len(s.Ports))
+	for _, p := range s.Ports {
+		ports = append(ports, corev1.ServicePort{
+			Name:       p.GetName(),
+			Protocol:   corev1.Protocol(p.Protocol.String()),
+			Port:       p.Port,                         // 对外暴露的端口
+			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
+			NodePort:   p.NodePort,
+		})
+	}
+	return &corev1.Service{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      s.Name,      // Service 名称
+			Namespace: s.Namespace, // Service 所在的 Namespace
+			Labels:    s.labels(),
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: s.toSelector(),
+			Ports:    ports,
+			Type:     corev1.ServiceType(toServiceType(s.ServiceType)), // 默认为 ClusterIP 类型
+		},
+	}
 }
 
 func (s *Service) toProgressPort() []progress.ProgressPort {
@@ -99,7 +123,7 @@ func (pg *ProcessGroupConfig) toServices() []*Service {
 		if len(p.Service) < 1 || ports == nil || len(ports) < 1 {
 			continue
 		}
-		model := Model{Namespace: pg.Namespace, Name: p.Service}
+		model := Model{Namespace: pg.Namespace, Name: p.Service, AllowUpdate: pg.AllowUpdate}
 		key := model.Key()
 		svc := svcmap[key]
 		if svc == nil {
@@ -149,7 +173,7 @@ func (o *serviceOperation) Exists(ctx context.Context, namespace, service string
 	return o.isExist(svc, err, "Failed to get Services: %v")
 }
 
-func (o *serviceOperation) Create(ctx context.Context, service *Service) error {
+func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -157,70 +181,45 @@ func (o *serviceOperation) Create(ctx context.Context, service *Service) error {
 		if err != nil {
 			return err
 		}
-		return nil
-		//return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Service: %s 已存在!", service.Namespace, service.Name)
+		if service.AllowUpdate {
+			return o.update(ctx, service)
+		}
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Service: %s 已存在!", service.Namespace, service.Name)
 	}
-	ports := make([]corev1.ServicePort, 0, len(service.Ports))
-	for _, p := range service.Ports {
-		ports = append(ports, corev1.ServicePort{
-			Name:       p.GetName(),
-			Protocol:   corev1.Protocol(p.Protocol.String()),
-			Port:       p.Port,                         // 对外暴露的端口
-			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
-			NodePort:   p.NodePort,
-		})
-	}
-	svc := &corev1.Service{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      service.Name,      // Service 名称
-			Namespace: service.Namespace, // Service 所在的 Namespace
-			Labels:    service.labels(),
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: service.toSelector(),
-			Ports:    ports,
-			Type:     corev1.ServiceType(toServiceType(service.ServiceType)), // 默认为 ClusterIP 类型
-		},
-	}
-	opts := v1.CreateOptions{}
-	_, err := o.api.CoreV1().Services(service.Namespace).Create(ctx, svc, opts)
-	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create service: %v", err)
-	}
-	return nil
+	return o.create(ctx, service)
 }
 
-func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
-	if o.err != nil {
-		return o.err
-	}
-	svc := applyconfigurationscorev1.Service(service.Name, service.Namespace)
-	svc.WithLabels(service.labels())
-	t := corev1.ServiceType(toServiceType(service.ServiceType))
-	svc.Spec.Type = &t
-	svc.Spec.Selector = service.toSelector()
-	svc.Spec.Ports = make([]applyconfigurationscorev1.ServicePortApplyConfiguration, 0, len(service.Ports))
-	for _, p := range service.Ports {
-		protocol := corev1.Protocol(p.Protocol.String())
-		name := p.GetName()
-		port := p.Port
-		targetPort := intstr.FromInt32(p.TargetPort)
-		nodePort := p.NodePort
-		svc.Spec.Ports = append(svc.Spec.Ports, applyconfigurationscorev1.ServicePortApplyConfiguration{
-			Name:       &name,
-			Protocol:   &protocol,
-			Port:       &port,       // 对外暴露的端口
-			TargetPort: &targetPort, // Pod 内部服务监听的端口
-			NodePort:   &nodePort,
-		})
-	}
-	opts := v1.ApplyOptions{}
-	_, err := o.api.CoreV1().Services(service.Namespace).Apply(ctx, svc, opts)
-	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply service: %v", err)
-	}
-	return nil
-}
+//func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
+//	if o.err != nil {
+//		return o.err
+//	}
+//	svc := applyconfigurationscorev1.Service(service.Name, service.Namespace)
+//	svc.WithLabels(service.labels())
+//	spec := applyconfigurationscorev1.ServiceSpec()
+//	spec.WithType(corev1.ServiceType(toServiceType(service.ServiceType)))
+//	spec.WithSelector(service.toSelector())
+//	for _, p := range service.Ports {
+//		protocol := corev1.Protocol(p.Protocol.String())
+//		name := p.GetName()
+//		port := p.Port
+//		targetPort := intstr.FromInt32(p.TargetPort)
+//		nodePort := p.NodePort
+//		spec.WithPorts(&applyconfigurationscorev1.ServicePortApplyConfiguration{
+//			Name:       &name,
+//			Protocol:   &protocol,
+//			Port:       &port,       // 对外暴露的端口
+//			TargetPort: &targetPort, // Pod 内部服务监听的端口
+//			NodePort:   &nodePort,
+//		})
+//	}
+//	svc.WithSpec(spec)
+//	opts := v1.ApplyOptions{}
+//	_, err := o.api.CoreV1().Services(service.Namespace).Apply(ctx, svc, opts)
+//	if err != nil {
+//		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply service: %v", err)
+//	}
+//	return nil
+//}
 
 func (o *serviceOperation) Delete(ctx context.Context, namespace, service string) error {
 	if o.err != nil {
@@ -259,9 +258,31 @@ func (o *serviceOperation) DeleteGroup(ctx context.Context, namespace string, gr
 	return nil
 }
 
+func (o *serviceOperation) create(ctx context.Context, service *Service) error {
+	opts := v1.CreateOptions{}
+	_, err := o.api.CoreV1().Services(service.Namespace).Create(ctx, service.toCoreService(), opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create service: %v", err)
+	}
+	return nil
+}
+
+func (o *serviceOperation) update(ctx context.Context, service *Service) error {
+	opts := v1.UpdateOptions{}
+	_, err := o.api.CoreV1().Services(service.Namespace).Update(ctx, service.toCoreService(), opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update service: %v", err)
+	}
+	return nil
+}
+
 func (o *serviceOperation) delete(ctx context.Context, namespace string, service string) error {
 	opts := v1.DeleteOptions{}
-	return o.api.CoreV1().Services(namespace).Delete(ctx, service, opts)
+	err := o.api.CoreV1().Services(namespace).Delete(ctx, service, opts)
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete service: %v", err)
+	}
+	return nil
 }
 
 func (o *serviceOperation) list(ctx context.Context, namespace string, group string) (*corev1.ServiceList, error) {
