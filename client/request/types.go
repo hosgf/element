@@ -1,5 +1,7 @@
 package request
 
+import "github.com/gin-gonic/gin"
+
 type Header string
 
 const (
@@ -12,4 +14,28 @@ const (
 
 func (h Header) String() string {
 	return string(h)
+}
+
+func GetAppCode(context *gin.Context) string {
+	return GetHeader(context, HeaderReqAppCode)
+}
+
+func GetAppName(context *gin.Context) string {
+	return GetHeader(context, HeaderReqAppName)
+}
+
+func GetReqClient(context *gin.Context) string {
+	return GetHeader(context, HeaderReqClient)
+}
+
+func GetTraceId(context *gin.Context) string {
+	return GetHeader(context, HeaderTraceId)
+}
+
+func GetUserAgent(context *gin.Context) string {
+	return GetHeader(context, HeaderUserAgent)
+}
+
+func GetHeader(context *gin.Context, key Header) string {
+	return context.GetHeader(key.String())
 }
