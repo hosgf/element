@@ -10,7 +10,12 @@ const (
 	HeaderReqClient  Header = "X-Req-Client"
 	HeaderTraceId    Header = "X-Req-Id"
 	HeaderUserAgent  Header = "X-User-Agent"
+	HeaderReqToken   Header = "Authorization"
 )
+
+func GetHeaders() []Header {
+	return []Header{HeaderReqAppCode, HeaderReqAppName, HeaderReqClient, HeaderTraceId, HeaderUserAgent, HeaderReqToken}
+}
 
 func (h Header) String() string {
 	return string(h)
@@ -18,6 +23,10 @@ func (h Header) String() string {
 
 func GetAppCode(context *gin.Context) string {
 	return GetHeader(context, HeaderReqAppCode)
+}
+
+func GetToken(context *gin.Context) string {
+	return GetHeader(context, HeaderReqToken)
 }
 
 func GetAppName(context *gin.Context) string {
