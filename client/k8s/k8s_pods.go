@@ -355,9 +355,7 @@ func (o *podsOperation) Get(ctx context.Context, namespace, appname string) ([]*
 	if o.err != nil {
 		return nil, o.err
 	}
-	opts := v1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
-	}
+	opts := toAppListOptions(appname)
 	return o.pods(ctx, namespace, opts)
 }
 
@@ -396,12 +394,12 @@ func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
 	if o.err != nil {
 		return o.err
 	}
-	if has, d, err := o.deploymentExists(ctx, pod.Namespace, pod.Name); has {
+	if has, datas, err := o.deploymentExists(ctx, pod.Namespace, pod.Name); has {
 		if err != nil {
 			return err
 		}
 		if pod.AllowUpdate {
-			return o.update(ctx, d, pod)
+			return o.update(ctx, datas, pod)
 		}
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Pod: %s 已存在!", pod.Namespace, pod.Name)
 	}
@@ -490,10 +488,8 @@ func (o *podsOperation) DeleteGroup(ctx context.Context, namespace string, group
 		if datas.Items == nil || len(datas.Items) == 0 {
 			continue
 		}
-		for _, data := range datas.Items {
-			if err := o.delete(ctx, namespace, data.Name); err != nil {
-				return err
-			}
+		if err := o.deleteGroup(ctx, namespace, group); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -512,9 +508,7 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 	if o.err != nil {
 		return o.err
 	}
-	opts := v1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
-	}
+	opts := toAppListOptions(appname)
 	corev1 := o.api.CoreV1().Pods(namespace)
 	list, err := corev1.List(ctx, opts)
 	if err != nil {
@@ -528,11 +522,14 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 	return err
 }
 
-func (o *podsOperation) deploymentExists(ctx context.Context, namespace string, group string) (bool, *appsv1.Deployment, error) {
-	opts := v1.GetOptions{}
-	d, err := o.api.AppsV1().Deployments(namespace).Get(ctx, group, opts)
-	has, err := o.isExist(d, err, "Failed to get Pod: %v")
-	return has, d, err
+func (o *podsOperation) deploymentExists(ctx context.Context, namespace string, group string) (bool, []appsv1.Deployment, error) {
+	datas, err := o.api.AppsV1().Deployments(namespace).List(ctx, toGroupListOptions(group))
+	items := datas.Items
+	if len(items) < 1 {
+		return false, items, nil
+	}
+	has, err := o.isExist(items, err, "Failed to get Pod: %v")
+	return has, items, err
 }
 
 func (o *podsOperation) deleteDeployment(ctx context.Context, namespace string, group string) error {
@@ -552,16 +549,24 @@ func (o *podsOperation) create(ctx context.Context, pod *Pod) error {
 	opts := v1.CreateOptions{}
 	_, err := o.api.AppsV1().Deployments(pod.Namespace).Create(ctx, pod.toAppsDeployment(), opts)
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create apps deployment: %v", err)
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create apps Deployment: %v", err)
 	}
 	return nil
 }
 
-func (o *podsOperation) update(ctx context.Context, deployment *appsv1.Deployment, pod *Pod) error {
-	opts := v1.UpdateOptions{}
-	_, err := o.api.AppsV1().Deployments(pod.Namespace).Update(ctx, pod.updateAppsDeployment(deployment), opts)
+func (o *podsOperation) update(ctx context.Context, deployments []appsv1.Deployment, pod *Pod) error {
+	err := o.api.AppsV1().ReplicaSets(pod.Namespace).DeleteCollection(ctx, v1.DeleteOptions{}, toGroupListOptions(pod.Group))
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps deployment: %v", err)
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps ReplicaSets: %v", err)
+	}
+	if deployments == nil {
+		return nil
+	}
+	for _, deployment := range deployments {
+		_, err = o.api.AppsV1().Deployments(pod.Namespace).Update(ctx, pod.updateAppsDeployment(&deployment), v1.UpdateOptions{})
+		if err != nil {
+			return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps Deployment: %v", err)
+		}
 	}
 	return nil
 }
@@ -575,12 +580,16 @@ func (o *podsOperation) delete(ctx context.Context, namespace string, pod string
 	return nil
 }
 
-func (o *podsOperation) list(ctx context.Context, namespace string, group string) (*corev1.PodList, error) {
-	opts := v1.ListOptions{}
-	if len(group) > 0 {
-		opts.LabelSelector = fmt.Sprintf("%s=%s", types.LabelGroup, group)
+func (o *podsOperation) deleteGroup(ctx context.Context, namespace string, group string) error {
+	err := o.api.CoreV1().Pods(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, toGroupListOptions(group))
+	if err != nil {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete PodList: %v", err)
 	}
-	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
+	return nil
+}
+
+func (o *podsOperation) list(ctx context.Context, namespace string, group string) (*corev1.PodList, error) {
+	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, toGroupListOptions(group))
 	if err != nil {
 		return datas, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
 	}

@@ -73,13 +73,6 @@ func (o *progressOperation) List(ctx context.Context, namespace string) ([]*prog
 }
 
 func (o *progressOperation) Running(ctx context.Context, config *ProcessGroupConfig) error {
-	if config.AllowUpdate {
-		return o.Apply(ctx, config)
-	}
-	return o.Create(ctx, config)
-}
-
-func (o *progressOperation) Create(ctx context.Context, config *ProcessGroupConfig) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -99,23 +92,11 @@ func (o *progressOperation) Create(ctx context.Context, config *ProcessGroupConf
 	return nil
 }
 
-func (o *progressOperation) Apply(ctx context.Context, config *ProcessGroupConfig) error {
-	if o.err != nil {
-		return o.err
-	}
-	svcs := config.toServices()
-	for _, s := range svcs {
-		if err := o.k8s.Service().Apply(ctx, s); err != nil {
-			return err
-		}
-	}
-	pod := config.toPod()
-	if pod == nil {
-		return nil
-	}
-	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
-		return err
-	}
+func (o *progressOperation) Start(ctx context.Context, config *ProcessGroupConfig) error {
+	return nil
+}
+
+func (o *progressOperation) Stop(ctx context.Context, config *ProcessGroupConfig) error {
 	return nil
 }
 

@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
@@ -73,9 +72,7 @@ func (o *podTemplateOperation) Get(ctx context.Context, namespace, appname strin
 	if o.err != nil {
 		return nil, o.err
 	}
-	opts := v1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", types.LabelApp, appname),
-	}
+	opts := toAppListOptions(appname)
 	return o.pods(ctx, namespace, opts)
 }
 

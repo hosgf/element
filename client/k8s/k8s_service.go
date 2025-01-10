@@ -2,8 +2,6 @@ package k8s
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
@@ -315,10 +313,7 @@ func (o *serviceOperation) exists(ctx context.Context, namespace, service string
 }
 
 func (o *serviceOperation) list(ctx context.Context, namespace string, group string) (*corev1.ServiceList, error) {
-	opts := v1.ListOptions{}
-	if len(group) > 0 {
-		opts.LabelSelector = fmt.Sprintf("%s=%s", types.LabelGroup, group)
-	}
+	opts := toGroupListOptions(group)
 	datas, err := o.api.CoreV1().Services(namespace).List(ctx, opts)
 	if err != nil {
 		return datas, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Services: %v", err)

@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"fmt"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"path/filepath"
 
 	"github.com/gogf/gf/v2/errors/gcode"
@@ -120,6 +122,22 @@ func (k *Kubernetes) config(homePath string) string {
 		return filepath.Join(home, ".kube", "config")
 	}
 	return ""
+}
+
+func toAppListOptions(app string) v1.ListOptions {
+	opts := v1.ListOptions{}
+	if len(app) > 0 {
+		opts.LabelSelector = fmt.Sprintf("%s=%s", types.LabelApp, app)
+	}
+	return opts
+}
+
+func toGroupListOptions(group string) v1.ListOptions {
+	opts := v1.ListOptions{}
+	if len(group) > 0 {
+		opts.LabelSelector = fmt.Sprintf("%s=%s", types.LabelGroup, group)
+	}
+	return opts
 }
 
 func toServiceType(serviceType string) string {

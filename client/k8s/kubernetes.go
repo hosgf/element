@@ -28,8 +28,8 @@ type operation interface {
 type progressInterface interface {
 	List(ctx context.Context, namespace string) ([]*progress.Progress, error)
 	Running(ctx context.Context, config *ProcessGroupConfig) error
-	Create(ctx context.Context, config *ProcessGroupConfig) error
-	Apply(ctx context.Context, config *ProcessGroupConfig) error
+	Start(ctx context.Context, config *ProcessGroupConfig) error
+	Stop(ctx context.Context, config *ProcessGroupConfig) error
 	Destroy(ctx context.Context, namespace string, groups ...string) error
 }
 
