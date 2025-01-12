@@ -2,8 +2,9 @@ package k8s
 
 import (
 	"fmt"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"path/filepath"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
@@ -155,4 +156,18 @@ func (o *options) isExist(value interface{}, err error, format string) (bool, er
 		return false, nil
 	}
 	return false, gerror.NewCodef(gcode.CodeNotImplemented, format, err)
+}
+
+func (o *options) failed(err error) {
+	if err == nil {
+		return
+	}
+	if errors.IsTimeout(err) {
+		o.err = gerror.NewCodef(gcode.CodeNotImplemented, "调用环境服务超时: %+v", err)
+		return
+	}
+}
+
+func (o *options) success() {
+	o.err = nil
 }
