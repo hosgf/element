@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	res "k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type podsOperation struct {
@@ -32,12 +33,35 @@ type Pod struct {
 func (pod *Pod) updateAppsDeployment(deployment *appsv1.Deployment) *appsv1.Deployment {
 	for k, v := range pod.labels() {
 		deployment.ObjectMeta.Labels[k] = v
-		deployment.Spec.Template.ObjectMeta.Labels[k] = v
 	}
-	deployment.Spec.Replicas = pod.replicas()
-	deployment.Spec.Selector.MatchLabels = pod.toSelector()
-	deployment.Spec.Template.Spec.Containers = pod.containers()
+	deployment.Spec = pod.toSpec()
 	return deployment
+}
+
+func (pod *Pod) toSpec() appsv1.DeploymentSpec {
+	objectmeta := v1.ObjectMeta{}
+	for k, v := range pod.labels() {
+		objectmeta.Labels[k] = v
+	}
+	return appsv1.DeploymentSpec{
+		Replicas: pod.replicas(),
+		Selector: &v1.LabelSelector{
+			MatchLabels: pod.toSelector(),
+		},
+		Strategy: appsv1.DeploymentStrategy{
+			Type: appsv1.RollingUpdateDeploymentStrategyType,
+			RollingUpdate: &appsv1.RollingUpdateDeployment{
+				MaxSurge:       &intstr.IntOrString{Type: intstr.Int, IntVal: 0}, // 不创建超出原有 Pod 数量的新的 Pod
+				MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1}, // 允许同时下线 1 个 Pod
+			},
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: objectmeta,
+			Spec: corev1.PodSpec{
+				Containers: pod.containers(),
+			},
+		},
+	}
 }
 
 func (pod *Pod) toAppsDeployment() *appsv1.Deployment {
