@@ -555,15 +555,15 @@ func (o *podsOperation) create(ctx context.Context, pod *Pod) error {
 }
 
 func (o *podsOperation) update(ctx context.Context, deployments []appsv1.Deployment, pod *Pod) error {
-	err := o.api.AppsV1().ReplicaSets(pod.Namespace).DeleteCollection(ctx, v1.DeleteOptions{}, toGroupListOptions(pod.Group))
-	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps ReplicaSets: %v", err)
-	}
+	//err := o.api.AppsV1().ReplicaSets(pod.Namespace).DeleteCollection(ctx, v1.DeleteOptions{}, toGroupListOptions(pod.Group))
+	//if err != nil {
+	//	return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps ReplicaSets: %v", err)
+	//}
 	if deployments == nil {
 		return nil
 	}
 	for _, deployment := range deployments {
-		_, err = o.api.AppsV1().Deployments(pod.Namespace).Update(ctx, pod.updateAppsDeployment(&deployment), v1.UpdateOptions{})
+		_, err := o.api.AppsV1().Deployments(pod.Namespace).Update(ctx, pod.updateAppsDeployment(&deployment), v1.UpdateOptions{})
 		if err != nil {
 			return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps Deployment: %v", err)
 		}
