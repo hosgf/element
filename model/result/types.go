@@ -38,29 +38,29 @@ func Download(r *ghttp.Request, path string, err error) {
 }
 
 func Success(r *ghttp.Request, data interface{}) {
-	response.success(r, data)
+	response.Success(r, data)
 }
 
 func Fail(r *ghttp.Request, err error) {
-	response.fail(r, SC_FAILURE, err)
+	response.Fail(r, SC_FAILURE, err)
 }
 
-func (res *Response) fail(r *ghttp.Request, code int, err error) {
+func (res *Response) Fail(r *ghttp.Request, code int, err error) {
 	if nil == err {
 		return
 	}
-	res.build(r, code, err.Error(), nil)
+	res.Build(r, code, err.Error(), nil)
 }
 
-func (res *Response) success(r *ghttp.Request, data interface{}) {
-	res.result(r, SUCCESS, data)
+func (res *Response) Success(r *ghttp.Request, data interface{}) {
+	res.Result(r, SUCCESS, data)
 }
 
-func (res *Response) result(r *ghttp.Request, resultCode gcode.Code, data interface{}) {
-	res.build(r, resultCode.Code(), resultCode.Message(), data)
+func (res *Response) Result(r *ghttp.Request, resultCode gcode.Code, data interface{}) {
+	res.Build(r, resultCode.Code(), resultCode.Message(), data)
 }
 
-func (res *Response) build(r *ghttp.Request, code int, message string, data interface{}) {
+func (res *Response) Build(r *ghttp.Request, code int, message string, data interface{}) {
 	res.gzip(r, Build(code, message, data))
 }
 
