@@ -41,11 +41,19 @@ func Success(r *ghttp.Request, data interface{}) {
 	response.Success(r, data)
 }
 
-func Fail(r *ghttp.Request, err error) {
-	response.Fail(r, SC_FAILURE, err)
+func Message(r *ghttp.Request, message string) {
+	response.Build(r, SC_OK, message, nil)
 }
 
-func (res *Response) Fail(r *ghttp.Request, code int, err error) {
+func FailMessage(r *ghttp.Request, err string) {
+	response.Build(r, SC_FAILURE, err, nil)
+}
+
+func Failure(r *ghttp.Request, err error) {
+	response.Failure(r, SC_FAILURE, err)
+}
+
+func (res *Response) Failure(r *ghttp.Request, code int, err error) {
 	if nil == err {
 		return
 	}
