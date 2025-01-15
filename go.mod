@@ -4,7 +4,9 @@ go 1.23.3
 
 require (
 	github.com/gin-gonic/gin v1.10.0
+	github.com/go-netty/go-netty v1.6.7
 	github.com/gogf/gf/v2 v2.8.3
+	golang.org/x/text v0.21.0
 	k8s.io/api v0.32.0
 	k8s.io/apimachinery v0.32.0
 	k8s.io/client-go v0.32.0
@@ -74,7 +76,6 @@ require (
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect

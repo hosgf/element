@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	rand2 "crypto/rand"
+	"encoding/binary"
 	"errors"
 	"hash/crc32"
 	"math"
@@ -16,9 +17,17 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/hosgf/element/logger"
 )
+
+func IntToByteArray(value int, bigEndian bool) []byte {
+	buf := make([]byte, 4)
+	if bigEndian {
+		binary.BigEndian.PutUint32(buf, uint32(value))
+	} else {
+		binary.LittleEndian.PutUint32(buf, uint32(value))
+	}
+	return buf
+}
 
 func FilterDuplicates(datas []string) []string {
 	var uniqueDatas []string
