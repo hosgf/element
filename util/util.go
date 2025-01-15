@@ -17,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hosgf/element/logger"
 )
 
 func IntToByteArray(value int, bigEndian bool) []byte {
