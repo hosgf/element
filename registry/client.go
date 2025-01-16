@@ -52,7 +52,7 @@ func (c *Client) Run(retries bool) error {
 	return err
 }
 
-func (c *Client) SendData(data string) error {
+func (c *Client) SendData(ctx context.Context, data string) error {
 	if c.channel.IsActive() {
 		message := NewBizMessage(data)
 		return c.write(&message)

@@ -46,9 +46,9 @@ func (m messageCodec) HandleRead(ctx netty.InboundContext, message netty.Message
 	messageType := MessageType(obj.MessageType)
 	switch messageType {
 	case MessageTypeHB:
-		m.mh.HandleReplyPingData(obj.bodyToString())
+		m.mh.HandleReplyPingData(ctx.Channel().Context(), obj.bodyToString())
 	case MessageTypeBIZ:
-		m.mh.HandleReplyData(obj.bodyToString())
+		m.mh.HandleReplyData(ctx.Channel().Context(), obj.bodyToString())
 	}
 }
 

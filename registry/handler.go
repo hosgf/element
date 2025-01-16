@@ -21,12 +21,12 @@ type (
 
 	SendDataHandler interface {
 		SendPingData() Message
-		SendData(data string) error
+		SendData(ctx context.Context, data string) error
 	}
 
 	MessageHandler interface {
-		HandleReplyPingData(data string)
-		HandleReplyData(data string)
+		HandleReplyPingData(ctx context.Context, data string)
+		HandleReplyData(ctx context.Context, data string)
 	}
 )
 
@@ -44,8 +44,8 @@ func (h *triggerHandler) SendPingData() Message {
 	return h.sh.SendPingData()
 }
 
-func (h *triggerHandler) SendData(data string) error {
-	return h.client.SendData(data)
+func (h *triggerHandler) SendData(ctx context.Context, data string) error {
+	return h.client.SendData(ctx, data)
 }
 
 func (h *triggerHandler) HandleActive(ctx netty.ActiveContext) {
