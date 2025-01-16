@@ -6,6 +6,7 @@ import (
 	"github.com/go-netty/go-netty"
 	"github.com/go-netty/go-netty/utils"
 	"github.com/gogf/gf/v2/encoding/gjson"
+	"github.com/hosgf/element/logger"
 )
 
 func newMessageCodec(client *Client) messageCodec {
@@ -23,7 +24,10 @@ func (m messageCodec) CodecName() string {
 func (m messageCodec) HandleRead(ctx netty.InboundContext, message netty.Message) {
 	var obj Message
 	jsonDecoder := json.NewDecoder(utils.MustToReader(message))
-	utils.Assert(jsonDecoder.Decode(&obj))
+	if err := jsonDecoder.Decode(&obj); err != nil {
+		logger.Errorf(ctx.Channel().Context(), "decode error: %s", err)
+		return
+	}
 	if m.mh == nil {
 		ctx.HandleRead(obj)
 		return
