@@ -1,11 +1,12 @@
 package registry
 
 import (
-	"encoding/json"
+	"strings"
 
 	"github.com/go-netty/go-netty"
 	"github.com/go-netty/go-netty/utils"
 	"github.com/gogf/gf/v2/encoding/gjson"
+	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/logger"
 )
 
@@ -22,12 +23,22 @@ func (m messageCodec) CodecName() string {
 }
 
 func (m messageCodec) HandleRead(ctx netty.InboundContext, message netty.Message) {
-	var obj Message
-	jsonDecoder := json.NewDecoder(utils.MustToReader(message))
-	if err := jsonDecoder.Decode(&obj); err != nil {
-		logger.Errorf(ctx.Channel().Context(), "decode error: %s", err)
+	textBytes, err := utils.ToBytes(message)
+	if err != nil {
+		logger.Errorf(ctx.Channel().Context(), "Reader Message error: %s", err)
 		return
 	}
+	sb := strings.Builder{}
+	sb.Write(textBytes)
+	data := sb.String()
+	strs := strings.Split(data, "@@@")
+	if len(strs) != 2 {
+		logger.Errorf(ctx.Channel().Context(), "Reader Message failure")
+		return
+	}
+	var obj Message
+	obj.SetMessageHead(gconv.Bytes(strs[0]))
+	obj.SetMessageBody(gconv.Bytes(strs[1]))
 	if m.mh == nil {
 		ctx.HandleRead(obj)
 		return
@@ -44,9 +55,9 @@ func (m messageCodec) HandleRead(ctx netty.InboundContext, message netty.Message
 func (m messageCodec) HandleWrite(ctx netty.OutboundContext, message netty.Message) {
 	switch r := message.(type) {
 	case Message:
-		ctx.HandleWrite(r.ToString())
+		ctx.HandleWrite(r.ComposeFull())
 	case *Message:
-		ctx.HandleWrite(r.ToString())
+		ctx.HandleWrite(r.ComposeFull())
 	case string:
 		ctx.HandleWrite(r)
 	default:

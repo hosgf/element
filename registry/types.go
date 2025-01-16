@@ -3,10 +3,9 @@ package registry
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
+	"fmt"
 
 	"github.com/go-netty/go-netty"
-	"github.com/gogf/gf/v2/encoding/gjson"
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/health"
 	"golang.org/x/text/encoding/charmap"
@@ -27,7 +26,7 @@ const (
 	HeadLength   = 17
 	MagicNumber  = 16787777
 	DefaultLogId = 10000000
-	Encoding     = "GB18030"
+	Encoding     = "UTF-8"
 	BaseRandom   = 20
 )
 
@@ -94,10 +93,13 @@ func ParseFromBytes(data []byte) Message {
 }
 
 func (m *Message) parseHead() error {
-	if (m.MessageHead == nil) || len(m.MessageHead) != HeadLength {
+	//if (m.MessageHead == nil) || len(m.MessageHead) != HeadLength {
+	//	return nil
+	//}
+	if m.MessageHead == nil {
 		return nil
 	}
-	buf := bytes.NewReader(m.MessageHead[:HeadLength-1]) // Exclude flag
+	buf := bytes.NewReader(m.MessageHead) // Exclude flag
 	if err := binary.Read(buf, binary.BigEndian, &m.MagicNumber); err != nil {
 		return err
 	}
@@ -133,18 +135,6 @@ func (m *Message) composeHead() error {
 	return nil
 }
 
-func (m *Message) ComposeFull() ([]byte, error) {
-	if m.MessageBody != nil {
-		m.Length = int32(len(m.MessageBody))
-	}
-	err := m.composeHead()
-	if err != nil {
-		return nil, err
-	}
-	data := append(m.MessageHead, m.MessageBody...)
-	return data, nil
-}
-
 func (m *Message) GetMessageHead() ([]byte, error) {
 	if m.MessageHead == nil || len(m.MessageHead) != HeadLength {
 		err := m.composeHead()
@@ -153,6 +143,15 @@ func (m *Message) GetMessageHead() ([]byte, error) {
 		}
 	}
 	return m.MessageHead, nil
+}
+
+func (m *Message) SetMessageHead(heads []byte) {
+	m.MessageHead = heads
+	m.parseHead()
+}
+
+func (m *Message) GetMessageBody() []byte {
+	return m.MessageBody
 }
 
 func (m *Message) SetMessageBody(body []byte) {
@@ -182,15 +181,10 @@ func (m *Message) bodyToString() string {
 	return body
 }
 
-func (m *Message) ToBytes() []byte {
-	d, err := json.Marshal(m)
+func (m *Message) ComposeFull() string {
+	h, err := m.GetMessageHead()
 	if err != nil {
-		return nil
+		return ""
 	}
-	return d
-}
-
-func (m *Message) ToString() string {
-	m.composeHead()
-	return gjson.MustEncodeString(m)
+	return fmt.Sprintf("%s@@@%s", string(h), m.bodyToString())
 }

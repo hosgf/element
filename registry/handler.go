@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"math"
 	_ "sync/atomic"
 	"time"
@@ -48,13 +49,14 @@ func (h *triggerHandler) SendData(data string) error {
 }
 
 func (h *triggerHandler) HandleActive(ctx netty.ActiveContext) {
+	ctx.Write(h.SendPingData())
 	go h.ping(ctx)
 	ctx.HandleActive()
 }
 
 func (h *triggerHandler) HandleInactive(ctx netty.InactiveContext, ex netty.Exception) {
 	h.stop()
-	go h.retries(ctx)
+	go h.retries(ctx.Channel().Context())
 }
 
 func (h *triggerHandler) HandleException(ctx netty.ExceptionContext, ex netty.Exception) {
@@ -83,25 +85,25 @@ func (h *triggerHandler) stop() {
 	close(h.closeChan)
 }
 
-func (h *triggerHandler) retries(ctx netty.InactiveContext) {
+func (h *triggerHandler) nextTime() time.Duration {
+	second := math.Max(5, float64(grand.Intn(BaseRandom)))
+	return time.Duration(second) * time.Second
+}
+
+func (h *triggerHandler) retries(ctx context.Context) {
 	for {
 		nextTime := h.nextTime()
 		ticker := time.NewTicker(nextTime)
-		logger.Info(ctx.Channel().Context(), "正在尝试重新连接...")
+		logger.Info(ctx, "正在尝试重新连接...")
 		defer ticker.Stop()
 		select {
 		case <-ticker.C:
-			if err := h.client.Run(); err != nil {
-				logger.Warningf(ctx.Channel().Context(), "注册服务重连失败: %v，等待 %v 秒后重试...\n", err, nextTime.Seconds())
+			if err := h.client.Run(false); err != nil {
+				logger.Warningf(ctx, "注册服务重连失败: %v，等待 %v 秒后重试...\n", err, nextTime.Seconds())
 			} else {
-				logger.Info(ctx.Channel().Context(), "注册服务重连成功")
+				logger.Info(ctx, "注册服务重连成功")
 				return
 			}
 		}
 	}
-}
-
-func (h *triggerHandler) nextTime() time.Duration {
-	second := math.Max(5, float64(grand.Intn(BaseRandom)))
-	return time.Duration(second) * time.Second
 }
