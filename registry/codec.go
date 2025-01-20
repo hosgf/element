@@ -9,6 +9,8 @@ import (
 	"github.com/hosgf/element/logger"
 )
 
+const Delimiter = "@&@"
+
 func newMessageCodec(client *Client) messageCodec {
 	return messageCodec{mh: client.config.MessageHandler}
 }
@@ -30,7 +32,7 @@ func (m messageCodec) HandleRead(ctx netty.InboundContext, message netty.Message
 	sb := strings.Builder{}
 	sb.Write(textBytes)
 	data := sb.String()
-	strs := strings.Split(data, "@@@")
+	strs := strings.Split(data, Delimiter)
 	if len(strs) != 2 {
 		logger.Errorf(ctx.Channel().Context(), "Reader Message failure")
 		return

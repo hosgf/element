@@ -198,5 +198,5 @@ func (m *Message) ComposeFull() string {
 	if err != nil {
 		return ""
 	}
-	return fmt.Sprintf("%s@@@%s", string(h), m.bodyToString())
+	return fmt.Sprintf("%s%s%s", string(h), Delimiter, m.bodyToString())
 }
