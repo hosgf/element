@@ -2,12 +2,14 @@ package registry
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 
 	"github.com/go-netty/go-netty"
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/health"
+	"github.com/hosgf/element/logger"
 	"golang.org/x/text/encoding/charmap"
 )
 
@@ -75,7 +77,7 @@ func NewBizMessage(body interface{}) Message {
 		MessageType: MessageTypeBIZ.ToInt32(),
 		LogId:       DefaultLogId,
 	}
-	msg.SetMessageBody(gconv.Bytes(body))
+	msg.SetMessageBodyData(body)
 	return msg
 }
 
@@ -85,7 +87,9 @@ func ParseFromBytes(data []byte) Message {
 		return msg
 	}
 	msg.MessageHead = data[:HeadLength]
-	msg.parseHead()
+	if err := msg.parseHead(); err != nil {
+		logger.Errorf(context.Background(), "parse head err: %v", err)
+	}
 	if len(data) > HeadLength {
 		msg.MessageBody = data[HeadLength:]
 	}
@@ -145,13 +149,22 @@ func (m *Message) GetMessageHead() ([]byte, error) {
 	return m.MessageHead, nil
 }
 
-func (m *Message) SetMessageHead(heads []byte) {
-	m.MessageHead = heads
-	m.parseHead()
-}
-
 func (m *Message) GetMessageBody() []byte {
 	return m.MessageBody
+}
+
+func (m *Message) SetMessageHead(heads []byte) {
+	m.MessageHead = heads
+	if err := m.parseHead(); err != nil {
+		logger.Errorf(context.Background(), "parse head err: %v", err)
+	}
+}
+
+func (m *Message) SetMessageHeadData(heads interface{}) {
+	if heads == nil {
+		return
+	}
+	m.SetMessageHead(gconv.Bytes(heads))
 }
 
 func (m *Message) SetMessageBody(body []byte) {
@@ -165,8 +178,7 @@ func (m *Message) SetMessageBodyData(body interface{}) {
 	if body == nil {
 		return
 	}
-	m.MessageBody = gconv.Bytes(body)
-	m.Length = int32(len(m.MessageBody))
+	m.SetMessageBody(gconv.Bytes(body))
 }
 
 func (m *Message) bodyToString() string {

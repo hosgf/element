@@ -6,7 +6,6 @@ import (
 	"github.com/go-netty/go-netty"
 	"github.com/go-netty/go-netty/utils"
 	"github.com/gogf/gf/v2/encoding/gjson"
-	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/logger"
 )
 
@@ -37,8 +36,8 @@ func (m messageCodec) HandleRead(ctx netty.InboundContext, message netty.Message
 		return
 	}
 	var obj Message
-	obj.SetMessageHead(gconv.Bytes(strs[0]))
-	obj.SetMessageBody(gconv.Bytes(strs[1]))
+	obj.SetMessageHeadData(strs[0])
+	obj.SetMessageBodyData(strs[1])
 	if m.mh == nil {
 		ctx.HandleRead(obj)
 		return
