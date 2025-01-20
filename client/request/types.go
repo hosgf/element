@@ -1,6 +1,23 @@
 package request
 
-import "github.com/gin-gonic/gin"
+import (
+	"strings"
+
+	"github.com/gin-gonic/gin"
+)
+
+// Protocol 请求协议类型
+type Protocol string
+
+const (
+	HTTPS Protocol = "HTTPS"
+	HTTP  Protocol = "HTTP"
+	WS    Protocol = "WS"
+)
+
+func (t Protocol) String() string {
+	return strings.ToUpper(string(t))
+}
 
 type Header string
 
