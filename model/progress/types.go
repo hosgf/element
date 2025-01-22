@@ -91,12 +91,23 @@ func (p *Progress) ToHealth() Health {
 	}
 }
 
+func (p *Progress) MatchScope(scope string) bool {
+	return strings.EqualFold(p.GetScope(), scope)
+}
+
 func (p *Progress) MatchGroup(group string) bool {
 	return strings.EqualFold(p.GetGroup(), group)
 }
 
 func (p *Progress) MatchNamespace(namespace string) bool {
 	return strings.EqualFold(p.Namespace, namespace)
+}
+
+func (p *Progress) GetScope() string {
+	if p.Labels == nil {
+		return ""
+	}
+	return p.Labels.Scope
 }
 
 func (p *Progress) GetGroup() string {
