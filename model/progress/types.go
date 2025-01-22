@@ -131,11 +131,11 @@ func (p *Progress) GetAddress() string {
 	return p.Details["address"].(string)
 }
 
-func (p *Progress) GetPorts() []*ProgressPort {
+func (p *Progress) GetPorts() []ProgressPort {
 	if p.Details == nil {
 		return nil
 	}
-	return p.Details["ports"].([]*ProgressPort)
+	return p.Details["ports"].([]ProgressPort)
 }
 
 func (p *Progress) SetRunningNode(runningNode string) {
@@ -152,7 +152,7 @@ func (p *Progress) SetAddress(address string) {
 	p.Details["address"] = address
 }
 
-func (p *Progress) SetPorts(ports []*ProgressPort) {
+func (p *Progress) SetPorts(ports []ProgressPort) {
 	if p.Details == nil {
 		p.Details = make(map[string]interface{})
 	}
