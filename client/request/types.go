@@ -45,6 +45,19 @@ func (h Header) Get(ctx context.Context) string {
 	return value.(string)
 }
 
+func GetHeaderList(ctx context.Context, keys ...string) map[string]string {
+	headers := make(map[string]string)
+	if len(keys) == 0 {
+		return headers
+	}
+	for _, k := range keys {
+		if value := Header(k).Get(ctx); len(value) > 0 {
+			headers[k] = value
+		}
+	}
+	return headers
+}
+
 func GetHeader(ctx context.Context) map[string]string {
 	headers := make(map[string]string)
 	for _, header := range GetHeaders() {
