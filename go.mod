@@ -3,6 +3,7 @@ module github.com/hosgf/element
 go 1.23.3
 
 require (
+	github.com/gin-contrib/gzip v1.2.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-netty/go-netty v1.6.7
 	github.com/gogf/gf/v2 v2.8.3
@@ -19,7 +20,6 @@ require (
 	github.com/bytedance/sonic/loader v0.2.2 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
-	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
@@ -27,7 +27,6 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
-	github.com/gin-contrib/gzip v1.2.0 // indirect
 	github.com/gin-contrib/sse v1.0.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
