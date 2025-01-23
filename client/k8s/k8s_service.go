@@ -25,19 +25,23 @@ type Service struct {
 	Ports       []*progress.Port `json:"ports,omitempty"`
 }
 
+func toServicePort(p *progress.Port) corev1.ServicePort {
+	port := corev1.ServicePort{
+		Name:       p.GetName(),
+		Protocol:   corev1.Protocol(p.GetProtocol()),
+		Port:       p.Port,                         // 对外暴露的端口
+		TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
+	}
+	if p.NodePort > 0 {
+		port.NodePort = p.NodePort
+	}
+	return port
+}
+
 func (s *Service) updateCoreService(svc *corev1.Service) *corev1.Service {
 	ports := make([]corev1.ServicePort, 0, len(s.Ports))
 	for _, p := range s.Ports {
-		port := corev1.ServicePort{
-			Name:       p.GetName(),
-			Protocol:   corev1.Protocol(p.GetProtocol()),
-			Port:       p.Port,                         // 对外暴露的端口
-			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
-		}
-		if p.NodePort > 0 {
-			port.NodePort = p.NodePort
-		}
-		ports = append(ports, port)
+		ports = append(ports, toServicePort(p))
 	}
 	svc.Spec.Ports = ports
 	svc.Spec.Selector = s.toSelector()
@@ -51,13 +55,7 @@ func (s *Service) updateCoreService(svc *corev1.Service) *corev1.Service {
 func (s *Service) toCoreService() *corev1.Service {
 	ports := make([]corev1.ServicePort, 0, len(s.Ports))
 	for _, p := range s.Ports {
-		ports = append(ports, corev1.ServicePort{
-			Name:       p.GetName(),
-			Protocol:   corev1.Protocol(p.GetProtocol()),
-			Port:       p.Port,                         // 对外暴露的端口
-			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
-			NodePort:   p.NodePort,
-		})
+		ports = append(ports, toServicePort(p))
 	}
 	return &corev1.Service{
 		ObjectMeta: v1.ObjectMeta{
