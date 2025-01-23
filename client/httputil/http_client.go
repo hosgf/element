@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hosgf/element/client/request"
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/result"
 	"github.com/hosgf/element/util"
@@ -42,7 +43,7 @@ func DoGet(ctx context.Context, url string, isDebug bool) (response result.Respo
 }
 
 func DoPostJson(ctx context.Context, url string, data interface{}) (response result.Response, err error) {
-	res := NewJsonHttpClient(DEFAULT_TIMEOUT, -1).PostContent(ctx, url, data)
+	res := NewJsonHttpClient(ctx, DEFAULT_TIMEOUT, -1).PostContent(ctx, url, data)
 	logger.Call(ctx, http.MethodPost, url, DefaultContentType, nil, res, data)
 	if len(res) < 1 {
 		return response, errors.New(result.REQ_REJECT.Message())
@@ -52,7 +53,7 @@ func DoPostJson(ctx context.Context, url string, data interface{}) (response res
 }
 
 func DoPost(ctx context.Context, url string, contentType string, data interface{}) (response result.Response, err error) {
-	res := NewHttpClient(DEFAULT_TIMEOUT, -1).ContentType(contentType).PostContent(ctx, url, data)
+	res := NewHttpClient(ctx, DEFAULT_TIMEOUT, -1).ContentType(contentType).PostContent(ctx, url, data)
 	logger.Call(ctx, http.MethodPost, url, contentType, nil, res, data)
 	if len(res) < 1 {
 		return response, errors.New(result.REQ_REJECT.Message())
@@ -62,7 +63,7 @@ func DoPost(ctx context.Context, url string, contentType string, data interface{
 }
 
 func doGet(ctx context.Context, url string, isDebug bool) (response result.Response, err error) {
-	res := NewHttpClient(DEFAULT_TIMEOUT, DEFAULT_RETRY_INTERVAL).GetContent(ctx, url)
+	res := NewHttpClient(ctx, DEFAULT_TIMEOUT, DEFAULT_RETRY_INTERVAL).GetContent(ctx, url)
 	if isDebug {
 		logger.Call(ctx, http.MethodGet, url, "application/json", nil, res, nil)
 	}
@@ -74,7 +75,7 @@ func doGet(ctx context.Context, url string, isDebug bool) (response result.Respo
 }
 
 func DoRequest(ctx context.Context, method, url string, data, resp interface{}, timeout int, isRetry, isJson, isDebug bool) error {
-	client := NewHttpClient(util.AnyInt(timeout < 1, DEFAULT_TIMEOUT, timeout), util.AnyInt(isRetry, DEFAULT_RETRY_INTERVAL, -1))
+	client := NewHttpClient(ctx, util.AnyInt(timeout < 1, DEFAULT_TIMEOUT, timeout), util.AnyInt(isRetry, DEFAULT_RETRY_INTERVAL, -1))
 	if isJson {
 		client = client.ContentJson()
 	}
@@ -102,12 +103,15 @@ func DoRequest(ctx context.Context, method, url string, data, resp interface{}, 
 	return nil
 }
 
-func NewJsonHttpClient(timeout int, retryInterval int) (client *gclient.Client) {
-	return NewHttpClient(timeout, retryInterval).ContentJson()
+func NewJsonHttpClient(ctx context.Context, timeout int, retryInterval int) (client *gclient.Client) {
+	return NewHttpClient(ctx, timeout, retryInterval).ContentJson()
 }
 
-func NewHttpClient(timeout int, retryInterval int) (client *gclient.Client) {
+func NewHttpClient(ctx context.Context, timeout int, retryInterval int) (client *gclient.Client) {
 	client = g.Client().SetTimeout(time.Duration(timeout) * time.Second)
+	if headers := request.GetHeader(ctx); headers != nil {
+		client.Header(headers)
+	}
 	if retryInterval > 0 {
 		client = client.Retry(DEFAULT_RETRY_COUNT, time.Duration(retryInterval)*time.Second)
 	}
