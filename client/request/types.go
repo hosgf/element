@@ -1,6 +1,7 @@
 package request
 
 import (
+	"context"
 	"strings"
 )
 
@@ -34,4 +35,22 @@ func GetHeaders() []Header {
 
 func (h Header) String() string {
 	return string(h)
+}
+
+func (h Header) Get(ctx context.Context) string {
+	value := ctx.Value(h.String())
+	if value == nil {
+		return ""
+	}
+	return value.(string)
+}
+
+func GetHeader(ctx context.Context) map[string]string {
+	headers := make(map[string]string)
+	for _, header := range GetHeaders() {
+		if value := header.Get(ctx); len(value) > 0 {
+			headers[header.String()] = value
+		}
+	}
+	return headers
 }
