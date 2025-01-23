@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
@@ -29,7 +30,7 @@ func (s *Service) updateCoreService(svc *corev1.Service) *corev1.Service {
 	for _, p := range s.Ports {
 		ports = append(ports, corev1.ServicePort{
 			Name:       p.GetName(),
-			Protocol:   corev1.Protocol(p.Protocol.String()),
+			Protocol:   corev1.Protocol(p.GetProtocol()),
 			Port:       p.Port,                         // 对外暴露的端口
 			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
 			NodePort:   p.NodePort,
@@ -49,7 +50,7 @@ func (s *Service) toCoreService() *corev1.Service {
 	for _, p := range s.Ports {
 		ports = append(ports, corev1.ServicePort{
 			Name:       p.GetName(),
-			Protocol:   corev1.Protocol(p.Protocol.String()),
+			Protocol:   corev1.Protocol(p.GetProtocol()),
 			Port:       p.Port,                         // 对外暴露的端口
 			TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
 			NodePort:   p.NodePort,

@@ -196,6 +196,13 @@ type Port struct {
 	NodePort   int32              `json:"nodePort,omitempty"`   // 代理端口号
 }
 
+func (p *Port) GetProtocol() types.ProtocolType {
+	if p.Protocol == "" {
+		p.Protocol = types.ProtocolTcp
+	}
+	return p.Protocol
+}
+
 func (p *Port) GetName() string {
 	p.Format()
 	if p.Name == "" {
@@ -205,6 +212,12 @@ func (p *Port) GetName() string {
 }
 
 func (p *Port) Format() {
+	if p.Protocol == "" {
+		p.Protocol = types.ProtocolTcp
+	}
+	if p.NodePort == 0 {
+		p.NodePort = -1
+	}
 	port := p.Port
 	targetPort := p.TargetPort
 	if targetPort > 0 && port > 0 {

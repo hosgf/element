@@ -214,7 +214,7 @@ func (c *Container) ports(container *corev1.Container) {
 	for _, p := range list {
 		ports = append(ports, corev1.ContainerPort{
 			Name:          p.Name,
-			Protocol:      corev1.Protocol(p.Protocol.String()),
+			Protocol:      corev1.Protocol(p.GetProtocol()),
 			ContainerPort: p.TargetPort,
 		})
 	}
