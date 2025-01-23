@@ -28,7 +28,7 @@ type Service struct {
 func toServicePort(p *progress.Port) corev1.ServicePort {
 	port := corev1.ServicePort{
 		Name:       p.GetName(),
-		Protocol:   corev1.Protocol(p.GetProtocol()),
+		Protocol:   corev1.Protocol(p.GetProtocol().String()),
 		Port:       p.Port,                         // 对外暴露的端口
 		TargetPort: intstr.FromInt32(p.TargetPort), // Pod 内部服务监听的端口
 	}

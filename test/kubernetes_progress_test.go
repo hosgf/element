@@ -13,7 +13,7 @@ import (
 func TestProgressList(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
-	datas, err := kubernetes.Progress().List(ctx, "local")
+	datas, err := kubernetes.Progress().List(ctx, "sandbox")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -24,7 +24,7 @@ func TestProgressList(t *testing.T) {
 func TestDeleteProgress(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
-	err := kubernetes.Progress().Destroy(ctx, "local", "driver-dm-10")
+	err := kubernetes.Progress().Destroy(ctx, "sandbox", "driver-dm-10")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -36,7 +36,7 @@ func TestRunningProgress(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
 	config := &k8s.ProcessGroupConfig{
-		Namespace:   "local",
+		Namespace:   "sandbox",
 		GroupName:   "driver-dm-10",
 		AllowUpdate: true,
 		Labels: types.Labels{
@@ -139,7 +139,7 @@ func toProgress2() k8s.ProcessConfig {
 					"CONTAINER_NAME": "container-10-2",
 					"PORT":           "18003",
 					"MANAGER_LINK":   "http://driver-manager-service:18090",
-					"RUN_ENV":        "local",
+					"RUN_ENV":        "sandbox",
 				},
 			},
 		},

@@ -214,7 +214,7 @@ func (c *Container) ports(container *corev1.Container) {
 	for _, p := range list {
 		ports = append(ports, corev1.ContainerPort{
 			Name:          p.Name,
-			Protocol:      corev1.Protocol(p.GetProtocol()),
+			Protocol:      corev1.Protocol(p.GetProtocol().String()),
 			ContainerPort: p.TargetPort,
 		})
 	}
@@ -258,17 +258,17 @@ func (c *Container) resource(container *corev1.Container) {
 	}
 	requests := corev1.ResourceList{}
 	if cpu.Minimum > 1 {
-		requests[corev1.ResourceCPU] = *res.NewQuantity(types.FormatCpu(cpu.Minimum, cpu.Unit), res.DecimalExponent)
+		requests[corev1.ResourceCPU] = res.MustParse(types.ToCpuString(cpu.Minimum, cpu.Unit))
 	}
 	if memory.Minimum > 1 {
-		requests[corev1.ResourceMemory] = *res.NewQuantity(types.FormatMemory(memory.Minimum, memory.Unit), res.DecimalExponent)
+		requests[corev1.ResourceMemory] = res.MustParse(types.ToMemoryString(memory.Minimum, memory.Unit))
 	}
 	limits := corev1.ResourceList{}
 	if cpu.Maximum > 1 {
-		limits[corev1.ResourceCPU] = *res.NewQuantity(types.FormatCpu(cpu.Maximum, cpu.Unit), res.DecimalExponent)
+		limits[corev1.ResourceCPU] = res.MustParse(types.ToCpuString(cpu.Maximum, cpu.Unit))
 	}
 	if memory.Maximum > 1 {
-		limits[corev1.ResourceMemory] = *res.NewQuantity(types.FormatMemory(memory.Maximum, memory.Unit), res.DecimalExponent)
+		limits[corev1.ResourceMemory] = res.MustParse(types.ToMemoryString(memory.Maximum, memory.Unit))
 	}
 	container.Resources = corev1.ResourceRequirements{Requests: requests, Limits: limits}
 }

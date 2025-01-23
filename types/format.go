@@ -1,5 +1,17 @@
 package types
 
+import "fmt"
+
+func ToCpuString(data int64, unit string) string {
+	value := FormatCpu(data, unit)
+	return fmt.Sprintf("%d%s", value, DefaultCpuUnit)
+}
+
+func ToMemoryString(data int64, unit string) string {
+	value := FormatMemory(data, unit)
+	return fmt.Sprintf("%d%s", value, DefaultMemoryUnit)
+}
+
 func FormatCpu(data int64, unit string) int64 {
 	formatData := int64(0)
 	switch unit {

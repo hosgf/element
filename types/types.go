@@ -13,6 +13,8 @@ var (
 	DefaultMinimumMemory int64  = 30
 	DefaultMaximumCpu    int64  = -1
 	DefaultMaximumMemory int64  = 2048
+	DefaultCpuUnit       string = "m"
+	DefaultMemoryUnit    string = "Mi"
 )
 
 // Label 标签类型
