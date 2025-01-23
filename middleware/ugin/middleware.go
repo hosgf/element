@@ -30,7 +30,7 @@ func MiddlewareHeader() gin.HandlerFunc {
 
 func SetHandler(ctx context.Context, c *gin.Context, header request.Header) context.Context {
 	if value := GetHeader(c, header); len(value) > 0 {
-		ctx = context.WithValue(ctx, header, value)
+		ctx = context.WithValue(ctx, header.String(), value)
 		c.Set(header.String(), value)
 	}
 	return ctx

@@ -81,7 +81,7 @@ func DoRequest(ctx context.Context, method, url string, data, resp interface{}, 
 	}
 	response, err := client.DoRequest(ctx, method, url, data)
 	if err != nil {
-		glog.Errorf(ctx, "请求客户端失败 %+v,  %+v", response, err.Error())
+		logger.Errorf(ctx, "请求客户端失败 %+v,  %+v", response, err.Error())
 		return err
 	}
 	defer func() {
@@ -97,7 +97,7 @@ func DoRequest(ctx context.Context, method, url string, data, resp interface{}, 
 		return gerror.NewCode(result.FAILURE, fmt.Sprintf("【%s】调用失败", url))
 	}
 	if err := json.Unmarshal(r, resp); err != nil {
-		glog.Errorf(ctx, "参数转换异常 \n     %v \n     %s", response, err.Error())
+		logger.Errorf(ctx, "参数转换异常 \n     %v \n     %s", response, err.Error())
 		return gerror.NewCode(result.FAILURE, fmt.Sprintf("【%s】调用失败", url))
 	}
 	return nil

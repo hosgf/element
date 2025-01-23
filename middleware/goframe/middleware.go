@@ -34,7 +34,7 @@ func MiddlewareHeader(r *ghttp.Request) {
 
 func SetHandler(ctx context.Context, req *ghttp.Request, header request.Header) context.Context {
 	if value := GetHeader(req, header); len(value) > 0 {
-		ctx = context.WithValue(ctx, header, value)
+		ctx = context.WithValue(ctx, header.String(), value)
 	}
 	return ctx
 }
