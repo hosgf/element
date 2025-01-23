@@ -2,8 +2,6 @@ package request
 
 import (
 	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
 // Protocol 请求协议类型
@@ -36,32 +34,4 @@ func GetHeaders() []Header {
 
 func (h Header) String() string {
 	return string(h)
-}
-
-func GetAppCode(context *gin.Context) string {
-	return GetHeader(context, HeaderReqAppCode)
-}
-
-func GetToken(context *gin.Context) string {
-	return GetHeader(context, HeaderReqToken)
-}
-
-func GetAppName(context *gin.Context) string {
-	return GetHeader(context, HeaderReqAppName)
-}
-
-func GetReqClient(context *gin.Context) string {
-	return GetHeader(context, HeaderReqClient)
-}
-
-func GetTraceId(context *gin.Context) string {
-	return GetHeader(context, HeaderTraceId)
-}
-
-func GetUserAgent(context *gin.Context) string {
-	return GetHeader(context, HeaderUserAgent)
-}
-
-func GetHeader(context *gin.Context, key Header) string {
-	return context.GetHeader(key.String())
 }
