@@ -211,17 +211,20 @@ func (p *Port) GetName() string {
 	return fmt.Sprintf("%s-%d", p.Name, p.Port)
 }
 
-func (p *Port) Format() {
+func (p *Port) Format() *Port {
 	if p.Protocol == "" {
 		p.Protocol = types.ProtocolTcp
 	}
 	if p.NodePort == 0 {
 		p.NodePort = -1
 	}
+	if p.Name == "" {
+		p.Name = p.Protocol.String()
+	}
 	port := p.Port
 	targetPort := p.TargetPort
 	if targetPort > 0 && port > 0 {
-		return
+		return p
 	}
 	if targetPort < 1 {
 		targetPort = port
@@ -231,6 +234,18 @@ func (p *Port) Format() {
 	}
 	p.Port = port
 	p.TargetPort = targetPort
+	return p
+}
+
+func (p *Port) Copy() Port {
+	p.Format()
+	return Port{
+		Name:       p.Name,
+		Protocol:   p.Protocol,
+		Port:       p.Port,
+		TargetPort: p.TargetPort,
+		NodePort:   p.NodePort,
+	}
 }
 
 // Resource 进程资源
