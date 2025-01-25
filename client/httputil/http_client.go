@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hosgf/element/client/request"
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/result"
 	"github.com/hosgf/element/util"
@@ -109,9 +108,7 @@ func NewJsonHttpClient(ctx context.Context, timeout int, retryInterval int) (cli
 
 func NewHttpClient(ctx context.Context, timeout int, retryInterval int) (client *gclient.Client) {
 	client = g.Client().SetTimeout(time.Duration(timeout) * time.Second)
-	if headers := request.GetHeader(ctx); headers != nil {
-		client.Header(headers)
-	}
+	client = SetMiddleware(ctx, client)
 	if retryInterval > 0 {
 		client = client.Retry(DEFAULT_RETRY_COUNT, time.Duration(retryInterval)*time.Second)
 	}
