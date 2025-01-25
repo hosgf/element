@@ -90,7 +90,7 @@ func DoRequest(ctx context.Context, method, url string, data, resp interface{}, 
 	}()
 	r := response.ReadAll()
 	if isDebug {
-		logger.Call(ctx, method, url, "", nil, isDebug, data)
+		response.RawDump()
 	}
 	if response == nil {
 		return gerror.NewCode(result.FAILURE, fmt.Sprintf("【%s】调用失败", url))
