@@ -1,10 +1,7 @@
 package goframe
 
 import (
-	"context"
-
 	"github.com/gogf/gf/v2/net/ghttp"
-	"github.com/gogf/gf/v2/os/gctx"
 	"github.com/hosgf/element/client/request"
 )
 
@@ -23,20 +20,17 @@ func MiddlewareCORS(r *ghttp.Request) {
 }
 
 func MiddlewareHeader(r *ghttp.Request) {
-	ctx := gctx.New()
 	for _, header := range request.GetHeaders() {
-		ctx = SetHandler(ctx, r, header)
+		r = SetHandler(r, header)
 	}
-	r.SetCtx(ctx)
-	r.Context()
 	r.Middleware.Next()
 }
 
-func SetHandler(ctx context.Context, req *ghttp.Request, header request.Header) context.Context {
+func SetHandler(req *ghttp.Request, header request.Header) *ghttp.Request {
 	if value := GetHeader(req, header); len(value) > 0 {
-		ctx = context.WithValue(ctx, header.String(), value)
+		req.SetCtxVar(header.String(), value)
 	}
-	return ctx
+	return req
 }
 
 func GetHeader(req *ghttp.Request, key request.Header) string {
