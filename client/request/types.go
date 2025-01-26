@@ -3,6 +3,8 @@ package request
 import (
 	"context"
 	"strings"
+
+	"github.com/gogf/gf/v2/util/gconv"
 )
 
 // Protocol 请求协议类型
@@ -68,12 +70,18 @@ func GetHeader(ctx context.Context) map[string]string {
 	return headers
 }
 
-func SetHeader(ctx context.Context, headers map[string]string) context.Context {
+func SetHeader(ctx context.Context, headers map[string]interface{}) context.Context {
 	if headers != nil || len(headers) == 0 {
 		return ctx
 	}
 	for k, v := range headers {
-		ctx = context.WithValue(ctx, k, v)
+		if len(k) < 1 {
+			continue
+		}
+		if v == nil {
+			continue
+		}
+		ctx = context.WithValue(ctx, k, gconv.String(v))
 	}
 	return ctx
 }
