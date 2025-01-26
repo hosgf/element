@@ -67,3 +67,13 @@ func GetHeader(ctx context.Context) map[string]string {
 	}
 	return headers
 }
+
+func SetHeader(ctx context.Context, headers map[string]string) context.Context {
+	if headers != nil || len(headers) == 0 {
+		return ctx
+	}
+	for k, v := range headers {
+		ctx = context.WithValue(ctx, k, v)
+	}
+	return ctx
+}
