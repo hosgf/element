@@ -81,6 +81,7 @@ func (o *operation) Start(ctx context.Context, runtime *RuntimeConfig, logger *g
 		defer func() {
 			if err := process.Wait(); err != nil {
 				logger.Errorf(ctx, "\n -- [ %s ] 进程启动失败 。。。 [ PID ：%d ][ Error ：%s ]", runtime.Name, pid, err.Error())
+				o.mapping.Remove(runtime.Name)
 			}
 		}()
 	}()
@@ -98,12 +99,13 @@ func (o *operation) Restart(ctx context.Context, runtime *RuntimeConfig, logger 
 	if len(name) < 1 {
 		return -1, gerror.NewCode(result.FAILURE, "\n -- 进程重启失败，进程名称不能为空")
 	}
-	pid := o.GetPid(runtime.Name)
+	pid := o.GetPid(name)
 	process := o.manager.GetProcess(pid)
 	if process != nil {
 		err := process.Kill()
 		if err != nil {
 			logger.Errorf(ctx, "\n -- [ %s ] 进程停止失败 。。。 [ PID ：%d ][ Error ：%s ]", runtime.Name, pid, err.Error())
+			o.mapping.Remove(name)
 		}
 	}
 	return o.Start(ctx, runtime, logger)
