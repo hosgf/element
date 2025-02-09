@@ -213,14 +213,12 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 				Usage: r.Usage,
 			}
 		}
-
-		ms := c.Mounts
-		if ms != nil && len(ms) > 0 {
+		if c.Mounts != nil {
 			storage := progress.Details{
 				Status:  health.UP,
 				Details: map[string]string{},
 			}
-			for _, m := range ms {
+			for _, m := range c.Mounts {
 				if d, ok := cmap[m.Name]; ok {
 					storage.Details[m.Name] = d.String()
 				}
