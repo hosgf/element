@@ -32,7 +32,34 @@ func TestProgressGet(t *testing.T) {
 	g.Dump(datas)
 }
 
-func TestProgressDelete(t *testing.T) {
+func TestProgressStart(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	config := toProcessGroupConfig()
+	err := kubernetes.Progress().Start(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	println("--------------------------------------------")
+}
+
+func TestProgressStop(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	var (
+		num       = "01"
+		namespace = "sandbox"
+	)
+	err := kubernetes.Progress().Stop(ctx, namespace, "data-sandbox-"+num)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	println("--------------------------------------------")
+}
+
+func TestProgressDestroy(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
 	var (
@@ -50,6 +77,16 @@ func TestProgressDelete(t *testing.T) {
 func TestProgressRunning(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
+	config := toProcessGroupConfig()
+	err := kubernetes.Progress().Running(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	println("--------------------------------------------")
+}
+
+func toProcessGroupConfig() *k8s.ProcessGroupConfig {
 	var (
 		num       = "01"
 		namespace = "sandbox"
@@ -70,13 +107,7 @@ func TestProgressRunning(t *testing.T) {
 
 	config.Process = append(config.Process, toProgress(namespace, num))
 	//config.Process = append(config.Process, toProgress2())
-
-	err := kubernetes.Progress().Running(ctx, config)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	println("--------------------------------------------")
+	return config
 }
 
 func toStorage() k8s.Storage {

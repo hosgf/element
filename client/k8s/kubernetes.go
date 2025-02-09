@@ -29,7 +29,7 @@ type progressInterface interface {
 	List(ctx context.Context, namespace string) ([]*progress.Progress, error)
 	Running(ctx context.Context, config *ProcessGroupConfig) error
 	Start(ctx context.Context, config *ProcessGroupConfig) error
-	Stop(ctx context.Context, config *ProcessGroupConfig) error
+	Stop(ctx context.Context, namespace string, groups ...string) error
 	Destroy(ctx context.Context, namespace string, groups ...string) error
 }
 
@@ -87,7 +87,8 @@ type storageInterface interface {
 	Exists(ctx context.Context, namespace, name string) (bool, error)
 	Apply(ctx context.Context, storage *PersistentStorage) error
 	BatchApply(ctx context.Context, model Model, storage []Storage) error
-	Delete(ctx context.Context, namespace, name string) error
+	Delete(ctx context.Context, delRes bool, namespace string, name ...string) error
+	DeleteByGroup(ctx context.Context, delRes bool, namespace string, groups ...string) error
 }
 
 type storageResourceInterface interface {
@@ -96,4 +97,5 @@ type storageResourceInterface interface {
 	Apply(ctx context.Context, storage *PersistentStorageResource) error
 	BatchApply(ctx context.Context, model Model, storage []Storage) error
 	Delete(ctx context.Context, name string) error
+	DeleteByGroup(ctx context.Context, groups ...string) error
 }

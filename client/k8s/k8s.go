@@ -23,7 +23,7 @@ func New(isDebug, isTest bool) *Kubernetes {
 	k.namespace = &namespaceOperation{k.options}
 	k.service = &serviceOperation{k.options}
 	k.pods = &podsOperation{k.options}
-	k.storage = &storageOperation{k.options}
+	k.storage = &storageOperation{k8s: k, options: k.options}
 	k.storageResource = &storageResourceOperation{k.options}
 	k.metrics = &metricsOperation{k.options}
 	k.progress = &progressOperation{k8s: k, options: k.options}

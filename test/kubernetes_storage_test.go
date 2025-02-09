@@ -45,7 +45,7 @@ func TestStorageCreate(t *testing.T) {
 func TestStorageDelete(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
-	err := kubernetes.Storage().Delete(ctx, "sandbox", "sandbox-storage")
+	err := kubernetes.Storage().Delete(ctx, false, "sandbox", "sandbox-storage")
 	if err != nil {
 		t.Fatal(err)
 		return

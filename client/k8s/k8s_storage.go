@@ -2,9 +2,11 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +49,7 @@ func (s *PersistentStorage) updatePvc(data *corev1.PersistentVolumeClaim) *corev
 
 type storageOperation struct {
 	*options
+	k8s *Kubernetes
 }
 
 func (o *storageOperation) Get(ctx context.Context, namespace, name string) (*Storage, error) {
@@ -98,17 +101,46 @@ func (o *storageOperation) BatchApply(ctx context.Context, model Model, storage 
 	return nil
 }
 
-func (o *storageOperation) Delete(ctx context.Context, namespace, name string) error {
+func (o *storageOperation) Delete(ctx context.Context, delRes bool, namespace string, name ...string) error {
 	if o.err != nil {
 		return o.err
 	}
-	if has, _, err := o.exists(ctx, namespace, name); has {
-		if err != nil {
-			return err
+	var err error
+	for _, n := range name {
+		if has, _, err := o.exists(ctx, namespace, n); has {
+			if err != nil {
+				return err
+			}
+			err = o.delete(ctx, namespace, n)
 		}
-		return o.delete(ctx, namespace, name)
+		if delRes {
+			err = o.k8s.StorageResource().Delete(ctx, n)
+		}
 	}
-	return nil
+	return err
+}
+
+func (o *storageOperation) DeleteByGroup(ctx context.Context, delRes bool, namespace string, groups ...string) error {
+	if o.err != nil {
+		return o.err
+	}
+	var err error
+	for _, g := range groups {
+		if has, list, err := o.existsByGroup(ctx, namespace, g); has {
+			if err != nil {
+				return err
+			}
+			if list != nil && list.Size() > 0 {
+				for _, i := range list.Items {
+					err = o.delete(ctx, namespace, i.Name)
+				}
+			}
+		}
+		if delRes {
+			err = o.k8s.StorageResource().DeleteByGroup(ctx, g)
+		}
+	}
+	return err
 }
 
 func (o *storageOperation) create(ctx context.Context, storage *PersistentStorage) error {
@@ -137,6 +169,15 @@ func (o *storageOperation) delete(ctx context.Context, namespace, name string) e
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete Storage: %v", err)
 	}
 	return nil
+}
+
+func (o *storageOperation) existsByGroup(ctx context.Context, namespace, group string) (bool, *corev1.PersistentVolumeClaimList, error) {
+	if o.err != nil {
+		return false, nil, o.err
+	}
+	storage, err := o.api.CoreV1().PersistentVolumeClaims(namespace).List(ctx, v1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", types.LabelGroup, group)})
+	has, err := o.isExist(storage, err, "Failed to get Storage: %v")
+	return has, storage, err
 }
 
 func (o *storageOperation) exists(ctx context.Context, namespace, name string) (bool, *corev1.PersistentVolumeClaim, error) {

@@ -99,10 +99,29 @@ func (o *progressOperation) Running(ctx context.Context, config *ProcessGroupCon
 }
 
 func (o *progressOperation) Start(ctx context.Context, config *ProcessGroupConfig) error {
+	if o.err != nil {
+		return o.err
+	}
+	pod := config.toPod()
+	if pod == nil {
+		return nil
+	}
+	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (o *progressOperation) Stop(ctx context.Context, config *ProcessGroupConfig) error {
+func (o *progressOperation) Stop(ctx context.Context, namespace string, groups ...string) error {
+	if o.err != nil {
+		return o.err
+	}
+	if groups == nil || len(groups) < 1 {
+		return gerror.NewCodef(gcode.CodeNotImplemented, "请传入要删除的进程组名称")
+	}
+	if err := o.k8s.Pod().DeleteGroup(ctx, namespace, groups...); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -117,6 +136,9 @@ func (o *progressOperation) Destroy(ctx context.Context, namespace string, group
 		return err
 	}
 	if err := o.k8s.Pod().DeleteGroup(ctx, namespace, groups...); err != nil {
+		return err
+	}
+	if err := o.k8s.Storage().DeleteByGroup(ctx, true, namespace, groups...); err != nil {
 		return err
 	}
 	return nil
