@@ -12,7 +12,7 @@ import (
 )
 
 func client() *k8s.Kubernetes {
-	kubernetes := k8s.New(true)
+	kubernetes := k8s.New(true, false)
 	kubernetes.Init("")
 	return kubernetes
 }

@@ -16,13 +16,14 @@ import (
 	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
-func New(isDebug bool) *Kubernetes {
+func New(isDebug, isTest bool) *Kubernetes {
 	k := &Kubernetes{}
-	k.options = &options{isDebug: isDebug}
+	k.options = &options{isDebug: isDebug, isTest: isTest}
 	k.nodes = &nodesOperation{k.options}
 	k.namespace = &namespaceOperation{k.options}
 	k.service = &serviceOperation{k.options}
 	k.pods = &podsOperation{k.options}
+	k.storage = &storageOperation{k.options}
 	k.metrics = &metricsOperation{k.options}
 	k.progress = &progressOperation{k8s: k, options: k.options}
 	k.resource = &resourceOperation{k8s: k, options: k.options}
@@ -31,6 +32,7 @@ func New(isDebug bool) *Kubernetes {
 
 type options struct {
 	isDebug    bool
+	isTest     bool
 	err        error
 	api        *k8s.Clientset
 	metricsApi *metricsv.Clientset
@@ -42,6 +44,7 @@ type Kubernetes struct {
 	namespace *namespaceOperation
 	service   *serviceOperation
 	pods      *podsOperation
+	storage   *storageOperation
 	metrics   *metricsOperation
 	progress  *progressOperation
 	resource  *resourceOperation
@@ -65,6 +68,10 @@ func (k *Kubernetes) Service() *serviceOperation {
 
 func (k *Kubernetes) Pod() *podsOperation {
 	return k.pods
+}
+
+func (k *Kubernetes) Storage() *storageOperation {
+	return k.storage
 }
 
 func (k *Kubernetes) Progress() *progressOperation {

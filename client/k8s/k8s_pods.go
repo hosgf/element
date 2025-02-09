@@ -7,10 +7,12 @@ import (
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
+	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	res "k8s.io/apimachinery/pkg/api/resource"
@@ -26,6 +28,8 @@ type Pod struct {
 	Replicas    int32        `json:"replicas,omitempty"`
 	RunningNode string       `json:"runningNode,omitempty"`
 	Status      string       `json:"status,omitempty"`
+	Config      []Config     `json:"config,omitempty"`
+	Storage     []Storage    `json:"storage,omitempty"`
 	Containers  []*Container `json:"containers,omitempty"`
 }
 
@@ -37,6 +41,7 @@ func (pod *Pod) updateAppsDeployment(deployment *appsv1.Deployment) *appsv1.Depl
 	deployment.Spec.Replicas = pod.replicas()
 	deployment.Spec.Selector.MatchLabels = pod.toSelector()
 	deployment.Spec.Template.Spec.Containers = pod.containers()
+	deployment.Spec.Template.Spec.Volumes = pod.toVolumes()
 	return deployment
 }
 
@@ -57,10 +62,69 @@ func (pod *Pod) toAppsDeployment() *appsv1.Deployment {
 				ObjectMeta: metadata,
 				Spec: corev1.PodSpec{
 					Containers: pod.containers(),
+					Volumes:    pod.toVolumes(),
 				},
 			},
 		},
 	}
+}
+
+func (pod *Pod) toVolumes() []corev1.Volume {
+	volumes := append(make([]corev1.Volume, 0), pod.toConfigVolumes()...)
+	volumes = append(volumes, pod.toStorageVolumes()...)
+	return volumes
+}
+
+func (pod *Pod) toConfigVolumes() []corev1.Volume {
+	volumes := make([]corev1.Volume, 0)
+	if pod.Config == nil || len(pod.Config) == 0 {
+		return volumes
+	}
+	for _, config := range pod.Config {
+		if len(config.Name) < 1 || len(config.Path) < 1 {
+			continue
+		}
+		v := corev1.Volume{
+			Name:         config.Name,
+			VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: config.Item}},
+		}
+		volumes = append(volumes, v)
+	}
+	return volumes
+}
+
+func (pod *Pod) toStorageVolumes() []corev1.Volume {
+	volumes := make([]corev1.Volume, 0)
+	if pod.Storage == nil || len(pod.Storage) == 0 {
+		return volumes
+	}
+	for _, storage := range pod.Storage {
+		if storage.Item == nil {
+			continue
+		}
+		v := corev1.Volume{
+			Name:         storage.Name,
+			VolumeSource: corev1.VolumeSource{},
+		}
+		switch storage.ToStorageType() {
+		case types.StoragePVC:
+			v.VolumeSource.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: gconv.String(storage.Item)}
+		case types.StorageConfig:
+			items := gconv.Map(storage.Item)
+			if len(items) == 0 {
+				continue
+			}
+			keys := make([]corev1.KeyToPath, 0, len(items))
+			for k, v := range items {
+				keys = append(keys, corev1.KeyToPath{Key: k, Path: gconv.String(v)})
+			}
+			v.VolumeSource.ConfigMap = &corev1.ConfigMapVolumeSource{Items: keys}
+		default:
+			v.VolumeSource.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: gconv.String(storage.Item)}
+		}
+		volumes = append(volumes, v)
+	}
+	return volumes
 }
 
 func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progress.Progress {
@@ -163,24 +227,24 @@ func (pod *Pod) toContainer(c corev1.Container) {
 		Env:        map[string]string{},
 	}
 	container.setResource(c)
+	container.setMounts(c)
 	container.setEnv(c)
 	container.setPorts(c)
 	pod.Containers = append(pod.Containers, container)
 }
 
 type Container struct {
-	Name         string              `json:"name,omitempty"`
-	Image        string              `json:"image,omitempty"`
-	PullPolicy   string              `json:"string,omitempty"`
-	Command      []string            `json:"command,omitempty"`
-	Args         []string            `json:"args,omitempty"`
-	Ports        []progress.Port     `json:"ports,omitempty"`
-	Resource     []progress.Resource `json:"resource,omitempty"`
-	Env          map[string]string   `json:"env,omitempty"`
-	Config       []types.Environment `json:"config,omitempty"`
-	Storage      Storage             `json:"storage,omitempty"`
-	VolumeMounts []VolumeMount       `json:"volumeMounts,omitempty"`
-	Probe        ProbeConfig         `json:"probe,omitempty"`
+	Name       string              `json:"name,omitempty"`
+	Image      string              `json:"image,omitempty"`
+	PullPolicy string              `json:"string,omitempty"`
+	Command    []string            `json:"command,omitempty"`
+	Args       []string            `json:"args,omitempty"`
+	Ports      []progress.Port     `json:"ports,omitempty"`
+	Resource   []progress.Resource `json:"resource,omitempty"`
+	Env        map[string]string   `json:"env,omitempty"`
+	EnvConfig  []types.Environment `json:"envConfig,omitempty"`
+	Mounts     []Mount             `json:"mounts,omitempty"`
+	Probe      ProbeConfig         `json:"probe,omitempty"`
 }
 
 func (c *Container) toContainer() corev1.Container {
@@ -197,11 +261,12 @@ func (c *Container) toContainer() corev1.Container {
 	}
 	// 设置Port
 	c.ports(container)
-	// 设置资源
-	c.resource(container)
 	// 设置env
 	c.env(container)
-	// todo pvc
+	// 设置资源
+	c.resource(container)
+	// 设置存储
+	c.mounts(container)
 	return *container
 }
 
@@ -307,6 +372,27 @@ func (c *Container) setEnv(container corev1.Container) {
 	}
 }
 
+func (c *Container) mounts(container *corev1.Container) {
+	if c.Mounts == nil || len(c.Mounts) < 1 {
+		return
+	}
+	ms := make([]corev1.VolumeMount, 0, len(c.Mounts))
+	for _, m := range c.Mounts {
+		if len(m.Name) < 1 {
+			continue
+		}
+		ms = append(ms, corev1.VolumeMount{
+			Name:      m.Name,
+			MountPath: util.GetOrDefault(m.Path, "/"),
+			SubPath:   m.SubPath,
+		})
+	}
+	container.VolumeMounts = ms
+}
+
+func (c *Container) setMounts(container corev1.Container) {
+}
+
 func (pg *ProcessGroupConfig) toPod() *Pod {
 	if pg.Process == nil || len(pg.Process) < 1 {
 		return nil
@@ -315,15 +401,18 @@ func (pg *ProcessGroupConfig) toPod() *Pod {
 	if len(labels.Group) < 1 {
 		labels.Group = pg.GroupName
 	}
+	pg.initConfig()
 	pod := &Pod{
 		Model:       Model{Namespace: pg.Namespace, Name: pg.GroupName, AllowUpdate: pg.AllowUpdate},
 		Replicas:    pg.Replicas,
 		RunningNode: pg.RunningNode,
+		Config:      pg.Config,
+		Storage:     pg.Storage,
 		Containers:  make([]*Container, 0),
 	}
 	pod.setTypesLabels(labels)
 	for _, p := range pg.Process {
-		c := p.toContainer()
+		c := p.toContainer(pg)
 		if c == nil {
 			continue
 		}
@@ -332,21 +421,21 @@ func (pg *ProcessGroupConfig) toPod() *Pod {
 	return pod
 }
 
-func (p *ProcessConfig) toContainer() *Container {
-	env, config := p.ToEnvConfig()
+func (p *ProcessConfig) toContainer(pg *ProcessGroupConfig) *Container {
+	p.toMounts(pg)
+	env, envConfig := p.toEnvConfig()
 	c := &Container{
-		Name:         p.Name,
-		Image:        p.Source,
-		PullPolicy:   p.PullPolicy,
-		Command:      p.Command,
-		Args:         p.Args,
-		Ports:        p.Ports,
-		Resource:     p.Resource,
-		Env:          env,
-		Config:       config,
-		Storage:      p.Storage,
-		VolumeMounts: p.VolumeMounts,
-		Probe:        p.Probe,
+		Name:       p.Name,
+		Image:      p.Source,
+		PullPolicy: p.PullPolicy,
+		Command:    p.Command,
+		Args:       p.Args,
+		Ports:      p.Ports,
+		Resource:   p.Resource,
+		Env:        env,
+		EnvConfig:  envConfig,
+		Mounts:     p.Mounts,
+		Probe:      p.Probe,
 	}
 	return c
 }
@@ -405,57 +494,6 @@ func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
 	}
 	return o.create(ctx, pod)
 }
-
-//func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
-//	if o.err != nil {
-//		return o.err
-//	}
-//	p := applyconfigurationsappsv1.Deployment(pod.Name, pod.Namespace)
-//	// 更新Labels
-//	p.WithLabels(pod.labels())
-//	// 更新容器
-//	deploymentSpec := applyconfigurationsappsv1.DeploymentSpec()
-//	deploymentSpec.WithReplicas(pod.Replicas)
-//	deploymentSpec.WithSelector(applyconfigurationsmetav1.LabelSelector().WithMatchLabels(pod.toSelector()))
-//	podSpec := applyconfigurationscorev1.PodSpec()
-//	for _, c := range pod.containers() {
-//		ports := make([]*applyconfigurationscorev1.ContainerPortApplyConfiguration, 0, len(c.Ports))
-//		for _, p := range c.Ports {
-//			port := applyconfigurationscorev1.ContainerPort()
-//			port.WithName(p.Name)
-//			port.WithProtocol(p.Protocol)
-//			port.WithHostPort(p.HostPort)
-//			port.WithHostIP(p.HostIP)
-//			port.WithContainerPort(p.ContainerPort)
-//			ports = append(ports, port)
-//		}
-//		envs := make([]*applyconfigurationscorev1.EnvVarApplyConfiguration, 0, len(c.Env))
-//		for _, e := range c.Env {
-//			env := applyconfigurationscorev1.EnvVar()
-//			env.WithName(e.Name)
-//			env.WithValue(e.Value)
-//			envs = append(envs, env)
-//		}
-//		container := applyconfigurationscorev1.Container()
-//		container.WithName(c.Name)
-//		container.WithImage(c.Image)
-//		container.WithImagePullPolicy(c.ImagePullPolicy)
-//		container.WithCommand(c.Command...)
-//		container.WithArgs(c.Args...)
-//		container.WithPorts(ports...)
-//		container.WithEnv(envs...)
-//		podSpec.WithContainers(container)
-//	}
-//	deploymentSpec.WithTemplate(applyconfigurationscorev1.PodTemplateSpec().WithName(pod.Name).WithNamespace(pod.Namespace).WithLabels(pod.labels()).WithSpec(podSpec))
-//	// 更新容器
-//	p.WithSpec(deploymentSpec)
-//	opts := v1.ApplyOptions{}
-//	_, err := o.api.AppsV1().Deployments(pod.Namespace).Apply(ctx, p, opts)
-//	if err != nil {
-//		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
-//	}
-//	return nil
-//}
 
 func (o *podsOperation) Delete(ctx context.Context, namespace, pod string) error {
 	if o.err != nil {
@@ -523,6 +561,9 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 }
 
 func (o *podsOperation) deploymentExists(ctx context.Context, namespace string, group string) (bool, []appsv1.Deployment, error) {
+	if o.isTest {
+		return false, nil, nil
+	}
 	datas, err := o.api.AppsV1().Deployments(namespace).List(ctx, toGroupListOptions(group))
 	items := datas.Items
 	if len(items) < 1 {
@@ -546,8 +587,11 @@ func (o *podsOperation) deleteDeployment(ctx context.Context, namespace string, 
 }
 
 func (o *podsOperation) create(ctx context.Context, pod *Pod) error {
-	opts := v1.CreateOptions{}
-	_, err := o.api.AppsV1().Deployments(pod.Namespace).Create(ctx, pod.toAppsDeployment(), opts)
+	deployment := pod.toAppsDeployment()
+	if o.isTest {
+		return nil
+	}
+	_, err := o.api.AppsV1().Deployments(pod.Namespace).Create(ctx, deployment, v1.CreateOptions{})
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create apps Deployment: %v", err)
 	}

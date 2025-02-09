@@ -193,6 +193,9 @@ func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
 	if o.err != nil {
 		return o.err
 	}
+	if o.isTest {
+		return nil
+	}
 	if has, svc, err := o.exists(ctx, service.Namespace, service.Name); has {
 		if err != nil {
 			return err

@@ -86,6 +86,9 @@ func (o *progressOperation) Running(ctx context.Context, config *ProcessGroupCon
 	if pod == nil {
 		return nil
 	}
+	if err := o.k8s.Storage().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
+		return err
+	}
 	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
 		return err
 	}

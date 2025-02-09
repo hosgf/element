@@ -63,6 +63,7 @@ func (p *PodTemplate) toContainer(c corev1.Container) {
 		Env:        map[string]string{},
 	}
 	container.setResource(c)
+	container.setMounts(c)
 	container.setEnv(c)
 	container.setPorts(c)
 	p.Containers = append(p.Containers, container)

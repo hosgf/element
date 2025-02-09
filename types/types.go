@@ -3,6 +3,7 @@ package types
 import (
 	"strings"
 
+	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 )
 
@@ -57,6 +58,34 @@ func (r ResourceType) String() string {
 	return string(r)
 }
 
+// AccessMode 存储访问模式
+type AccessMode string
+
+const (
+	ReadWriteOnce AccessMode = "ReadWriteOnce"
+	ReadOnlyMany  AccessMode = "ReadOnlyMany"
+	ReadWriteMany AccessMode = "ReadWriteMany"
+)
+
+func (a AccessMode) String() string {
+	return string(a)
+}
+
+// StorageType 存储类型
+type StorageType string
+
+const (
+	StoragePVC    StorageType = "pvc"
+	StorageConfig StorageType = "config"
+)
+
+func (a StorageType) String() string {
+	if string(a) == "" {
+		return string(StoragePVC)
+	}
+	return gstr.ToLower(string(a))
+}
+
 type Namespace struct {
 	Region string        `json:"region,omitempty"`
 	Name   string        `json:"name,omitempty"`
@@ -80,13 +109,3 @@ type Labels struct {
 	Scope  string            `json:"scope,omitempty"`  // 作用范围
 	Labels map[string]string `json:"labels,omitempty"` // 标签
 }
-
-//func (c Container) toVolumes() corev1.Container {
-//	corev1.Container{
-//		Name:    c.Name,
-//		Image:   c.Image,
-//		Command: c.Command,
-//		Args:    c.Args,
-//		Args:    c.Args,
-//	}
-//}
