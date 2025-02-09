@@ -12,7 +12,6 @@ import (
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
-	"github.com/hosgf/element/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	res "k8s.io/apimachinery/pkg/api/resource"
@@ -69,6 +68,34 @@ func (pod *Pod) toAppsDeployment() *appsv1.Deployment {
 	}
 }
 
+func (pod *Pod) setVolumes(vs []corev1.Volume) {
+	if vs == nil || len(vs) < 1 {
+		return
+	}
+	for _, v := range vs {
+		vs := v.VolumeSource
+		pvc := vs.PersistentVolumeClaim
+		if pvc != nil {
+			pod.Storage = append(pod.Storage, Storage{
+				Name: v.Name,
+				Type: types.StoragePVC,
+				Item: pvc.ClaimName,
+			})
+			continue
+		}
+		ed := vs.EmptyDir
+		if ed != nil {
+			println(ed.Size())
+			pod.Storage = append(pod.Storage, Storage{
+				Name: v.Name,
+				Type: types.StoragePVC,
+				Item: ed.Medium,
+			})
+			continue
+		}
+	}
+}
+
 func (pod *Pod) toVolumes() []corev1.Volume {
 	volumes := append(make([]corev1.Volume, 0), pod.toConfigVolumes()...)
 	volumes = append(volumes, pod.toStorageVolumes()...)
@@ -99,32 +126,45 @@ func (pod *Pod) toStorageVolumes() []corev1.Volume {
 		return volumes
 	}
 	for _, storage := range pod.Storage {
-		if storage.Item == nil {
-			continue
-		}
-		v := corev1.Volume{
-			Name:         storage.Name,
-			VolumeSource: corev1.VolumeSource{},
-		}
+		var (
+			ok bool
+			v  = &corev1.Volume{Name: storage.Name, VolumeSource: corev1.VolumeSource{}}
+		)
 		switch storage.ToStorageType() {
 		case types.StoragePVC:
-			v.VolumeSource.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: gconv.String(storage.Item)}
+			ok = storage.toPvc(v)
 		case types.StorageConfig:
-			items := gconv.Map(storage.Item)
-			if len(items) == 0 {
-				continue
-			}
-			keys := make([]corev1.KeyToPath, 0, len(items))
-			for k, v := range items {
-				keys = append(keys, corev1.KeyToPath{Key: k, Path: gconv.String(v)})
-			}
-			v.VolumeSource.ConfigMap = &corev1.ConfigMapVolumeSource{Items: keys}
+			ok = storage.toConfig(v)
 		default:
-			v.VolumeSource.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: gconv.String(storage.Item)}
+			ok = storage.toPvc(v)
 		}
-		volumes = append(volumes, v)
+		if ok {
+			volumes = append(volumes, *v)
+		}
 	}
 	return volumes
+}
+
+func (s *Storage) toConfig(v *corev1.Volume) bool {
+	items := gconv.Map(s.Item)
+	if len(items) == 0 {
+		return false
+	}
+	keys := make([]corev1.KeyToPath, 0, len(items))
+	for k, v := range items {
+		keys = append(keys, corev1.KeyToPath{Key: k, Path: gconv.String(v)})
+	}
+	v.VolumeSource.ConfigMap = &corev1.ConfigMapVolumeSource{Items: keys}
+	return true
+}
+
+func (s *Storage) toPvc(v *corev1.Volume) bool {
+	item := gconv.String(s.Item)
+	if len(item) < 1 {
+		return true
+	}
+	v.VolumeSource.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: item}
+	return true
 }
 
 func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progress.Progress {
@@ -144,6 +184,12 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 	group := progress.Details{
 		Details: map[string]string{pod.Name: pod.Status},
 		Status:  status,
+	}
+	cmap := map[string]types.StorageType{}
+	if pod.Storage != nil {
+		for _, c := range pod.Storage {
+			cmap[c.Name] = c.Type
+		}
 	}
 	for _, c := range cs {
 		p := &progress.Progress{
@@ -168,14 +214,28 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 			}
 		}
 
+		ms := c.Mounts
+		if ms != nil && len(ms) > 0 {
+			storage := progress.Details{
+				Status:  health.UP,
+				Details: map[string]string{},
+			}
+			for _, m := range ms {
+				if d, ok := cmap[m.Name]; ok {
+					storage.Details[m.Name] = d.String()
+				}
+			}
+			p.Indicators["storage"] = storage
+		}
+
 		if len(svcs) < 1 {
 			list = append(list, p)
 			continue
 		}
 		ports := make([]progress.ProgressPort, 0)
 		service := progress.Details{
-			Details: map[string]string{},
 			Status:  health.UNKNOWN,
+			Details: map[string]string{},
 		}
 		for _, svc := range svcs {
 			if gstr.Contains(svc.Group, p.Name) || gstr.Contains(svc.Group, pod.Group) || svc.Name == pod.Group {
@@ -224,10 +284,11 @@ func (pod *Pod) toContainer(c corev1.Container) {
 		Args:       c.Args,
 		Ports:      make([]progress.Port, 0, len(c.Ports)),
 		Resource:   make([]progress.Resource, 0),
+		Mounts:     make([]Mount, 0),
 		Env:        map[string]string{},
 	}
 	container.setResource(c)
-	container.setMounts(c)
+	container.setMounts(pod.Storage, c)
 	container.setEnv(c)
 	container.setPorts(c)
 	pod.Containers = append(pod.Containers, container)
@@ -383,14 +444,31 @@ func (c *Container) mounts(container *corev1.Container) {
 		}
 		ms = append(ms, corev1.VolumeMount{
 			Name:      m.Name,
-			MountPath: util.GetOrDefault(m.Path, "/"),
+			MountPath: m.GetPath(),
 			SubPath:   m.SubPath,
 		})
 	}
 	container.VolumeMounts = ms
 }
 
-func (c *Container) setMounts(container corev1.Container) {
+func (c *Container) setMounts(storages []Storage, container corev1.Container) {
+	vm := container.VolumeMounts
+	if storages == nil || len(storages) < 1 || vm == nil || len(vm) < 1 {
+		return
+	}
+	cmap := map[string]string{}
+	for _, c := range storages {
+		cmap[c.Name] = c.Scope
+	}
+	for _, v := range vm {
+		if _, ok := cmap[v.Name]; ok {
+			c.Mounts = append(c.Mounts, Mount{
+				Name:    v.Name,
+				Path:    v.MountPath,
+				SubPath: v.SubPath,
+			})
+		}
+	}
 }
 
 func (pg *ProcessGroupConfig) toPod() *Pod {
@@ -657,10 +735,13 @@ func (o *podsOperation) toPods(namespace string, datas *corev1.PodList) []*Pod {
 		pod := &Pod{
 			Model:       Model{Namespace: namespace, Name: p.Name},
 			Status:      string(p.Status.Phase),
-			Containers:  make([]*Container, 0),
 			RunningNode: p.Spec.NodeName,
+			Containers:  make([]*Container, 0),
+			Config:      make([]Config, 0),
+			Storage:     make([]Storage, 0),
 		}
 		pod.setLabels(p.Labels)
+		pod.setVolumes(p.Spec.Volumes)
 		for _, c := range p.Spec.Containers {
 			pod.toContainer(c)
 		}

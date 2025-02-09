@@ -16,24 +16,39 @@ type PersistentStorageResource struct {
 	Storage
 }
 
-func (s *PersistentStorageResource) toPV() *corev1.PersistentVolume {
+func (s *Storage) toPersistentStorageResource(model Model) *PersistentStorageResource {
+	storage := &PersistentStorageResource{
+		Model:   model,
+		Storage: *s,
+	}
+	return storage
+}
+
+func (s *PersistentStorageResource) toPv() *corev1.PersistentVolume {
+	spec := corev1.PersistentVolumeSpec{
+		Capacity: corev1.ResourceList{
+			corev1.ResourceStorage: resource.MustParse(s.Size),
+		},
+		AccessModes: []corev1.PersistentVolumeAccessMode{
+			corev1.PersistentVolumeAccessMode(s.ToAccessMode()),
+		},
+		PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+	}
+	item := gconv.String(s.Item)
+	if len(item) > 0 {
+		spec.StorageClassName = item
+	} else {
+		spec.HostPath = &corev1.HostPathVolumeSource{
+			Path: s.GetPath(),
+		}
+	}
 	return &corev1.PersistentVolume{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      s.Storage.Name,
 			Namespace: s.Namespace,
 			Labels:    s.labels(),
 		},
-		Spec: corev1.PersistentVolumeSpec{
-			Capacity: corev1.ResourceList{
-				//corev1.ResourceStorage: *resource.NewQuantity(1<<30, resource.BinarySI), // 1Gi
-				corev1.ResourceStorage: resource.MustParse(s.Size),
-			},
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.PersistentVolumeAccessMode(s.AccessMode),
-			},
-			PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
-			StorageClassName:              gconv.String(s.Item),
-		},
+		Spec: spec,
 	}
 }
 
@@ -57,7 +72,7 @@ func (o *storageResourceOperation) Exists(ctx context.Context, name string) (boo
 	return has, err
 }
 
-func (o *storageResourceOperation) Create(ctx context.Context, storage *PersistentStorageResource) error {
+func (o *storageResourceOperation) Apply(ctx context.Context, storage *PersistentStorageResource) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -65,9 +80,25 @@ func (o *storageResourceOperation) Create(ctx context.Context, storage *Persiste
 		if err != nil {
 			return err
 		}
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Storage: %s, ClaimName: %s 已存在!", storage.Storage.Name, storage.Item)
+		if storage.AllowUpdate {
+			return nil
+		}
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Storage: %s, ClaimName: %v 已存在!", storage.Storage.Name, storage.Item)
 	}
 	return o.create(ctx, storage)
+}
+
+func (o *storageResourceOperation) BatchApply(ctx context.Context, model Model, storage []Storage) error {
+	if storage == nil || len(storage) < 1 {
+		return nil
+	}
+	model.AllowUpdate = true
+	for _, s := range storage {
+		if err := o.Apply(ctx, s.toPersistentStorageResource(model)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (o *storageResourceOperation) Delete(ctx context.Context, name string) error {
@@ -84,8 +115,7 @@ func (o *storageResourceOperation) Delete(ctx context.Context, name string) erro
 }
 
 func (o *storageResourceOperation) create(ctx context.Context, storage *PersistentStorageResource) error {
-	opts := v1.CreateOptions{}
-	_, err := o.api.CoreV1().PersistentVolumes().Create(ctx, storage.toPV(), opts)
+	_, err := o.api.CoreV1().PersistentVolumes().Create(ctx, storage.toPv(), v1.CreateOptions{})
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create apps Storage: %v", err)
 	}

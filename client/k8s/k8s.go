@@ -24,6 +24,7 @@ func New(isDebug, isTest bool) *Kubernetes {
 	k.service = &serviceOperation{k.options}
 	k.pods = &podsOperation{k.options}
 	k.storage = &storageOperation{k.options}
+	k.storageResource = &storageResourceOperation{k.options}
 	k.metrics = &metricsOperation{k.options}
 	k.progress = &progressOperation{k8s: k, options: k.options}
 	k.resource = &resourceOperation{k8s: k, options: k.options}
@@ -40,14 +41,15 @@ type options struct {
 
 type Kubernetes struct {
 	*options
-	nodes     *nodesOperation
-	namespace *namespaceOperation
-	service   *serviceOperation
-	pods      *podsOperation
-	storage   *storageOperation
-	metrics   *metricsOperation
-	progress  *progressOperation
-	resource  *resourceOperation
+	nodes           *nodesOperation
+	namespace       *namespaceOperation
+	service         *serviceOperation
+	pods            *podsOperation
+	storage         *storageOperation
+	storageResource *storageResourceOperation
+	metrics         *metricsOperation
+	progress        *progressOperation
+	resource        *resourceOperation
 }
 
 func (k *Kubernetes) Nodes() *nodesOperation {
@@ -72,6 +74,10 @@ func (k *Kubernetes) Pod() *podsOperation {
 
 func (k *Kubernetes) Storage() *storageOperation {
 	return k.storage
+}
+
+func (k *Kubernetes) StorageResource() *storageResourceOperation {
+	return k.storageResource
 }
 
 func (k *Kubernetes) Progress() *progressOperation {

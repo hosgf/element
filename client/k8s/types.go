@@ -2,10 +2,12 @@ package k8s
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/util"
 )
 
 // ProcessGroupConfig 进程组配置对象
@@ -183,6 +185,10 @@ type Mount struct {
 	SubPath string `json:"subPath,omitempty"` // 挂载子目录,可以是个目录或者文件,
 }
 
+func (m *Mount) GetPath() string {
+	return util.GetOrDefault(m.Path, filepath.Join("data", m.Name))
+}
+
 // Config 配置
 type Config struct {
 	Name  string `json:"name,omitempty"`  // 配置名称
@@ -245,6 +251,10 @@ func (s *Storage) ToAccessMode() types.AccessMode {
 		return types.ReadWriteOnce
 	}
 	return types.AccessMode(gstr.CaseCamel(s.AccessMode.String()))
+}
+
+func (s *Storage) GetPath() string {
+	return util.GetOrDefault(s.Path, filepath.Join(util.GetHomePath(), "data", s.Name))
 }
 
 // ProbeConfig 探针配置

@@ -21,6 +21,17 @@ func TestProgressList(t *testing.T) {
 	g.Dump(datas)
 }
 
+func TestProgressGet(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	datas, err := kubernetes.Progress().List(ctx, "sandbox")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	g.Dump(datas)
+}
+
 func TestProgressDelete(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
@@ -55,10 +66,11 @@ func TestProgressRunning(t *testing.T) {
 		Storage: make([]k8s.Storage, 0),
 		Process: make([]k8s.ProcessConfig, 0),
 	}
+	config.Storage = append(config.Storage, toStorage())
+
 	config.Process = append(config.Process, toProgress(namespace, num))
 	//config.Process = append(config.Process, toProgress2())
 
-	config.Storage = append(config.Storage, toStorage())
 	err := kubernetes.Progress().Running(ctx, config)
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +85,8 @@ func toStorage() k8s.Storage {
 		Type:       "pvc",
 		AccessMode: types.ReadWriteOnce,
 		Size:       "2Gi",
-		Item:       "sandboxClaim",
+		//Path:       "/data",
+		//Item:       "sandboxClaim",
 	}
 }
 
@@ -118,18 +131,18 @@ func toProgress(namespace, num string) k8s.ProcessConfig {
 				},
 			},
 		},
-		//Mounts: []k8s.Mount{
-		//	{
-		//		Name:    "sandboxStorage",
-		//		Path:    "pvc",
-		//		SubPath: "sandboxClaim",
-		//	},
-		//	{
-		//		Name:    "sandboxStorage1",
-		//		Path:    "pvc",
-		//		SubPath: "sandboxClaim",
-		//	},
-		//},
+		Mounts: []k8s.Mount{
+			{
+				Name: "sandbox-storage",
+				Path: "/data/sandbox",
+				//SubPath: "sandboxClaim",
+			},
+			//{
+			//	Name:    "sandboxStorage1",
+			//	Path:    "pvc",
+			//	SubPath: "sandboxClaim",
+			//},
+		},
 	}
 }
 

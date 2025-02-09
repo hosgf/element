@@ -20,6 +20,8 @@ type PodTemplate struct {
 	Model
 	RunningNode string        `json:"runningNode,omitempty"`
 	Status      health.Health `json:"status,omitempty"`
+	Config      []Config      `json:"config,omitempty"`
+	Storage     []Storage     `json:"storage,omitempty"`
 	Containers  []*Container  `json:"containers,omitempty"`
 }
 
@@ -63,7 +65,7 @@ func (p *PodTemplate) toContainer(c corev1.Container) {
 		Env:        map[string]string{},
 	}
 	container.setResource(c)
-	container.setMounts(c)
+	container.setMounts(p.Storage, c)
 	container.setEnv(c)
 	container.setPorts(c)
 	p.Containers = append(p.Containers, container)
@@ -119,51 +121,6 @@ func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
 	}
 	return nil
 }
-
-//func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
-//	if o.err != nil {
-//		return o.err
-//	}
-//	p := applyconfigurationscorev1.Pod(pod.Name, pod.Namespace)
-//	// 更新Labels
-//	p.WithLabels(pod.labels())
-//	// 更新容器
-//	p.Spec.Containers = make([]applyconfigurationscorev1.ContainerApplyConfiguration, 0, len(pod.containers()))
-//	for _, c := range pod.containers() {
-//		ports := make([]*applyconfigurationscorev1.ContainerPortApplyConfiguration, 0, len(c.Ports))
-//		for _, p := range c.Ports {
-//			port := applyconfigurationscorev1.ContainerPort()
-//			port.WithName(p.Name)
-//			port.WithProtocol(p.Protocol)
-//			port.WithHostPort(p.HostPort)
-//			port.WithHostIP(p.HostIP)
-//			port.WithContainerPort(p.ContainerPort)
-//			ports = append(ports, port)
-//		}
-//		envs := make([]*applyconfigurationscorev1.EnvVarApplyConfiguration, 0, len(c.Env))
-//		for _, e := range c.Env {
-//			env := applyconfigurationscorev1.EnvVar()
-//			env.WithName(e.Name)
-//			env.WithValue(e.Value)
-//			envs = append(envs, env)
-//		}
-//		container := applyconfigurationscorev1.Container()
-//		container.WithName(c.Name)
-//		container.WithImage(c.Image)
-//		container.WithImagePullPolicy(c.ImagePullPolicy)
-//		container.WithCommand(c.Command...)
-//		container.WithArgs(c.Args...)
-//		container.WithPorts(ports...)
-//		container.WithEnv(envs...)
-//		p.Spec.Containers = append(p.Spec.Containers, *container)
-//	}
-//	opts := v1.ApplyOptions{}
-//	_, err := o.api.CoreV1().Pods(pod.Namespace).Apply(ctx, p, opts)
-//	if err != nil {
-//		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to apply pod: %v", err)
-//	}
-//	return nil
-//}
 
 func (o *podTemplateOperation) Delete(ctx context.Context, namespace, pod string) error {
 	if o.err != nil {

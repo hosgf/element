@@ -31,7 +31,7 @@ func (o *progressOperation) List(ctx context.Context, namespace string) ([]*prog
 		logger.Warningf(ctx, "---> SVC信息采集失败 err: %+v \r\n", err.Error())
 	} else {
 		if o.isDebug {
-			logger.Debugf(ctx, "---> SVC信息采集成功 %+v \r\n", services)
+			logger.Debugf(ctx, "---> SVC信息采集成功 size %d \r\n", len(services))
 		}
 		for _, s := range services {
 			svc, ok := svcs[s.Group]
@@ -48,7 +48,7 @@ func (o *progressOperation) List(ctx context.Context, namespace string) ([]*prog
 		return list, err
 	}
 	if o.isDebug {
-		logger.Debugf(ctx, "---> POD信息采集成功 size: %+v \r\n", pods)
+		logger.Debugf(ctx, "---> POD信息采集成功 size: %d \r\n", len(pods))
 	}
 	if len(pods) < 1 {
 		return list, nil
@@ -85,6 +85,9 @@ func (o *progressOperation) Running(ctx context.Context, config *ProcessGroupCon
 	pod := config.toPod()
 	if pod == nil {
 		return nil
+	}
+	if err := o.k8s.StorageResource().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
+		return err
 	}
 	if err := o.k8s.Storage().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
 		return err

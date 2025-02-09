@@ -23,7 +23,7 @@ func (s *Storage) toPersistentStorage(model Model) *PersistentStorage {
 	return storage
 }
 
-func (s *PersistentStorage) toPVC() *corev1.PersistentVolumeClaim {
+func (s *PersistentStorage) toPvc() *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      s.Storage.Name,
@@ -31,7 +31,7 @@ func (s *PersistentStorage) toPVC() *corev1.PersistentVolumeClaim {
 			Labels:    s.labels(),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.PersistentVolumeAccessMode(s.AccessMode)},
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.PersistentVolumeAccessMode(s.ToAccessMode())},
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
 				Limits:   corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
@@ -40,7 +40,7 @@ func (s *PersistentStorage) toPVC() *corev1.PersistentVolumeClaim {
 	}
 }
 
-func (s *PersistentStorage) updatePVC(data *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+func (s *PersistentStorage) updatePvc(data *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
 	data.Spec.Resources.Limits = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)}
 	return data
 }
@@ -80,7 +80,7 @@ func (o *storageOperation) Apply(ctx context.Context, storage *PersistentStorage
 			return nil
 			//return o.update(ctx, data, storage)
 		}
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Storage: %s, Item: %s 已存在!", storage.Storage.Name, storage.Item)
+		return gerror.NewCodef(gcode.CodeNotImplemented, "Storage: %s, Item: %v 已存在!", storage.Storage.Name, storage.Item)
 	}
 	return o.create(ctx, storage)
 }
@@ -112,7 +112,7 @@ func (o *storageOperation) Delete(ctx context.Context, namespace, name string) e
 }
 
 func (o *storageOperation) create(ctx context.Context, storage *PersistentStorage) error {
-	pvc := storage.toPVC()
+	pvc := storage.toPvc()
 	if o.isTest {
 		return nil
 	}
@@ -124,7 +124,7 @@ func (o *storageOperation) create(ctx context.Context, storage *PersistentStorag
 }
 
 func (o *storageOperation) update(ctx context.Context, data *corev1.PersistentVolumeClaim, storage *PersistentStorage) error {
-	_, err := o.api.CoreV1().PersistentVolumeClaims(storage.Namespace).Update(ctx, storage.updatePVC(data), v1.UpdateOptions{})
+	_, err := o.api.CoreV1().PersistentVolumeClaims(storage.Namespace).Update(ctx, storage.updatePvc(data), v1.UpdateOptions{})
 	if err != nil {
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to Update apps Storage: %v", err)
 	}

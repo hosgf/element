@@ -18,6 +18,7 @@ type operation interface {
 	Pod() podsInterface
 	Job() jobsInterface
 	Storage() storageInterface
+	StorageResource() storageResourceInterface
 	Metrics() metricsInterface
 	PodTemplate() podTemplatesInterface
 	Progress() progressInterface
@@ -87,4 +88,12 @@ type storageInterface interface {
 	Apply(ctx context.Context, storage *PersistentStorage) error
 	BatchApply(ctx context.Context, model Model, storage []Storage) error
 	Delete(ctx context.Context, namespace, name string) error
+}
+
+type storageResourceInterface interface {
+	Get(ctx context.Context, name string) (*Storage, error)
+	Exists(ctx context.Context, name string) (bool, error)
+	Apply(ctx context.Context, storage *PersistentStorageResource) error
+	BatchApply(ctx context.Context, model Model, storage []Storage) error
+	Delete(ctx context.Context, name string) error
 }
