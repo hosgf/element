@@ -83,19 +83,19 @@ type jobsInterface interface {
 }
 
 type storageInterface interface {
-	Get(ctx context.Context, namespace, name string) (*Storage, error)
+	Get(ctx context.Context, namespace, name string) (*types.Storage, error)
 	Exists(ctx context.Context, namespace, name string) (bool, error)
 	Apply(ctx context.Context, storage *PersistentStorage) error
-	BatchApply(ctx context.Context, model Model, storage []Storage) error
+	BatchApply(ctx context.Context, model Model, storage []types.Storage) error
 	Delete(ctx context.Context, delRes bool, namespace string, name ...string) error
 	DeleteByGroup(ctx context.Context, delRes bool, namespace string, groups ...string) error
 }
 
 type storageResourceInterface interface {
-	Get(ctx context.Context, name string) (*Storage, error)
+	Get(ctx context.Context, name string) (*types.Storage, error)
 	Exists(ctx context.Context, name string) (bool, error)
 	Apply(ctx context.Context, storage *PersistentStorageResource) error
-	BatchApply(ctx context.Context, model Model, storage []Storage) error
+	BatchApply(ctx context.Context, model Model, storage []types.Storage) error
 	Delete(ctx context.Context, name string) error
 	DeleteByGroup(ctx context.Context, groups ...string) error
 }

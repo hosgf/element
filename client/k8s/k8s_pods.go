@@ -24,12 +24,12 @@ type podsOperation struct {
 
 type Pod struct {
 	Model
-	Replicas    int32        `json:"replicas,omitempty"`
-	RunningNode string       `json:"runningNode,omitempty"`
-	Status      string       `json:"status,omitempty"`
-	Config      []Config     `json:"config,omitempty"`
-	Storage     []Storage    `json:"storage,omitempty"`
-	Containers  []*Container `json:"containers,omitempty"`
+	Replicas    int32           `json:"replicas,omitempty"`
+	RunningNode string          `json:"runningNode,omitempty"`
+	Status      string          `json:"status,omitempty"`
+	Config      []types.Config  `json:"config,omitempty"`
+	Storage     []types.Storage `json:"storage,omitempty"`
+	Containers  []*Container    `json:"containers,omitempty"`
 }
 
 func (pod *Pod) updateAppsDeployment(deployment *appsv1.Deployment) *appsv1.Deployment {
@@ -76,7 +76,7 @@ func (pod *Pod) setVolumes(vs []corev1.Volume) {
 		vs := v.VolumeSource
 		pvc := vs.PersistentVolumeClaim
 		if pvc != nil {
-			pod.Storage = append(pod.Storage, Storage{
+			pod.Storage = append(pod.Storage, types.Storage{
 				Name: v.Name,
 				Type: types.StoragePVC,
 				Item: pvc.ClaimName,
@@ -86,7 +86,7 @@ func (pod *Pod) setVolumes(vs []corev1.Volume) {
 		ed := vs.EmptyDir
 		if ed != nil {
 			println(ed.Size())
-			pod.Storage = append(pod.Storage, Storage{
+			pod.Storage = append(pod.Storage, types.Storage{
 				Name: v.Name,
 				Type: types.StoragePVC,
 				Item: ed.Medium,
@@ -132,11 +132,11 @@ func (pod *Pod) toStorageVolumes() []corev1.Volume {
 		)
 		switch storage.ToStorageType() {
 		case types.StoragePVC:
-			ok = storage.toPvc(v)
+			ok = pod.toPvc(storage, v)
 		case types.StorageConfig:
-			ok = storage.toConfig(v)
+			ok = pod.toConfig(storage, v)
 		default:
-			ok = storage.toPvc(v)
+			ok = pod.toPvc(storage, v)
 		}
 		if ok {
 			volumes = append(volumes, *v)
@@ -145,7 +145,7 @@ func (pod *Pod) toStorageVolumes() []corev1.Volume {
 	return volumes
 }
 
-func (s *Storage) toConfig(v *corev1.Volume) bool {
+func (pod *Pod) toConfig(s types.Storage, v *corev1.Volume) bool {
 	items := gconv.Map(s.Item)
 	if len(items) == 0 {
 		return false
@@ -158,7 +158,7 @@ func (s *Storage) toConfig(v *corev1.Volume) bool {
 	return true
 }
 
-func (s *Storage) toPvc(v *corev1.Volume) bool {
+func (pod *Pod) toPvc(s types.Storage, v *corev1.Volume) bool {
 	item := gconv.String(s.Item)
 	if len(item) < 1 {
 		return true
@@ -282,7 +282,7 @@ func (pod *Pod) toContainer(c corev1.Container) {
 		Args:       c.Args,
 		Ports:      make([]progress.Port, 0, len(c.Ports)),
 		Resource:   make([]progress.Resource, 0),
-		Mounts:     make([]Mount, 0),
+		Mounts:     make([]types.Mount, 0),
 		Env:        map[string]string{},
 	}
 	container.setResource(c)
@@ -302,7 +302,7 @@ type Container struct {
 	Resource   []progress.Resource `json:"resource,omitempty"`
 	Env        map[string]string   `json:"env,omitempty"`
 	EnvConfig  []types.Environment `json:"envConfig,omitempty"`
-	Mounts     []Mount             `json:"mounts,omitempty"`
+	Mounts     []types.Mount       `json:"mounts,omitempty"`
 	Probe      ProbeConfig         `json:"probe,omitempty"`
 }
 
@@ -449,7 +449,7 @@ func (c *Container) mounts(container *corev1.Container) {
 	container.VolumeMounts = ms
 }
 
-func (c *Container) setMounts(storages []Storage, container corev1.Container) {
+func (c *Container) setMounts(storages []types.Storage, container corev1.Container) {
 	vm := container.VolumeMounts
 	if storages == nil || len(storages) < 1 || vm == nil || len(vm) < 1 {
 		return
@@ -460,7 +460,7 @@ func (c *Container) setMounts(storages []Storage, container corev1.Container) {
 	}
 	for _, v := range vm {
 		if _, ok := cmap[v.Name]; ok {
-			c.Mounts = append(c.Mounts, Mount{
+			c.Mounts = append(c.Mounts, types.Mount{
 				Name:    v.Name,
 				Path:    v.MountPath,
 				SubPath: v.SubPath,
@@ -735,8 +735,8 @@ func (o *podsOperation) toPods(namespace string, datas *corev1.PodList) []*Pod {
 			Status:      string(p.Status.Phase),
 			RunningNode: p.Spec.NodeName,
 			Containers:  make([]*Container, 0),
-			Config:      make([]Config, 0),
-			Storage:     make([]Storage, 0),
+			Config:      make([]types.Config, 0),
+			Storage:     make([]types.Storage, 0),
 		}
 		pod.setLabels(p.Labels)
 		pod.setVolumes(p.Spec.Volumes)

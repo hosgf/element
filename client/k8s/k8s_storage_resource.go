@@ -15,15 +15,7 @@ import (
 
 type PersistentStorageResource struct {
 	Model
-	Storage
-}
-
-func (s *Storage) toPersistentStorageResource(model Model) *PersistentStorageResource {
-	storage := &PersistentStorageResource{
-		Model:   model,
-		Storage: *s,
-	}
-	return storage
+	types.Storage
 }
 
 func (s *PersistentStorageResource) toPv() *corev1.PersistentVolume {
@@ -58,7 +50,7 @@ type storageResourceOperation struct {
 	*options
 }
 
-func (o *storageResourceOperation) Get(ctx context.Context, name string) (*Storage, error) {
+func (o *storageResourceOperation) Get(ctx context.Context, name string) (*types.Storage, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -90,13 +82,17 @@ func (o *storageResourceOperation) Apply(ctx context.Context, storage *Persisten
 	return o.create(ctx, storage)
 }
 
-func (o *storageResourceOperation) BatchApply(ctx context.Context, model Model, storage []Storage) error {
+func (o *storageResourceOperation) BatchApply(ctx context.Context, model Model, storage []types.Storage) error {
 	if storage == nil || len(storage) < 1 {
 		return nil
 	}
 	model.AllowUpdate = true
 	for _, s := range storage {
-		if err := o.Apply(ctx, s.toPersistentStorageResource(model)); err != nil {
+		psr := &PersistentStorageResource{
+			Model:   model,
+			Storage: s,
+		}
+		if err := o.Apply(ctx, psr); err != nil {
 			return err
 		}
 	}
@@ -170,7 +166,7 @@ func (o *storageResourceOperation) exists(ctx context.Context, name string) (boo
 	return has, storage, err
 }
 
-func (o *storageResourceOperation) toStorage(datas *corev1.PersistentVolume) *Storage {
+func (o *storageResourceOperation) toStorage(datas *corev1.PersistentVolume) *types.Storage {
 	if datas == nil {
 		return nil
 	}
@@ -189,5 +185,5 @@ func (o *storageResourceOperation) toStorage(datas *corev1.PersistentVolume) *St
 	//	pods = append(pods, pod)
 	//}
 	//return pods
-	return &Storage{}
+	return &types.Storage{}
 }

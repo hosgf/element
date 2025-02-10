@@ -1,10 +1,12 @@
 package types
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
+	"github.com/hosgf/element/util"
 )
 
 var (
@@ -108,4 +110,83 @@ type Labels struct {
 	Owner  string            `json:"owner,omitempty"`  // 所属人
 	Scope  string            `json:"scope,omitempty"`  // 作用范围
 	Labels map[string]string `json:"labels,omitempty"` // 标签
+}
+
+// Mount 持久化挂载,存储关系映射,最终持久化目录为:{Path}/{SubPath}
+type Mount struct {
+	Name    string `json:"name,omitempty"`    // 挂载设备名称,关联存储的名字
+	Path    string `json:"path,omitempty"`    // 挂载目录,应用要使用的目录, 容器内部工作目录
+	SubPath string `json:"subPath,omitempty"` // 挂载子目录,可以是个目录或者文件,
+}
+
+func (m *Mount) GetPath() string {
+	return util.GetOrDefault(m.Path, filepath.Join("data", m.Name))
+}
+
+// Config 配置
+type Config struct {
+	Name  string `json:"name,omitempty"`  // 配置名称
+	Type  string `json:"type,omitempty"`  // 配置类型,config , volume
+	Item  string `json:"item,omitempty"`  // 配置详情条目
+	Path  string `json:"path,omitempty"`  // 配置路径
+	Scope string `json:"scope,omitempty"` // 作用域,默认全部
+}
+
+func (c *Config) IsMatch(name string) bool {
+	if len(c.Scope) < 1 {
+		return true
+	}
+	if gstr.Contains(c.Scope, "*") {
+		return true
+	}
+	for _, s := range gstr.Split(c.Scope, ",") {
+		if gstr.Equal(s, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// Storage 存储 对象
+type Storage struct {
+	Name       string      `json:"name,omitempty"`       // 存储名称
+	Type       StorageType `json:"type,omitempty"`       // 存储类型,config , volume , pvc
+	AccessMode AccessMode  `json:"accessMode,omitempty"` // 访问模式
+	Size       string      `json:"size,omitempty"`       // 存储大小
+	Path       string      `json:"path,omitempty"`       // 存储路径
+	Item       interface{} `json:"item,omitempty"`       // 存储详情
+	Scope      string      `json:"scope,omitempty"`      // 作用域,默认全部
+}
+
+func (s *Storage) IsMatch(name string) bool {
+	if len(s.Scope) < 1 {
+		return true
+	}
+	if gstr.Contains(s.Scope, "*") {
+		return true
+	}
+	for _, s := range gstr.Split(s.Scope, ",") {
+		if gstr.Equal(s, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Storage) ToStorageType() StorageType {
+	if s.Type == "" {
+		return StoragePVC
+	}
+	return StorageType(s.Type.String())
+}
+
+func (s *Storage) ToAccessMode() AccessMode {
+	if s.AccessMode == "" {
+		return ReadWriteOnce
+	}
+	return AccessMode(gstr.CaseCamel(s.AccessMode.String()))
+}
+
+func (s *Storage) GetPath() string {
+	return util.GetOrDefault(s.Path, filepath.Join(util.GetHomePath(), "data", s.Name))
 }

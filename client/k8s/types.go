@@ -2,12 +2,9 @@ package k8s
 
 import (
 	"fmt"
-	"path/filepath"
 
-	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
-	"github.com/hosgf/element/util"
 )
 
 // ProcessGroupConfig 进程组配置对象
@@ -19,8 +16,8 @@ type ProcessGroupConfig struct {
 	Replicas    int32           `json:"replicas,omitempty"`    // 节点数，以进程组为纬度 默认为 1
 	AllowUpdate bool            `json:"allowUpdate,omitempty"` // 是否允许更新,进程存在则更新
 	Secret      string          `json:"secret,omitempty"`      // pull镜像时使用的secret
-	Config      []Config        `json:"config,omitempty"`      // 配置信息
-	Storage     []Storage       `json:"storage,omitempty"`     // 存储,以进程组的维度来定义,进程通过挂载与存储关联
+	Config      []types.Config  `json:"config,omitempty"`      // 配置信息
+	Storage     []types.Storage `json:"storage,omitempty"`     // 存储,以进程组的维度来定义,进程通过挂载与存储关联
 	Process     []ProcessConfig `json:"process,omitempty"`     // 进程组下的进程信息
 }
 
@@ -38,14 +35,14 @@ func (pg *ProcessGroupConfig) toModel() Model {
 
 func (pg *ProcessGroupConfig) initConfig() {
 	if pg.Config == nil {
-		pg.Config = make([]Config, 0)
+		pg.Config = make([]types.Config, 0)
 	}
 	cmap := map[string]string{}
 	for _, c := range pg.Config {
 		cmap[c.Name] = c.Scope
 	}
 	if _, ok := cmap["timezone"]; !ok {
-		pg.Config = append(pg.Config, Config{
+		pg.Config = append(pg.Config, types.Config{
 			Name: "timezone",
 			Type: "config",
 			Item: "/usr/share/zoneinfo/Asia/Shanghai",
@@ -53,7 +50,7 @@ func (pg *ProcessGroupConfig) initConfig() {
 		})
 	}
 	if _, ok := cmap["localtime"]; !ok {
-		pg.Config = append(pg.Config, Config{
+		pg.Config = append(pg.Config, types.Config{
 			Name: "localtime",
 			Type: "config",
 			Item: "/etc/localtime",
@@ -74,13 +71,13 @@ type ProcessConfig struct {
 	Ports       []progress.Port     `json:"ports,omitempty"`       // 服务端口信息
 	Resource    []progress.Resource `json:"resource,omitempty"`    // 进程运行所需的资源
 	Env         []types.Environment `json:"env,omitempty"`         // 环境变量
-	Mounts      []Mount             `json:"mounts,omitempty"`      // 卷挂载
+	Mounts      []types.Mount       `json:"mounts,omitempty"`      // 卷挂载
 	Probe       ProbeConfig         `json:"probe,omitempty"`       // 探针
 }
 
 func (p *ProcessConfig) toMounts(pg *ProcessGroupConfig) {
 	if p.Mounts == nil {
-		p.Mounts = make([]Mount, 0)
+		p.Mounts = make([]types.Mount, 0)
 	}
 	cmap := map[string]string{}
 	for _, c := range p.Mounts {
@@ -101,11 +98,11 @@ func (p *ProcessConfig) toConfigMounts(cmap map[string]string, pg *ProcessGroupC
 		if _, ok := cmap[c.Name]; ok {
 			continue
 		}
-		if !c.isMatch(c.Name) {
+		if !c.IsMatch(c.Name) {
 			continue
 		}
 		cmap[c.Name] = c.Path
-		p.Mounts = append(p.Mounts, Mount{
+		p.Mounts = append(p.Mounts, types.Mount{
 			Name: c.Name,
 			Path: c.Path,
 		})
@@ -123,11 +120,11 @@ func (p *ProcessConfig) toStorageMounts(cmap map[string]string, pg *ProcessGroup
 		if _, ok := cmap[s.Name]; ok {
 			continue
 		}
-		if !s.isMatch(s.Name) {
+		if !s.IsMatch(s.Name) {
 			continue
 		}
 		cmap[s.Name] = s.Path
-		p.Mounts = append(p.Mounts, Mount{
+		p.Mounts = append(p.Mounts, types.Mount{
 			Name: s.Name,
 			Path: s.Path,
 		})
@@ -176,85 +173,6 @@ func (p *ProcessConfig) toEnvConfig() (map[string]string, []types.Environment) {
 		}
 	}
 	return env, config
-}
-
-// Mount 持久化挂载,存储关系映射,最终持久化目录为:{Path}/{SubPath}
-type Mount struct {
-	Name    string `json:"name,omitempty"`    // 挂载设备名称,关联存储的名字
-	Path    string `json:"path,omitempty"`    // 挂载目录,应用要使用的目录, 容器内部工作目录
-	SubPath string `json:"subPath,omitempty"` // 挂载子目录,可以是个目录或者文件,
-}
-
-func (m *Mount) GetPath() string {
-	return util.GetOrDefault(m.Path, filepath.Join("data", m.Name))
-}
-
-// Config 配置
-type Config struct {
-	Name  string `json:"name,omitempty"`  // 配置名称
-	Type  string `json:"type,omitempty"`  // 配置类型,config , volume
-	Item  string `json:"item,omitempty"`  // 配置详情条目
-	Path  string `json:"path,omitempty"`  // 配置路径
-	Scope string `json:"scope,omitempty"` // 作用域,默认全部
-}
-
-func (c *Config) isMatch(name string) bool {
-	if len(c.Scope) < 1 {
-		return true
-	}
-	if gstr.Contains(c.Scope, "*") {
-		return true
-	}
-	for _, s := range gstr.Split(c.Scope, ",") {
-		if gstr.Equal(s, name) {
-			return true
-		}
-	}
-	return false
-}
-
-// Storage 存储 对象
-type Storage struct {
-	Name       string            `json:"name,omitempty"`       // 存储名称
-	Type       types.StorageType `json:"type,omitempty"`       // 存储类型,config , volume , pvc
-	AccessMode types.AccessMode  `json:"accessMode,omitempty"` // 访问模式
-	Size       string            `json:"size,omitempty"`       // 存储大小
-	Path       string            `json:"path,omitempty"`       // 存储路径
-	Item       interface{}       `json:"item,omitempty"`       // 存储详情
-	Scope      string            `json:"scope,omitempty"`      // 作用域,默认全部
-}
-
-func (s *Storage) isMatch(name string) bool {
-	if len(s.Scope) < 1 {
-		return true
-	}
-	if gstr.Contains(s.Scope, "*") {
-		return true
-	}
-	for _, s := range gstr.Split(s.Scope, ",") {
-		if gstr.Equal(s, name) {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *Storage) ToStorageType() types.StorageType {
-	if s.Type == "" {
-		return types.StoragePVC
-	}
-	return types.StorageType(s.Type.String())
-}
-
-func (s *Storage) ToAccessMode() types.AccessMode {
-	if s.AccessMode == "" {
-		return types.ReadWriteOnce
-	}
-	return types.AccessMode(gstr.CaseCamel(s.AccessMode.String()))
-}
-
-func (s *Storage) GetPath() string {
-	return util.GetOrDefault(s.Path, filepath.Join(util.GetHomePath(), "data", s.Name))
 }
 
 // ProbeConfig 探针配置

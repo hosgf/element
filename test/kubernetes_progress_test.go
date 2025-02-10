@@ -100,7 +100,7 @@ func toProcessGroupConfig() *k8s.ProcessGroupConfig {
 			Owner: "match-data-platform",
 			Scope: "datasandbox",
 		},
-		Storage: make([]k8s.Storage, 0),
+		Storage: make([]types.Storage, 0),
 		Process: make([]k8s.ProcessConfig, 0),
 	}
 	config.Storage = append(config.Storage, toStorage())
@@ -110,8 +110,8 @@ func toProcessGroupConfig() *k8s.ProcessGroupConfig {
 	return config
 }
 
-func toStorage() k8s.Storage {
-	return k8s.Storage{
+func toStorage() types.Storage {
+	return types.Storage{
 		Name:       "sandbox-storage",
 		Type:       "pvc",
 		AccessMode: types.ReadWriteOnce,
@@ -162,7 +162,7 @@ func toProgress(namespace, num string) k8s.ProcessConfig {
 				},
 			},
 		},
-		Mounts: []k8s.Mount{
+		Mounts: []types.Mount{
 			{
 				Name: "sandbox-storage",
 				Path: "/data/sandbox",

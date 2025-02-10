@@ -14,15 +14,7 @@ import (
 
 type PersistentStorage struct {
 	Model
-	Storage
-}
-
-func (s *Storage) toPersistentStorage(model Model) *PersistentStorage {
-	storage := &PersistentStorage{
-		Model:   model,
-		Storage: *s,
-	}
-	return storage
+	types.Storage
 }
 
 func (s *PersistentStorage) toPvc() *corev1.PersistentVolumeClaim {
@@ -52,7 +44,7 @@ type storageOperation struct {
 	k8s *Kubernetes
 }
 
-func (o *storageOperation) Get(ctx context.Context, namespace, name string) (*Storage, error) {
+func (o *storageOperation) Get(ctx context.Context, namespace, name string) (*types.Storage, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
@@ -88,13 +80,17 @@ func (o *storageOperation) Apply(ctx context.Context, storage *PersistentStorage
 	return o.create(ctx, storage)
 }
 
-func (o *storageOperation) BatchApply(ctx context.Context, model Model, storage []Storage) error {
+func (o *storageOperation) BatchApply(ctx context.Context, model Model, storage []types.Storage) error {
 	if storage == nil || len(storage) < 1 {
 		return nil
 	}
 	model.AllowUpdate = true
 	for _, s := range storage {
-		if err := o.Apply(ctx, s.toPersistentStorage(model)); err != nil {
+		ps := &PersistentStorage{
+			Model:   model,
+			Storage: s,
+		}
+		if err := o.Apply(ctx, ps); err != nil {
 			return err
 		}
 	}
@@ -189,7 +185,7 @@ func (o *storageOperation) exists(ctx context.Context, namespace, name string) (
 	return has, storage, err
 }
 
-func (o *storageOperation) toStorage(datas *corev1.PersistentVolumeClaim) *Storage {
+func (o *storageOperation) toStorage(datas *corev1.PersistentVolumeClaim) *types.Storage {
 	if datas == nil {
 		return nil
 	}
@@ -208,5 +204,5 @@ func (o *storageOperation) toStorage(datas *corev1.PersistentVolumeClaim) *Stora
 	//	pods = append(pods, pod)
 	//}
 	//return pods
-	return &Storage{}
+	return &types.Storage{}
 }

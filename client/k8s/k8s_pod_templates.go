@@ -18,11 +18,11 @@ type podTemplateOperation struct {
 
 type PodTemplate struct {
 	Model
-	RunningNode string        `json:"runningNode,omitempty"`
-	Status      health.Health `json:"status,omitempty"`
-	Config      []Config      `json:"config,omitempty"`
-	Storage     []Storage     `json:"storage,omitempty"`
-	Containers  []*Container  `json:"containers,omitempty"`
+	RunningNode string          `json:"runningNode,omitempty"`
+	Status      health.Health   `json:"status,omitempty"`
+	Config      []types.Config  `json:"config,omitempty"`
+	Storage     []types.Storage `json:"storage,omitempty"`
+	Containers  []*Container    `json:"containers,omitempty"`
 }
 
 func (p *PodTemplate) labels(labels map[string]string) {
