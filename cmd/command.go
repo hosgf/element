@@ -11,8 +11,17 @@ import (
 
 	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/text/gstr"
+	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/os"
 )
+
+func Stream(ctx context.Context, command string) error {
+	return New("", false).Stream(ctx, command, logger.Log())
+}
+
+func Command(ctx context.Context, command string) (string, error) {
+	return New("", false).Command(ctx, command, logger.Log())
+}
 
 func New(exe string, isDebug bool) *Cmd {
 	return &Cmd{
