@@ -104,6 +104,8 @@ func (k *Kubernetes) Init(homePath string) error {
 	//	klog.LogToStderr(true)
 	//	klog.SetOutput(os.Stdout)
 	//}
+	config.QPS = 50    // 每秒最大 50 个请求
+	config.Burst = 100 // 突发请求 100 个
 	k.api, err = k8s.NewForConfig(config)
 	if err != nil {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create Kubernetes client: %v", err)
