@@ -188,5 +188,5 @@ func (s *Storage) ToAccessMode() AccessMode {
 }
 
 func (s *Storage) GetPath() string {
-	return util.GetOrDefault(s.Path, filepath.Join(util.GetHomePath(), "data", s.Name))
+	return util.GetOrDefault(s.Path, filepath.Join(util.GetOrDefault(util.GetHomePath(), "/"), "data", s.Name))
 }
