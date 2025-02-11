@@ -617,17 +617,14 @@ func (o *podsOperation) Restart(ctx context.Context, namespace, pod string) erro
 }
 
 func (o *podsOperation) RestartGroup(ctx context.Context, namespace, group string) error {
-	exist, err := o.Exists(ctx, namespace, group)
-	if err != nil || !exist {
+	if len(group) < 1 {
+		return nil
+	}
+	has, _, err := o.deploymentExists(ctx, namespace, group)
+	if err != nil || !has {
 		return err
 	}
-	if has, _, err := o.deploymentExists(ctx, namespace, group); has {
-		if err != nil {
-			return err
-		}
-		return o.api.CoreV1().Pods(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, toGroupListOptions(group))
-	}
-	return nil
+	return o.api.CoreV1().Pods(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, toGroupListOptions(group))
 }
 
 func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname string) error {
