@@ -29,12 +29,9 @@ func (s *PersistentStorageResource) toPv() *corev1.PersistentVolume {
 		PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
 	}
 	item := gconv.String(s.Item)
-	if len(item) > 0 {
-		spec.StorageClassName = item
-	} else {
-		spec.HostPath = &corev1.HostPathVolumeSource{
-			Path: s.GetPath(),
-		}
+	spec.StorageClassName = item
+	spec.HostPath = &corev1.HostPathVolumeSource{
+		Path: s.GetPath(),
 	}
 	return &corev1.PersistentVolume{
 		ObjectMeta: v1.ObjectMeta{

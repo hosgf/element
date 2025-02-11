@@ -550,8 +550,7 @@ func (o *podsOperation) Exists(ctx context.Context, namespace, pod string) (bool
 	if o.err != nil {
 		return false, o.err
 	}
-	opts := v1.GetOptions{}
-	p, err := o.api.CoreV1().Pods(namespace).Get(ctx, pod, opts)
+	p, err := o.api.CoreV1().Pods(namespace).Get(ctx, pod, v1.GetOptions{})
 	return o.isExist(p, err, "Failed to get Pod: %v")
 }
 
@@ -614,8 +613,21 @@ func (o *podsOperation) Restart(ctx context.Context, namespace, pod string) erro
 	if err != nil || !exist {
 		return err
 	}
-	opts := v1.DeleteOptions{}
-	return o.api.AppsV1().Deployments(namespace).Delete(ctx, pod, opts)
+	return o.api.CoreV1().Pods(namespace).Delete(ctx, pod, v1.DeleteOptions{})
+}
+
+func (o *podsOperation) RestartGroup(ctx context.Context, namespace, group string) error {
+	exist, err := o.Exists(ctx, namespace, group)
+	if err != nil || !exist {
+		return err
+	}
+	if has, _, err := o.deploymentExists(ctx, namespace, group); has {
+		if err != nil {
+			return err
+		}
+		return o.api.CoreV1().Pods(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, toGroupListOptions(group))
+	}
+	return nil
 }
 
 func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname string) error {
@@ -623,16 +635,7 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 		return o.err
 	}
 	opts := toAppListOptions(appname)
-	corev1 := o.api.CoreV1().Pods(namespace)
-	list, err := corev1.List(ctx, opts)
-	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
-	}
-	for _, p := range list.Items {
-		if p.Name != "" {
-			err = corev1.Delete(ctx, p.Name, v1.DeleteOptions{})
-		}
-	}
+	err := o.api.CoreV1().Pods(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, opts)
 	return err
 }
 

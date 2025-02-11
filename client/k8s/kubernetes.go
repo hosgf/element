@@ -68,6 +68,7 @@ type podsInterface interface {
 	Delete(ctx context.Context, namespace, pod string) error
 	DeleteGroup(ctx context.Context, namespace string, groups ...string) error
 	Restart(ctx context.Context, namespace, pod string) error
+	RestartGroup(ctx context.Context, namespace, group string) error
 	RestartApp(ctx context.Context, namespace, appname string) error
 }
 

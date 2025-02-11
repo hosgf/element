@@ -117,7 +117,7 @@ func toStorage() types.Storage {
 		AccessMode: types.ReadWriteOnce,
 		Size:       "2Gi",
 		//Path:       "/data",
-		//Item:       "sandboxClaim",
+		Item: "ceph-rbd",
 	}
 }
 
