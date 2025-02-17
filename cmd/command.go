@@ -63,7 +63,6 @@ func (c *Cmd) Stream(ctx context.Context, command string, logger *glog.Logger) e
 	for {
 		tmp := make([]byte, 1024)
 		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
 		if err != nil {
 			break
 		}

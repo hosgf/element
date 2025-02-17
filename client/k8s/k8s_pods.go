@@ -85,7 +85,6 @@ func (pod *Pod) setVolumes(vs []corev1.Volume) {
 		}
 		ed := vs.EmptyDir
 		if ed != nil {
-			println(ed.Size())
 			pod.Storage = append(pod.Storage, types.Storage{
 				Name: v.Name,
 				Type: types.StoragePVC,
