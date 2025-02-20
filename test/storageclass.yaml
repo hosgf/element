@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-rbd
+provisioner: kubernetes.io/rbd
+reclaimPolicy: Retain
+parameters:
+  monitors: "172.26.182.101:6789,172.26.182.102:6789,172.26.182.103:6789,172.26.182.104:6789,172.26.182.105:6789,172.26.182.106:6789"
+  pool: "rbd"
+  imageFormat: "2"
+  imageFeatures: "layering"
+  fsType: "ext4"

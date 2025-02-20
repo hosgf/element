@@ -112,12 +112,16 @@ func toProcessGroupConfig() *k8s.ProcessGroupConfig {
 
 func toStorage() types.Storage {
 	return types.Storage{
-		Name:       "sandbox-storage",
+		Name:       "sandbox-storage1",
 		Type:       "pvc",
 		AccessMode: types.ReadWriteOnce,
 		Size:       "2Gi",
-		//Path:       "/data",
-		Item: "ceph-rbd",
+		Path:       "/data",
+		Item:       "ceph-rbd",
+		//Resource: types.StorageResource{
+		//	Type: "",
+		//	Item: "",
+		//},
 	}
 }
 

@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/util/gconv"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
@@ -18,19 +19,27 @@ type PersistentStorage struct {
 }
 
 func (s *PersistentStorage) toPvc() *corev1.PersistentVolumeClaim {
+	pvcs := corev1.PersistentVolumeClaimSpec{
+		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.PersistentVolumeAccessMode(s.ToAccessMode())},
+		Resources: corev1.VolumeResourceRequirements{
+			Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
+			Limits:   corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
+		},
+	}
+	switch s.ToStorageType() {
+	case types.StoragePVC:
+		if s.Item != nil {
+			item := gconv.String(s.Item)
+			pvcs.StorageClassName = &item
+		}
+	}
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      s.Storage.Name,
 			Namespace: s.Namespace,
 			Labels:    s.labels(),
 		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.PersistentVolumeAccessMode(s.ToAccessMode())},
-			Resources: corev1.VolumeResourceRequirements{
-				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
-				Limits:   corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
-			},
-		},
+		Spec: pvcs,
 	}
 }
 

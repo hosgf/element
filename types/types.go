@@ -147,15 +147,21 @@ func (c *Config) IsMatch(name string) bool {
 	return false
 }
 
+type StorageResource struct {
+	Type string `json:"type,omitempty"` // 存储名称
+	Item string `json:"item,omitempty"` // 存储详情
+}
+
 // Storage 存储 对象
 type Storage struct {
-	Name       string      `json:"name,omitempty"`       // 存储名称
-	Type       StorageType `json:"type,omitempty"`       // 存储类型,config , volume , pvc
-	AccessMode AccessMode  `json:"accessMode,omitempty"` // 访问模式
-	Size       string      `json:"size,omitempty"`       // 存储大小
-	Path       string      `json:"path,omitempty"`       // 存储路径
-	Item       interface{} `json:"item,omitempty"`       // 存储详情
-	Scope      string      `json:"scope,omitempty"`      // 作用域,默认全部
+	Name       string          `json:"name,omitempty"`       // 存储名称
+	Type       StorageType     `json:"type,omitempty"`       // 存储类型,config , volume , pvc
+	AccessMode AccessMode      `json:"accessMode,omitempty"` // 访问模式
+	Size       string          `json:"size,omitempty"`       // 存储大小
+	Path       string          `json:"path,omitempty"`       // 存储路径
+	Item       interface{}     `json:"item,omitempty"`       // 存储详情,
+	Resource   StorageResource `json:"resource,omitempty"`   // 存储资源，可为空
+	Scope      string          `json:"scope,omitempty"`      // 作用域,默认全部
 }
 
 func (s *Storage) IsMatch(name string) bool {
@@ -171,6 +177,15 @@ func (s *Storage) IsMatch(name string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Storage) ReadOnly() bool {
+	switch s.ToAccessMode() {
+	case ReadOnlyMany:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Storage) ToStorageType() StorageType {

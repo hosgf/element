@@ -162,7 +162,7 @@ func (pod *Pod) toPvc(s types.Storage, v *corev1.Volume) bool {
 	if len(item) < 1 {
 		return true
 	}
-	v.VolumeSource.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: item}
+	v.VolumeSource.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: s.Name}
 	return true
 }
 

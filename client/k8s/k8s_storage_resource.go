@@ -13,36 +13,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type PersistentStorageResource struct {
-	Model
-	types.Storage
-}
-
-func (s *PersistentStorageResource) toPv() *corev1.PersistentVolume {
-	spec := corev1.PersistentVolumeSpec{
-		Capacity: corev1.ResourceList{
-			corev1.ResourceStorage: resource.MustParse(s.Size),
-		},
-		AccessModes: []corev1.PersistentVolumeAccessMode{
-			corev1.PersistentVolumeAccessMode(s.ToAccessMode()),
-		},
-		PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
-	}
-	item := gconv.String(s.Item)
-	spec.StorageClassName = item
-	spec.HostPath = &corev1.HostPathVolumeSource{
-		Path: s.GetPath(),
-	}
-	return &corev1.PersistentVolume{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      s.Storage.Name,
-			Namespace: s.Namespace,
-			Labels:    s.labels(),
-		},
-		Spec: spec,
-	}
-}
-
 type storageResourceOperation struct {
 	*options
 }
@@ -66,6 +36,10 @@ func (o *storageResourceOperation) Exists(ctx context.Context, name string) (boo
 func (o *storageResourceOperation) Apply(ctx context.Context, storage *PersistentStorageResource) error {
 	if o.err != nil {
 		return o.err
+	}
+	res := storage.Resource
+	if len(res.Item) < 1 {
+		return nil
 	}
 	if has, _, err := o.exists(ctx, storage.Storage.Name); has {
 		if err != nil {
@@ -183,4 +157,67 @@ func (o *storageResourceOperation) toStorage(datas *corev1.PersistentVolume) *ty
 	//}
 	//return pods
 	return &types.Storage{}
+}
+
+type Resource struct {
+	Name       string   `json:"name,omitempty"`
+	Type       string   `json:"type,omitempty"`
+	Namespace  string   `json:"namespace,omitempty"`
+	Secret     string   `json:"secret,omitempty"`
+	SecretName string   `json:"secretName,omitempty"`
+	Nodes      []string `json:"nodes,omitempty"`
+}
+
+type PersistentStorageResource struct {
+	Model
+	types.Storage
+}
+
+func (s *PersistentStorageResource) toStorageResourceType() StorageResourceType {
+	return ToStorageResourceType(s.Resource.Type)
+}
+
+func (s *PersistentStorageResource) toPv() *corev1.PersistentVolume {
+	spec := corev1.PersistentVolumeSpec{
+		Capacity: corev1.ResourceList{
+			corev1.ResourceStorage: resource.MustParse(s.Size),
+		},
+		AccessModes: []corev1.PersistentVolumeAccessMode{
+			corev1.PersistentVolumeAccessMode(s.ToAccessMode()),
+		},
+		PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+		StorageClassName:              gconv.String(s.Item),
+	}
+	spec.HostPath = &corev1.HostPathVolumeSource{
+		Path: s.GetPath(),
+	}
+	switch s.ToStorageType() {
+	case types.StoragePVC:
+		switch s.toStorageResourceType() {
+		case StorageResourceRBD:
+			volumeMode := corev1.PersistentVolumeBlock
+			spec.VolumeMode = &volumeMode
+			spec.RBD = s.toRBD()
+		}
+	}
+	return &corev1.PersistentVolume{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      s.Storage.Name,
+			Namespace: s.Namespace,
+			Labels:    s.labels(),
+		},
+		Spec: spec,
+	}
+}
+
+func (s *PersistentStorageResource) toRBD() *corev1.RBDPersistentVolumeSource {
+	r := s.Resource
+	if len(r.Item) < 1 {
+		return nil
+	}
+	var rbd corev1.RBDPersistentVolumeSource
+	if err := gconv.Struct(r.Item, &rbd); err != nil {
+		return nil
+	}
+	return &rbd
 }

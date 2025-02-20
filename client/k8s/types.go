@@ -2,9 +2,9 @@ package k8s
 
 import (
 	"fmt"
-
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/types"
+	"strings"
 )
 
 // ProcessGroupConfig 进程组配置对象
@@ -293,4 +293,21 @@ func (m *Model) setLabels(labels map[string]string) {
 	for k, v := range labels {
 		m.Labels[k] = v
 	}
+}
+
+type StorageResourceType string
+
+const (
+	StorageResourceRBD StorageResourceType = "RBD"
+)
+
+func (t StorageResourceType) String() string {
+	return strings.ToLower(string(t))
+}
+
+func ToStorageResourceType(t string) StorageResourceType {
+	if t == "" {
+		return StorageResourceRBD
+	}
+	return StorageResourceType(t)
 }
