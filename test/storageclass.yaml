@@ -1,12 +1,19 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ceph-rbd
-provisioner: kubernetes.io/rbd
+  name: sandbox-ceph-rbd
+provisioner: rbd.csi.ceph.com
 reclaimPolicy: Retain
 parameters:
+  clusterID: "07bb8a8c-af26-11ef-b8ee-00163e0c3c73"
   monitors: "172.26.182.101:6789,172.26.182.102:6789,172.26.182.103:6789,172.26.182.104:6789,172.26.182.105:6789,172.26.182.106:6789"
   pool: "rbd"
   imageFormat: "2"
   imageFeatures: "layering"
   fsType: "ext4"
+  csi.storage.k8s.io/provisioner-secret-name: ceph-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: sjchbigdata
+  csi.storage.k8s.io/node-publish-secret-name: ceph-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: sjchbigdata
+  csi.storage.k8s.io/node-stage-secret-name: ceph-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: sjchbigdata
