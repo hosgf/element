@@ -406,7 +406,10 @@ func (c *Container) setResource(container corev1.Container) {
 	memory := progress.Resource{Type: types.ResourceMemory, Threshold: -1, Minimum: -1, Maximum: -1}
 	memory.SetMinimum(requests.Memory().String())
 	memory.SetMaximum(limits.Memory().String())
-	c.Resource = append(c.Resource, cpu, memory)
+	storage := progress.Resource{Type: types.ResourceStorage, Threshold: -1, Minimum: -1, Maximum: -1}
+	storage.SetMinimum(requests.Memory().String())
+	storage.SetMaximum(limits.Memory().String())
+	c.Resource = append(c.Resource, cpu, memory, storage)
 }
 
 func (c *Container) env(container *corev1.Container) {
