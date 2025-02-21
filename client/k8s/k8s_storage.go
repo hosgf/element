@@ -20,6 +20,7 @@ type PersistentStorage struct {
 
 func (s *PersistentStorage) toPvc() *corev1.PersistentVolumeClaim {
 	pvcs := corev1.PersistentVolumeClaimSpec{
+		VolumeName:  s.Storage.Name,
 		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.PersistentVolumeAccessMode(s.ToAccessMode())},
 		Resources: corev1.VolumeResourceRequirements{
 			Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
