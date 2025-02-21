@@ -212,7 +212,7 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 			storage := map[string]string{}
 			for _, m := range c.Mounts {
 				if d, ok := cmap[m.Name]; ok {
-					storage[m.Name] = d.String()
+					storage[m.Name] = gstr.UcFirst(d.String())
 				}
 			}
 			p.Details["storage"] = storage
