@@ -17,6 +17,7 @@ import (
 type PersistentStorage struct {
 	Model
 	types.Storage
+	TargetName string
 }
 
 func (s *PersistentStorage) toPvc() *corev1.PersistentVolumeClaim {
@@ -26,6 +27,9 @@ func (s *PersistentStorage) toPvc() *corev1.PersistentVolumeClaim {
 			Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
 			Limits:   corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(s.Size)},
 		},
+	}
+	if len(s.TargetName) > 0 {
+		pvcs.VolumeName = s.TargetName
 	}
 	switch s.ToStorageType() {
 	case types.StoragePVC:
