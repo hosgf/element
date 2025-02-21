@@ -8,7 +8,6 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/gconv"
-	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/progress"
 	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
@@ -180,10 +179,7 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 		items = metric.Items
 	}
 	status := Status(pod.Status)
-	group := progress.Details{
-		Details: map[string]string{pod.Name: pod.Status},
-		Status:  status,
-	}
+	group := map[string]string{pod.Name: pod.Status}
 	cmap := map[string]types.StorageType{}
 	if pod.Storage != nil {
 		for _, c := range pod.Storage {
@@ -213,33 +209,24 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 			}
 		}
 		if c.Mounts != nil {
-			storage := progress.Details{
-				Status:  health.UP,
-				Details: map[string]string{},
-			}
+			storage := map[string]string{}
 			for _, m := range c.Mounts {
 				if d, ok := cmap[m.Name]; ok {
-					storage.Details[m.Name] = d.String()
+					storage[m.Name] = d.String()
 				}
 			}
-			p.Indicators["storage"] = storage
+			p.Details["storage"] = storage
 		}
-
 		if len(svcs) < 1 {
 			list = append(list, p)
 			continue
 		}
 		ports := make([]progress.ProgressPort, 0)
-		service := progress.Details{
-			Status:  health.UNKNOWN,
-			Details: map[string]string{},
-		}
+		svcDetails := map[string]string{}
 		for _, svc := range svcs {
 			if gstr.Contains(svc.Group, p.Name) || gstr.Contains(svc.Group, pod.Group) || svc.Name == pod.Group {
 				p.Service = svc.Name
-				service.Details[svc.Name] = svc.Status
-				service.Details["serviceType"] = svc.ServiceType
-				service.Status = health.UP
+				svcDetails[svc.Name] = svc.ServiceType
 				ports = append(ports, svc.toProgressPort()...)
 				break
 			}
@@ -247,8 +234,10 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 		if len(p.Service) > 0 {
 			p.SetAddress(fmt.Sprintf("%s.%s.svc.cluster.local", p.Service, p.Namespace))
 		}
-		p.Indicators["group"] = group
-		p.Indicators["service"] = service
+		p.Details["group"] = group
+		if len(svcDetails) > 0 {
+			p.Details["service"] = svcDetails
+		}
 		if len(ports) > 0 {
 			p.Details["ports"] = ports
 		}
@@ -406,7 +395,10 @@ func (c *Container) setResource(container corev1.Container) {
 	memory := progress.Resource{Type: types.ResourceMemory, Threshold: -1, Minimum: -1, Maximum: -1}
 	memory.SetMinimum(requests.Memory().String())
 	memory.SetMaximum(limits.Memory().String())
-	c.Resource = append(c.Resource, cpu, memory)
+	storage := progress.Resource{Type: types.ResourceStorage, Threshold: -1, Minimum: -1, Maximum: -1}
+	storage.SetMinimum(requests.Storage().String())
+	storage.SetMaximum(limits.Storage().String())
+	c.Resource = append(c.Resource, cpu, memory, storage)
 }
 
 func (c *Container) env(container *corev1.Container) {

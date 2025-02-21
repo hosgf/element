@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+
 	"github.com/gogf/gf/v2/util/gconv"
 
 	"github.com/gogf/gf/v2/errors/gcode"
@@ -195,24 +196,16 @@ func (o *storageOperation) exists(ctx context.Context, namespace, name string) (
 	return has, storage, err
 }
 
-func (o *storageOperation) toStorage(datas *corev1.PersistentVolumeClaim) *types.Storage {
-	if datas == nil {
+func (o *storageOperation) toStorage(data *corev1.PersistentVolumeClaim) *types.Storage {
+	if data == nil {
 		return nil
 	}
-	//pods := make([]*Pod, 0, len(datas.Items))
-	//for _, p := range datas.Items {
-	//	pod := &Pod{
-	//		Model:       Model{Namespace: namespace, Name: p.Name},
-	//		Status:      string(p.Status.Phase),
-	//		Containers:  make([]*Container, 0),
-	//		RunningNode: p.Spec.NodeName,
-	//	}
-	//	pod.setLabels(p.Labels)
-	//	for _, c := range p.Spec.Containers {
-	//		pod.toContainer(c)
-	//	}
-	//	pods = append(pods, pod)
-	//}
-	//return pods
-	return &types.Storage{}
+	sc := data.Spec
+	s := &types.Storage{
+		Name:       data.Name,
+		AccessMode: types.AccessMode(sc.AccessModes[0]),
+		Size:       sc.Resources.Limits.Storage().String(),
+		Item:       sc.StorageClassName,
+	}
+	return s
 }
