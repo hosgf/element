@@ -24,7 +24,7 @@ func MiddlewareSecurity(c *gclient.Client, r *http.Request) (resp *gclient.Respo
 
 func middlewareHeader(ctx context.Context, c *gclient.Client) *gclient.Client {
 	if headers := request.GetHeader(ctx); headers != nil {
-		c.Header(headers)
+		return c.Header(headers)
 	}
 	return c
 }
