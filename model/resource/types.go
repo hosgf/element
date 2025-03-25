@@ -98,6 +98,7 @@ type Node struct {
 	Status     health.Health          `json:"status"`
 	Time       int64                  `json:"time"`
 	Indicators map[string]interface{} `json:"indicators"`
+	Details    map[string]interface{} `json:"details"`
 }
 
 type Details struct {

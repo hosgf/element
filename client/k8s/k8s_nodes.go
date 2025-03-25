@@ -9,6 +9,7 @@ import (
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/resource"
+	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -26,16 +27,19 @@ type Node struct {
 
 func (n *Node) ToNode() resource.Node {
 	node := resource.Node{
-		Name:   n.Name,
-		Status: n.Status,
-		Roles:  n.Roles,
-		Time:   n.Time,
-		Indicators: map[string]interface{}{
+		Name:       n.Name,
+		Status:     n.Status,
+		Roles:      n.Roles,
+		Time:       n.Time,
+		Indicators: map[string]interface{}{},
+		Details: map[string]interface{}{
 			"address": n.Address,
 		},
 	}
+	node.Indicators[types.ResourceCPU.String()] = n.Cpu
+	node.Indicators[types.ResourceMemory.String()] = n.Memory
 	for k, v := range n.Indicators {
-		node.Indicators[k.String()] = v
+		node.Details[k.String()] = v
 	}
 	return node
 }
