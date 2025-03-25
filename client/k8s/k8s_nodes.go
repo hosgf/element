@@ -12,6 +12,7 @@ import (
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
 type Node struct {
@@ -57,10 +58,18 @@ func (o *nodesOperation) Top(ctx context.Context) ([]*Node, error) {
 		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get nodes: %v", err)
 	}
 	nodes := make([]*Node, 0, len(datas.Items))
+	metricses := map[string]v1beta1.NodeMetrics{}
+	list, err := o.metricsApi.MetricsV1beta1().NodeMetricses().List(ctx, v1.ListOptions{})
+	if err != nil {
+		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get nodes metrics: %v", err)
+	}
+	for _, v := range list.Items {
+		metricses[v.Name] = v
+	}
 	for _, n := range datas.Items {
 		node := &Node{
 			Name:       n.Name,
-			Cpu:        resource.Details{},
+			Cpu:        resource.Details{Unit: types.DefaultCpuUnit},
 			Memory:     resource.Details{},
 			Indicators: map[health.Indicator]health.IndicatorDetails{},
 		}
@@ -82,24 +91,21 @@ func (o *nodesOperation) Top(ctx context.Context) ([]*Node, error) {
 		}
 
 		// 资源总量
-		for name, quantity := range n.Status.Capacity {
+		for name, quantity := range n.Status.Allocatable {
 			switch name {
 			case corev1.ResourceCPU:
-				node.Cpu.SetTotal(quantity.String())
+				node.Cpu.SetTotalValue(quantity.MilliValue())
 			case corev1.ResourceMemory:
 				node.Memory.SetTotal(quantity.String())
 			}
 		}
+
 		// 空闲资源
-		for name, quantity := range n.Status.Allocatable {
-			switch name {
-			case corev1.ResourceCPU:
-				node.Cpu.SetFree(quantity.String())
-				node.Cpu.Usage = node.Cpu.Total - node.Cpu.Free
-			case corev1.ResourceMemory:
-				node.Memory.SetFree(quantity.String())
-				node.Memory.Usage = node.Memory.Total - node.Memory.Free
-			}
+		if v, ok := metricses[n.Name]; ok {
+			usage := v.Usage
+			node.Cpu.ThroughUsageConstruction(usage.Cpu().MilliValue())
+			node.Memory.SetUsage(usage.Memory().String())
+			node.Memory.ThroughUsageConstruction(node.Memory.Usage)
 		}
 		// 状态
 		for _, condition := range n.Status.Conditions {

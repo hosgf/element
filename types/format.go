@@ -44,6 +44,23 @@ func FormatMemory(data int64, unit string) int64 {
 	return formatData
 }
 
+func FormatMemoryOfBytes(data int64, unit string) int64 {
+	formatData := int64(0)
+	switch unit {
+	case "":
+		formatData = data
+	case "Ki":
+		formatData = data / 1024
+	case "Mi":
+		formatData = data / 1024 / 1024
+	case "Gi":
+		formatData = data / 1024 / 1024 / 1024
+	case "Ti":
+		formatData = data / 1024 / 1024 / 1024 / 1024
+	}
+	return formatData
+}
+
 func FormatDataSize(data int64, unit string) int64 {
 	formatData := int64(0)
 	switch unit {
