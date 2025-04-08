@@ -71,7 +71,7 @@ func GetHeader(ctx context.Context) map[string]string {
 }
 
 func SetHeader(ctx context.Context, headers map[string]interface{}) context.Context {
-	if headers != nil || len(headers) == 0 {
+	if headers == nil || len(headers) == 0 {
 		return ctx
 	}
 	for k, v := range headers {
