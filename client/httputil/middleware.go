@@ -10,12 +10,16 @@ import (
 
 func SetMiddleware(ctx context.Context, c *gclient.Client, handlers ...gclient.HandlerFunc) *gclient.Client {
 	c = middlewareHeader(ctx, c)
-	hs := []gclient.HandlerFunc{MiddlewareSecurity}
+	hs := []gclient.HandlerFunc{MiddlewareSame, MiddlewareSecurity}
 	if len(handlers) > 0 {
 		hs = append(hs, handlers...)
 	}
 	c.Use(hs...)
 	return c
+}
+
+func MiddlewareSame(c *gclient.Client, r *http.Request) (resp *gclient.Response, err error) {
+	return c.Next(r)
 }
 
 func MiddlewareSecurity(c *gclient.Client, r *http.Request) (resp *gclient.Response, err error) {

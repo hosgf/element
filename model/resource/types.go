@@ -98,6 +98,7 @@ type Node struct {
 	Status     health.Health          `json:"status"`
 	Time       int64                  `json:"time"`
 	Indicators map[string]interface{} `json:"indicators"`
+	Details    map[string]interface{} `json:"details"`
 }
 
 type Details struct {
@@ -144,4 +145,25 @@ func (d *Details) SetUsage(data string) {
 	if value > 0 {
 		d.Usage = value
 	}
+}
+
+func (d *Details) SetTotalValue(data int64) {
+	d.Total = data
+}
+
+func (d *Details) SetFreeValue(data int64) {
+	d.Free = data
+}
+
+func (d *Details) SetUsageValue(data int64) {
+	d.Usage = data
+}
+
+func (d *Details) SetUnit(data string) {
+	d.Unit = data
+}
+
+func (d *Details) ThroughUsageConstruction(data int64) {
+	d.Usage = data
+	d.Free = d.Total - data
 }
