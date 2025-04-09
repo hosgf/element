@@ -9,10 +9,12 @@ import (
 )
 
 func NewClient(ctx context.Context, client *gclient.Client) *Client {
-	return &Client{
+	c := &Client{
 		ctx: ctx,
 		c:   client,
 	}
+	c.SetMiddleware()
+	return c
 }
 
 type Client struct {
