@@ -6,7 +6,7 @@ import (
 )
 
 func SetMiddleware(s *ghttp.Server, handlers ...ghttp.HandlerFunc) *ghttp.Server {
-	hs := []ghttp.HandlerFunc{MiddlewareCORS, MiddlewareHeader}
+	hs := []ghttp.HandlerFunc{MiddlewareCORS, MiddlewareHeader, MiddlewareCookies}
 	if len(handlers) > 0 {
 		hs = append(hs, handlers...)
 	}
@@ -23,6 +23,16 @@ func MiddlewareHeader(r *ghttp.Request) {
 	for _, header := range request.GetHeaders() {
 		r = SetHandler(r, header)
 	}
+	r.Middleware.Next()
+}
+
+func MiddlewareCookies(r *ghttp.Request) {
+	cookies := r.Cookies()
+	cookieMap := make(map[string]string)
+	for _, cookie := range cookies {
+		cookieMap[cookie.Name] = cookie.Value
+	}
+	request.SetCookies(r.Context(), "_cookies", cookieMap)
 	r.Middleware.Next()
 }
 

@@ -107,10 +107,9 @@ func NewJsonHttpClient(ctx context.Context, timeout int, retryInterval int) (cli
 }
 
 func NewHttpClient(ctx context.Context, timeout int, retryInterval int) (client *gclient.Client) {
-	client = g.Client().SetTimeout(time.Duration(timeout) * time.Second)
-	client = SetMiddleware(ctx, client)
+	c := NewClient(ctx, g.Client().SetTimeout(time.Duration(timeout)*time.Second))
 	if retryInterval > 0 {
-		client = client.Retry(DEFAULT_RETRY_COUNT, time.Duration(retryInterval)*time.Second)
+		c.c = c.c.Retry(DEFAULT_RETRY_COUNT, time.Duration(retryInterval)*time.Second)
 	}
-	return client
+	return c.c
 }

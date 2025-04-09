@@ -8,14 +8,44 @@ import (
 	"github.com/hosgf/element/client/request"
 )
 
-func SetMiddleware(ctx context.Context, c *gclient.Client, handlers ...gclient.HandlerFunc) *gclient.Client {
-	c = middlewareHeader(ctx, c)
+func NewClient(ctx context.Context, client *gclient.Client) *Client {
+	return &Client{
+		ctx: ctx,
+		c:   client,
+	}
+}
+
+type Client struct {
+	ctx context.Context
+	c   *gclient.Client
+}
+
+type MiddlewareFunc = func(ctx context.Context, c *gclient.Client) *gclient.Client
+
+func (c *Client) SetMiddleware(handlers ...gclient.HandlerFunc) *Client {
+	c.middleware(middlewareHeader, middlewareCookies)
 	hs := []gclient.HandlerFunc{MiddlewareSame, MiddlewareSecurity}
 	if len(handlers) > 0 {
 		hs = append(hs, handlers...)
 	}
-	c.Use(hs...)
+	return c.use(hs...)
+}
+
+func (c *Client) use(handlers ...gclient.HandlerFunc) *Client {
+	if len(handlers) < 1 {
+		return c
+	}
+	c.c.Use(handlers...)
 	return c
+}
+
+func (c *Client) middleware(middlewares ...MiddlewareFunc) {
+	if len(middlewares) < 1 {
+		return
+	}
+	for _, middleware := range middlewares {
+		c.c = middleware(c.ctx, c.c)
+	}
 }
 
 func MiddlewareSame(c *gclient.Client, r *http.Request) (resp *gclient.Response, err error) {
@@ -29,6 +59,13 @@ func MiddlewareSecurity(c *gclient.Client, r *http.Request) (resp *gclient.Respo
 func middlewareHeader(ctx context.Context, c *gclient.Client) *gclient.Client {
 	if headers := request.GetHeader(ctx); headers != nil {
 		return c.Header(headers)
+	}
+	return c
+}
+
+func middlewareCookies(ctx context.Context, c *gclient.Client) *gclient.Client {
+	if cookies := request.GetCookies(ctx, "_cookies"); cookies != nil {
+		return c.Cookie(cookies)
 	}
 	return c
 }

@@ -85,3 +85,18 @@ func SetHeader(ctx context.Context, headers map[string]interface{}) context.Cont
 	}
 	return ctx
 }
+
+func GetCookies(ctx context.Context, cookie string) map[string]string {
+	value := ctx.Value(cookie)
+	if value == nil {
+		return nil
+	}
+	return gconv.MapStrStr(value)
+}
+
+func SetCookies(ctx context.Context, cookie string, value map[string]string) context.Context {
+	if value == nil || len(value) == 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, cookie, value)
+}
