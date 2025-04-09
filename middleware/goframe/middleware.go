@@ -27,13 +27,21 @@ func MiddlewareHeader(r *ghttp.Request) {
 }
 
 func MiddlewareCookies(r *ghttp.Request) {
-	cookies := r.Cookies()
+	r = SetCookies(r)
+	r.Middleware.Next()
+}
+
+func SetCookies(req *ghttp.Request) *ghttp.Request {
+	cookies := req.Cookies()
 	cookieMap := make(map[string]string)
 	for _, cookie := range cookies {
 		cookieMap[cookie.Name] = cookie.Value
 	}
-	request.SetCookies(r.Context(), request.CookieKey, cookieMap)
-	r.Middleware.Next()
+	if len(cookieMap) < 1 {
+		return req
+	}
+	request.SetCookies(req.Context(), request.CookieKey, cookieMap)
+	return req
 }
 
 func SetHandler(req *ghttp.Request, header request.Header) *ghttp.Request {
