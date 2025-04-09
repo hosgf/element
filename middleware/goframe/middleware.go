@@ -40,7 +40,7 @@ func SetCookies(req *ghttp.Request) *ghttp.Request {
 	if len(cookieMap) < 1 {
 		return req
 	}
-	request.SetCookies(req.Context(), request.CookieKey, cookieMap)
+	req.SetCtxVar(request.CookieKey, cookieMap)
 	return req
 }
 

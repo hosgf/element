@@ -74,7 +74,14 @@ func GetHeader(ctx context.Context) map[string]string {
 	return headers
 }
 
-func SetHeader(ctx context.Context, headers map[string]interface{}) context.Context {
+func SetHeader(ctx context.Context, key string, value interface{}) context.Context {
+	if len(key) == 0 || value == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, key, gconv.String(value))
+}
+
+func SetHeaders(ctx context.Context, headers map[string]interface{}) context.Context {
 	if headers == nil || len(headers) == 0 {
 		return ctx
 	}
