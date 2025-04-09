@@ -64,7 +64,7 @@ func middlewareHeader(ctx context.Context, c *gclient.Client) *gclient.Client {
 }
 
 func middlewareCookies(ctx context.Context, c *gclient.Client) *gclient.Client {
-	if cookies := request.GetCookies(ctx, "_cookies"); cookies != nil {
+	if cookies := request.GetCookies(ctx, request.CookieKey); cookies != nil {
 		return c.Cookie(cookies)
 	}
 	return c

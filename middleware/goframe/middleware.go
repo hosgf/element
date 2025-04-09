@@ -32,7 +32,7 @@ func MiddlewareCookies(r *ghttp.Request) {
 	for _, cookie := range cookies {
 		cookieMap[cookie.Name] = cookie.Value
 	}
-	request.SetCookies(r.Context(), "_cookies", cookieMap)
+	request.SetCookies(r.Context(), request.CookieKey, cookieMap)
 	r.Middleware.Next()
 }
 

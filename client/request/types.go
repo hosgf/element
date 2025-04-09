@@ -7,6 +7,10 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
+const (
+	CookieKey string = "_cookies"
+)
+
 // Protocol 请求协议类型
 type Protocol string
 
