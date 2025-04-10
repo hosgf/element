@@ -111,3 +111,11 @@ func SetCookies(ctx context.Context, cookie string, value map[string]string) con
 	}
 	return context.WithValue(ctx, cookie, value)
 }
+
+func GetDefaultCookies(ctx context.Context) map[string]string {
+	return GetCookies(ctx, CookieKey)
+}
+
+func SetDefaultCookies(ctx context.Context, value map[string]string) context.Context {
+	return SetCookies(ctx, CookieKey, value)
+}
