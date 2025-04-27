@@ -33,6 +33,7 @@ const (
 	HeaderTraceId    Header = "X-Req-Id"
 	HeaderUserAgent  Header = "X-User-Agent"
 	HeaderReqToken   Header = "Authorization"
+	HeaderSameToken  Header = "SA-SAME-TOKEN"
 )
 
 func GetHeaders() []Header {
@@ -49,6 +50,13 @@ func (h Header) Get(ctx context.Context) string {
 		return ""
 	}
 	return value.(string)
+}
+
+func SetSameToken(ctx context.Context, value interface{}) context.Context {
+	if value == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, HeaderSameToken, gconv.String(value))
 }
 
 func GetHeaderList(ctx context.Context, keys ...string) map[string]string {
