@@ -76,6 +76,10 @@ func (o *progressOperation) Running(ctx context.Context, config *ProcessGroupCon
 	if o.err != nil {
 		return o.err
 	}
+	if _, err := o.k8s.Namespace().Apply(ctx, config.Namespace, config.Labels.Owner); err != nil {
+		return err
+	}
+
 	svcs := config.toServices()
 	for _, s := range svcs {
 		if err := o.k8s.Service().Apply(ctx, s); err != nil {
