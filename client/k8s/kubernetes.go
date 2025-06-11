@@ -77,6 +77,7 @@ type podsInterface interface {
 	RestartGroup(ctx context.Context, namespace, group string) error
 	RestartApp(ctx context.Context, namespace, appname string) error
 	Command(ctx context.Context, namespace, group, process string, cmd ...string) (string, error)
+	Exec(ctx context.Context, namespace, pod, process string, cmd ...string) (string, error)
 	Logger(ctx context.Context, namespace, group, process string, config ProcessLogger) (io.ReadCloser, error)
 }
 

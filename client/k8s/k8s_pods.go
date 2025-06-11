@@ -634,11 +634,28 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 }
 
 func (o *podsOperation) Command(ctx context.Context, namespace, group, process string, cmd ...string) (string, error) {
+	if len(process) < 1 {
+		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程名称")
+	}
+	pods, err := o.list(ctx, namespace, group)
+	if err != nil {
+		return "", err
+	}
+	if pods.Items == nil || len(pods.Items) == 0 {
+		return "", gerror.NewCodef(gcode.CodeNotImplemented, "没有查询到进程组")
+	}
+	for _, pod := range pods.Items {
+		o.Exec(ctx, namespace, pod.Name, process, cmd...)
+	}
+	return "", o.err
+}
+
+func (o *podsOperation) Exec(ctx context.Context, namespace, pod, process string, cmd ...string) (string, error) {
 	if o.err != nil {
 		return "", o.err
 	}
-	if len(group) < 1 {
-		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程组名称")
+	if len(pod) < 1 {
+		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程组ID")
 	}
 	if len(process) < 1 {
 		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程名称")
@@ -650,7 +667,7 @@ func (o *podsOperation) Command(ctx context.Context, namespace, group, process s
 		Post().
 		Resource("pods").
 		Namespace(namespace).
-		Name(group).
+		Name(pod).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: process,
@@ -662,7 +679,7 @@ func (o *podsOperation) Command(ctx context.Context, namespace, group, process s
 		}, runtime.NewParameterCodec(scheme.Scheme))
 	executor, err := remotecommand.NewSPDYExecutor(o.c, "POST", req.URL())
 	if err != nil {
-		return "", gerror.WrapCodef(gcode.CodeOperationFailed, err, "进程[%s - %s]命令执行失败: 创建命令执行器出错", group, process)
+		return "", gerror.WrapCodef(gcode.CodeOperationFailed, err, "进程命令执行失败: 创建命令执行器出错")
 	}
 	var stdout, stderr bytes.Buffer
 	err = executor.Stream(remotecommand.StreamOptions{
@@ -671,7 +688,7 @@ func (o *podsOperation) Command(ctx context.Context, namespace, group, process s
 		Tty:    false,
 	})
 	if err != nil {
-		return "", gerror.WrapCodef(gcode.CodeOperationFailed, err, "进程[%s - %s]命令执行失败", group, process)
+		return "", gerror.WrapCodef(gcode.CodeOperationFailed, err, "进程命令执行失败")
 	}
 	return stdout.String(), err
 }
