@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"path/filepath"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/types"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
@@ -26,7 +26,7 @@ func New(isDebug, isTest bool) *Kubernetes {
 	k.storage = &storageOperation{k8s: k, options: k.options}
 	k.storageResource = &storageResourceOperation{k.options}
 	k.metrics = &metricsOperation{k.options}
-	k.progress = &progressOperation{k8s: k, options: k.options}
+	k.process = &processOperation{k8s: k, options: k.options}
 	k.resource = &resourceOperation{k8s: k, options: k.options}
 	return k
 }
@@ -35,6 +35,7 @@ type options struct {
 	isDebug    bool
 	isTest     bool
 	err        error
+	c          *rest.Config
 	api        *k8s.Clientset
 	metricsApi *metricsv.Clientset
 }
@@ -48,7 +49,7 @@ type Kubernetes struct {
 	storage         *storageOperation
 	storageResource *storageResourceOperation
 	metrics         *metricsOperation
-	progress        *progressOperation
+	process         *processOperation
 	resource        *resourceOperation
 }
 
@@ -80,8 +81,8 @@ func (k *Kubernetes) StorageResource() *storageResourceOperation {
 	return k.storageResource
 }
 
-func (k *Kubernetes) Progress() *progressOperation {
-	return k.progress
+func (k *Kubernetes) Process() *processOperation {
+	return k.process
 }
 
 func (k *Kubernetes) Resource() *resourceOperation {
@@ -106,12 +107,13 @@ func (k *Kubernetes) Init(homePath string) error {
 	//}
 	config.QPS = 50    // 每秒最大 50 个请求
 	config.Burst = 100 // 突发请求 100 个
-	k.api, err = k8s.NewForConfig(config)
+	k.c = config
+	k.api, err = k8s.NewForConfig(k.c)
 	if err != nil {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create Kubernetes client: %v", err)
 		return k.err
 	}
-	k.metricsApi, err = metricsv.NewForConfig(config)
+	k.metricsApi, err = metricsv.NewForConfig(k.c)
 	if err != nil {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create Kubernetes client: %v", err)
 		return k.err

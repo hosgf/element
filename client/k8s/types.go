@@ -2,10 +2,55 @@ package k8s
 
 import (
 	"fmt"
-	"github.com/hosgf/element/model/progress"
-	"github.com/hosgf/element/types"
 	"strings"
+
+	"github.com/hosgf/element/model/process"
+	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/util"
 )
+
+// ProcessLogger 进程日志配置
+type ProcessLogger struct {
+
+	// Follow the log stream of the pod. Defaults to false.
+	// +optional
+	Follow bool `json:"follow,omitempty"`
+
+	// Return previous terminated container logs. Defaults to false.
+	// +optional
+	Previous bool `json:"previous,omitempty"`
+
+	// If true, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line
+	// of log output. Defaults to false.
+	// +optional
+	Timestamps bool `json:"timestamps,omitempty"`
+
+	// A relative time in seconds before the current time from which to show logs. If this value
+	// precedes the time a pod was started, only logs since the pod start will be returned.
+	// If this value is in the future, no logs will be returned.
+	// Only one of sinceSeconds or sinceTime may be specified.
+	SinceSeconds *int64 `json:"sinceSeconds,omitempty"`
+
+	// If set, the number of lines from the end of the logs to show. If not specified,
+	// logs are shown from the creation of the container or sinceSeconds or sinceTime.
+	// Note that when "TailLines" is specified, "Stream" can only be set to nil or "All".
+	// +optional
+	TailLines *int64 `json:"tailLines,omitempty"`
+
+	// If set, the number of bytes to read from the server before terminating the
+	// log output. This may not display a complete final line of logging, and may return
+	// slightly more or slightly less than the specified limit.
+	// +optional
+	LimitBytes *int64 `json:"limitBytes,omitempty"`
+
+	// Specify which container log stream to return to the client.
+	// Acceptable values are "All", "Stdout" and "Stderr". If not specified, "All" is used, and both stdout and stderr
+	// are returned interleaved.
+	// Note that when "TailLines" is specified, "Stream" can only be set to nil or "All".
+	// +featureGate=PodLogsQuerySplitStreams
+	// +optional
+	Stream *LoggerOutputType `json:"stream,omitempty"`
+}
 
 // ProcessGroupConfig 进程组配置对象
 type ProcessGroupConfig struct {
@@ -68,8 +113,8 @@ type ProcessConfig struct {
 	PullPolicy  string              `json:"pullPolicy,omitempty"`  // 镜像拉取策略
 	Command     []string            `json:"command,omitempty"`     // 运行命令
 	Args        []string            `json:"args,omitempty"`        // 运行参数
-	Ports       []progress.Port     `json:"ports,omitempty"`       // 服务端口信息
-	Resource    []progress.Resource `json:"resource,omitempty"`    // 进程运行所需的资源
+	Ports       []process.Port      `json:"ports,omitempty"`       // 服务端口信息
+	Resource    []process.Resource  `json:"resource,omitempty"`    // 进程运行所需的资源
 	Env         []types.Environment `json:"env,omitempty"`         // 环境变量
 	Mounts      []types.Mount       `json:"mounts,omitempty"`      // 卷挂载
 	Probe       ProbeConfig         `json:"probe,omitempty"`       // 探针
@@ -293,6 +338,25 @@ func (m *Model) setLabels(labels map[string]string) {
 	for k, v := range labels {
 		m.Labels[k] = v
 	}
+}
+
+type LoggerOutputType string
+
+const (
+	LoggerOutputAll    LoggerOutputType = "All"
+	LoggerOutputStdout LoggerOutputType = "Stdout"
+	LoggerOutputStderr LoggerOutputType = "Stderr"
+)
+
+func (t LoggerOutputType) String() *string {
+	return util.StringPtr(string(t))
+}
+
+func GetOutputTypeOrDefault(a *LoggerOutputType, b LoggerOutputType) *string {
+	if a == nil {
+		return b.String()
+	}
+	return a.String()
 }
 
 type StorageResourceType string

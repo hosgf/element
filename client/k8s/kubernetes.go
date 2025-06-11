@@ -2,10 +2,11 @@ package k8s
 
 import (
 	"context"
+	"io"
 
 	"github.com/hosgf/element/types"
 
-	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/model/resource"
 )
 
@@ -21,16 +22,21 @@ type operation interface {
 	StorageResource() storageResourceInterface
 	Metrics() metricsInterface
 	PodTemplate() podTemplatesInterface
-	Progress() progressInterface
+	Process() processInterface
 	Resource() resourceInterface
 }
 
-type progressInterface interface {
-	List(ctx context.Context, namespace string) ([]*progress.Progress, error)
+type processInterface interface {
+	List(ctx context.Context, namespace string) ([]*process.Process, error)
 	Running(ctx context.Context, config *ProcessGroupConfig) error
 	Start(ctx context.Context, config *ProcessGroupConfig) error
 	Stop(ctx context.Context, namespace string, groups ...string) error
 	Destroy(ctx context.Context, namespace string, groups ...string) error
+	Restart(ctx context.Context, namespace, group, process string, cmd ...string) error
+	RestartGroup(ctx context.Context, namespace, group string) error
+	RestartApp(ctx context.Context, namespace, appname string) error
+	Command(ctx context.Context, namespace, group, process string, cmd ...string) (string, error)
+	Logger(ctx context.Context, namespace, group, process string, config ProcessLogger) (io.ReadCloser, error)
 }
 
 type resourceInterface interface {
@@ -70,6 +76,8 @@ type podsInterface interface {
 	Restart(ctx context.Context, namespace, pod string) error
 	RestartGroup(ctx context.Context, namespace, group string) error
 	RestartApp(ctx context.Context, namespace, appname string) error
+	Command(ctx context.Context, namespace, group, process string, cmd ...string) (string, error)
+	Logger(ctx context.Context, namespace, group, process string, config ProcessLogger) (io.ReadCloser, error)
 }
 
 type podTemplatesInterface interface {

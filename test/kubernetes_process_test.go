@@ -6,14 +6,14 @@ import (
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/hosgf/element/client/k8s"
-	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/types"
 )
 
-func TestProgressList(t *testing.T) {
+func TestProcessList(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
-	datas, err := kubernetes.Progress().List(ctx, "sandbox")
+	datas, err := kubernetes.Process().List(ctx, "sandbox")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -21,10 +21,10 @@ func TestProgressList(t *testing.T) {
 	g.Dump(datas)
 }
 
-func TestProgressGet(t *testing.T) {
+func TestProcessGet(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
-	datas, err := kubernetes.Progress().List(ctx, "sandbox")
+	datas, err := kubernetes.Process().List(ctx, "sandbox")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -32,11 +32,11 @@ func TestProgressGet(t *testing.T) {
 	g.Dump(datas)
 }
 
-func TestProgressStart(t *testing.T) {
+func TestProcessStart(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
 	config := toProcessGroupConfig()
-	err := kubernetes.Progress().Start(ctx, config)
+	err := kubernetes.Process().Start(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -44,14 +44,49 @@ func TestProgressStart(t *testing.T) {
 	println("--------------------------------------------")
 }
 
-func TestProgressStop(t *testing.T) {
+func TestProcessRestart(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	// kubectl exec -it -n sandbox  data-sandbox-01-6f97c86f55-5gt44 -c  data-sandbox-01 -- /bin/bash
+	err := kubernetes.Process().Restart(ctx, "sandbox", "data-sandbox-01-6f97c86f55-5gt44", "data-sandbox-01")
+	//err := kubernetes.Process().Restart(ctx, "sandbox", "data-sandbox-01", "data-sandbox-01")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	println("--------------------------------------------")
+}
+
+func TestProcessRestartGroup(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	err := kubernetes.Process().RestartGroup(ctx, "sandbox", "data-sandbox-01")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	println("--------------------------------------------")
+}
+
+func TestProcessRestartApp(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	err := kubernetes.Process().RestartApp(ctx, "sandbox", "data-sandbox-01")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	println("--------------------------------------------")
+}
+
+func TestProcessStop(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
 	var (
 		num       = "01"
 		namespace = "sandbox"
 	)
-	err := kubernetes.Progress().Stop(ctx, namespace, "data-sandbox-"+num)
+	err := kubernetes.Process().Stop(ctx, namespace, "data-sandbox-"+num)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -59,14 +94,14 @@ func TestProgressStop(t *testing.T) {
 	println("--------------------------------------------")
 }
 
-func TestProgressDestroy(t *testing.T) {
+func TestProcessDestroy(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
 	var (
 		num       = "01"
 		namespace = "sandbox"
 	)
-	err := kubernetes.Progress().Destroy(ctx, namespace, "data-sandbox-"+num)
+	err := kubernetes.Process().Destroy(ctx, namespace, "data-sandbox-"+num)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -74,11 +109,11 @@ func TestProgressDestroy(t *testing.T) {
 	println("--------------------------------------------")
 }
 
-func TestProgressRunning(t *testing.T) {
+func TestProcessRunning(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
 	config := toProcessGroupConfig()
-	err := kubernetes.Progress().Running(ctx, config)
+	err := kubernetes.Process().Running(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -100,13 +135,13 @@ func toProcessGroupConfig() *k8s.ProcessGroupConfig {
 			Owner: "match-data-platform",
 			Scope: "datasandbox",
 		},
-		Storage: make([]types.Storage, 0),
+		//Storage: make([]types.Storage, 0),
 		Process: make([]k8s.ProcessConfig, 0),
 	}
-	config.Storage = append(config.Storage, toStorage())
+	//config.Storage = append(config.Storage, toStorage())
 
-	config.Process = append(config.Process, toProgress(namespace, num))
-	//config.Process = append(config.Process, toProgress2())
+	config.Process = append(config.Process, toProcess(namespace, num))
+	//config.Process = append(config.Process, toProcess2())
 	return config
 }
 
@@ -125,13 +160,13 @@ func toStorage() types.Storage {
 	}
 }
 
-func toProgress(namespace, num string) k8s.ProcessConfig {
+func toProcess(namespace, num string) k8s.ProcessConfig {
 	return k8s.ProcessConfig{
 		Name:        "data-sandbox-" + num,
 		Service:     "data-sandbox-" + num + "-service",
 		ServiceType: "NodePort",
 		Source:      "hub.dataos.top/data_match_platform/sandbox-data:arm64v8-v1.0.0",
-		Ports: []progress.Port{
+		Ports: []process.Port{
 			{
 				Name:       "core",
 				Protocol:   types.ProtocolTcp,
@@ -145,7 +180,7 @@ func toProgress(namespace, num string) k8s.ProcessConfig {
 				TargetPort: 8888,
 			},
 		},
-		Resource: []progress.Resource{
+		Resource: []process.Resource{
 			{
 				Type:    types.ResourceCPU,
 				Unit:    "m",
@@ -166,28 +201,28 @@ func toProgress(namespace, num string) k8s.ProcessConfig {
 				},
 			},
 		},
-		Mounts: []types.Mount{
-			{
-				Name: "sandbox-storage",
-				Path: "/data/sandbox",
-				//SubPath: "sandboxClaim",
-			},
-			//{
-			//	Name:    "sandboxStorage1",
-			//	Path:    "pvc",
-			//	SubPath: "sandboxClaim",
-			//},
-		},
+		//Mounts: []types.Mount{
+		//	{
+		//		Name: "sandbox-storage",
+		//		Path: "/data/sandbox",
+		//		//SubPath: "sandboxClaim",
+		//	},
+		//	//{
+		//	//	Name:    "sandboxStorage1",
+		//	//	Path:    "pvc",
+		//	//	SubPath: "sandboxClaim",
+		//	//},
+		//},
 	}
 }
 
-func toProgress2() k8s.ProcessConfig {
+func toProcess2() k8s.ProcessConfig {
 	return k8s.ProcessConfig{
 		Name:    "container-10-2",
 		Service: "data-sandbox-01",
 		Source:  "hub.dataos.top/new_dataos_deploy/driver-container:v4.2.0",
 		Command: []string{"java -jar -Xms100M -Xmx500M -XX:+UseG1GC -javaagent:/driver-container-interim.jar /driver-container-interim.jar -Dfile.encoding=utf-8 --driver.uploadConfig={\\\"password\\\":\\\"dataos@123\\\",\\\"port\\\":\\\"21\\\",\\\"ip\\\":\\\"192.168.130.207\\\",\\\"username\\\":\\\"ftpuser\\\"} --driver.localAddress=driver-dm-10.local.svc.cluster.local --driver.reuse=false --driver.health.port=3099 --driver.env=local --driver.name=container-10-2 --driver.websocket.enable=false "},
-		Ports: []progress.Port{
+		Ports: []process.Port{
 			{
 				Name:       "http",
 				Protocol:   types.ProtocolTcp,
@@ -201,7 +236,7 @@ func toProgress2() k8s.ProcessConfig {
 				TargetPort: 18004,
 			},
 		},
-		Resource: []progress.Resource{
+		Resource: []process.Resource{
 			{
 				Type:    types.ResourceCPU,
 				Unit:    "m",

@@ -6,7 +6,7 @@ import (
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/health"
-	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,8 +60,8 @@ func (p *PodTemplate) toContainer(c corev1.Container) {
 		PullPolicy: string(c.ImagePullPolicy),
 		Command:    c.Command,
 		Args:       c.Args,
-		Ports:      make([]progress.Port, 0, len(c.Ports)),
-		Resource:   make([]progress.Resource, 0),
+		Ports:      make([]process.Port, 0, len(c.Ports)),
+		Resource:   make([]process.Resource, 0),
 		Env:        map[string]string{},
 	}
 	container.setResource(c)

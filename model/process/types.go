@@ -1,4 +1,4 @@
-package progress
+package process
 
 import (
 	"fmt"
@@ -9,21 +9,21 @@ import (
 	"github.com/hosgf/element/types"
 )
 
-type ProgressGroup struct {
+type ProcessGroup struct {
 	Region    string        `json:"region,omitempty"`
 	Namespace string        `json:"namespace,omitempty"`
 	GroupID   string        `json:"groupId,omitempty"`
 	Labels    *types.Labels `json:"labels,omitempty"`
 	Status    health.Health `json:"status,omitempty"`
 	Time      int64         `json:"time,omitempty"`
-	Details   []Progress    `json:"details,omitempty"`
+	Details   []Process     `json:"details,omitempty"`
 }
 
-func (p *ProgressGroup) MatchNamespace(namespace string) bool {
+func (p *ProcessGroup) MatchNamespace(namespace string) bool {
 	return strings.EqualFold(p.Namespace, namespace)
 }
 
-type Progress struct {
+type Process struct {
 	Region     string                 `json:"region,omitempty"`
 	Namespace  string                 `json:"namespace,omitempty"`
 	PID        string                 `json:"pid,omitempty"`
@@ -36,7 +36,7 @@ type Progress struct {
 	Details    map[string]interface{} `json:"details,omitempty"`
 }
 
-func (p *Progress) GetServiceType() string {
+func (p *Process) GetServiceType() string {
 	if p.Details == nil || len(p.Details) < 1 {
 		return ""
 	}
@@ -53,8 +53,8 @@ func (p *Progress) GetServiceType() string {
 	return ""
 }
 
-func (p *Progress) ToGroupProgress() Progress {
-	return Progress{
+func (p *Process) ToGroupProcess() Process {
+	return Process{
 		PID:        p.PID,
 		Service:    p.Service,
 		Name:       p.Name,
@@ -64,19 +64,19 @@ func (p *Progress) ToGroupProgress() Progress {
 	}
 }
 
-func (p *Progress) ToGroup() ProgressGroup {
-	return ProgressGroup{
+func (p *Process) ToGroup() ProcessGroup {
+	return ProcessGroup{
 		Namespace: p.Namespace,
 		Region:    p.Region,
 		Labels:    p.Labels,
 		GroupID:   p.PID,
 		Time:      p.Time,
 		Status:    health.UNKNOWN,
-		Details:   []Progress{p.ToGroupProgress()},
+		Details:   []Process{p.ToGroupProcess()},
 	}
 }
 
-func (p *Progress) ToHealth() Health {
+func (p *Process) ToHealth() Health {
 	return Health{
 		Namespace: p.Namespace,
 		Region:    p.Region,
@@ -91,68 +91,68 @@ func (p *Progress) ToHealth() Health {
 	}
 }
 
-func (p *Progress) MatchScope(scope string) bool {
+func (p *Process) MatchScope(scope string) bool {
 	return strings.EqualFold(p.GetScope(), scope)
 }
 
-func (p *Progress) MatchGroup(group string) bool {
+func (p *Process) MatchGroup(group string) bool {
 	return strings.EqualFold(p.GetGroup(), group)
 }
 
-func (p *Progress) MatchNamespace(namespace string) bool {
+func (p *Process) MatchNamespace(namespace string) bool {
 	return strings.EqualFold(p.Namespace, namespace)
 }
 
-func (p *Progress) GetScope() string {
+func (p *Process) GetScope() string {
 	if p.Labels == nil {
 		return ""
 	}
 	return p.Labels.Scope
 }
 
-func (p *Progress) GetGroup() string {
+func (p *Process) GetGroup() string {
 	if p.Labels == nil {
 		return ""
 	}
 	return p.Labels.Group
 }
 
-func (p *Progress) GetRunningNode() string {
+func (p *Process) GetRunningNode() string {
 	if p.Details == nil {
 		return ""
 	}
 	return p.Details["runningNode"].(string)
 }
 
-func (p *Progress) GetAddress() string {
+func (p *Process) GetAddress() string {
 	if p.Details == nil {
 		return ""
 	}
 	return p.Details["address"].(string)
 }
 
-func (p *Progress) GetPorts() []ProgressPort {
+func (p *Process) GetPorts() []ProcessPort {
 	if p.Details == nil {
 		return nil
 	}
-	return p.Details["ports"].([]ProgressPort)
+	return p.Details["ports"].([]ProcessPort)
 }
 
-func (p *Progress) SetRunningNode(runningNode string) {
+func (p *Process) SetRunningNode(runningNode string) {
 	if p.Details == nil {
 		p.Details = make(map[string]interface{})
 	}
 	p.Details["runningNode"] = runningNode
 }
 
-func (p *Progress) SetAddress(address string) {
+func (p *Process) SetAddress(address string) {
 	if p.Details == nil {
 		p.Details = make(map[string]interface{})
 	}
 	p.Details["address"] = address
 }
 
-func (p *Progress) SetPorts(ports []ProgressPort) {
+func (p *Process) SetPorts(ports []ProcessPort) {
 	if p.Details == nil {
 		p.Details = make(map[string]interface{})
 	}
@@ -181,7 +181,7 @@ type Database struct {
 	Select   string `json:"select * "`
 }
 
-type ProgressPort struct {
+type ProcessPort struct {
 	Name     string             `json:"name,omitempty"`     // 名称
 	Protocol types.ProtocolType `json:"protocol,omitempty"` // 协议
 	Port     int32              `json:"port,omitempty"`     // 对外的端口号,外部可访问的

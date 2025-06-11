@@ -21,6 +21,32 @@ import (
 	"github.com/hosgf/element/logger"
 )
 
+func Int64PtrOrDefault(a *int64, b int64) *int64 {
+	if a == nil {
+		return &b
+	}
+	return a
+}
+
+func StringOrDefault(a *string, b string) *string {
+	if a == nil {
+		return &b
+	}
+	return a
+}
+
+func IntPtr(value int) *int {
+	return &value
+}
+
+func Int64Ptr(value int64) *int64 {
+	return &value
+}
+
+func StringPtr(value string) *string {
+	return &value
+}
+
 func IntToByteArray(value int, bigEndian bool) []byte {
 	buf := make([]byte, 4)
 	if bigEndian {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/hosgf/element/client/k8s"
-	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/types"
 )
 
@@ -101,14 +101,14 @@ func TestCreatePod(t *testing.T) {
 				PullPolicy: "",
 				Command:    []string{},
 				Args:       []string{},
-				Ports: []progress.Port{
+				Ports: []process.Port{
 					{
 						Name:       "http",
 						Protocol:   types.ProtocolTcp,
 						TargetPort: 3306,
 					},
 				},
-				Resource: []progress.Resource{
+				Resource: []process.Resource{
 					{
 						Type:    types.ResourceCPU,
 						Unit:    "m",

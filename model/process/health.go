@@ -1,4 +1,4 @@
-package progress
+package process
 
 import (
 	"strings"
@@ -23,16 +23,16 @@ func (h *GroupHealth) MatchNamespace(namespace string) bool {
 
 // Health 健康检查
 type Health struct {
-	Region    string         `json:"region,omitempty"`
-	Namespace string         `json:"namespace,omitempty"`
-	PID       string         `json:"pid,omitempty"`
-	Service   string         `json:"service,omitempty"`
-	Name      string         `json:"name,omitempty"`
-	Group     string         `json:"group,omitempty"`
-	Address   string         `json:"address,omitempty"`
-	Ports     []ProgressPort `json:"ports,omitempty"`
-	Status    health.Health  `json:"status,omitempty"`
-	Time      int64          `json:"time,omitempty"`
+	Region    string        `json:"region,omitempty"`
+	Namespace string        `json:"namespace,omitempty"`
+	PID       string        `json:"pid,omitempty"`
+	Service   string        `json:"service,omitempty"`
+	Name      string        `json:"name,omitempty"`
+	Group     string        `json:"group,omitempty"`
+	Address   string        `json:"address,omitempty"`
+	Ports     []ProcessPort `json:"ports,omitempty"`
+	Status    health.Health `json:"status,omitempty"`
+	Time      int64         `json:"time,omitempty"`
 }
 
 func (h *Health) MatchNamespace(namespace string) bool {
@@ -43,7 +43,7 @@ func (h *Health) MatchGroup(group string) bool {
 	return strings.EqualFold(h.Group, group)
 }
 
-func GetHealth(ps []Progress) health.Health {
+func GetHealth(ps []Process) health.Health {
 	if nil == ps || len(ps) < 1 {
 		return health.UNKNOWN
 	}

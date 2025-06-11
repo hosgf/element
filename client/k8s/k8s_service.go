@@ -7,7 +7,7 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
-	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,12 +20,12 @@ type serviceOperation struct {
 
 type Service struct {
 	Model
-	ServiceType string           `json:"serviceType,omitempty"`
-	Status      string           `json:"status,omitempty"`
-	Ports       []*progress.Port `json:"ports,omitempty"`
+	ServiceType string          `json:"serviceType,omitempty"`
+	Status      string          `json:"status,omitempty"`
+	Ports       []*process.Port `json:"ports,omitempty"`
 }
 
-func toServicePort(p *progress.Port) corev1.ServicePort {
+func toServicePort(p *process.Port) corev1.ServicePort {
 	port := corev1.ServicePort{
 		Name:       p.GetName(),
 		Protocol:   corev1.Protocol(p.GetProtocol().String()),
@@ -71,13 +71,13 @@ func (s *Service) toCoreService() *corev1.Service {
 	}
 }
 
-func (s *Service) toProgressPort() []progress.ProgressPort {
-	ports := make([]progress.ProgressPort, 0)
+func (s *Service) toProcessPort() []process.ProcessPort {
+	ports := make([]process.ProcessPort, 0)
 	if len(s.Ports) == 0 {
 		return ports
 	}
 	for _, port := range s.Ports {
-		p := progress.ProgressPort{
+		p := process.ProcessPort{
 			Name:     port.Name,
 			Protocol: port.Protocol,
 			Port:     port.Port,
@@ -91,9 +91,9 @@ func (s *Service) setPorts(svc corev1.Service) {
 	if len(svc.Spec.Ports) == 0 {
 		return
 	}
-	ports := make([]*progress.Port, 0)
+	ports := make([]*process.Port, 0)
 	for _, p := range svc.Spec.Ports {
-		port := &progress.Port{
+		port := &process.Port{
 			Name:       p.Name,
 			Protocol:   types.ProtocolType(p.Protocol),
 			Port:       p.Port,
@@ -147,7 +147,7 @@ func (pg *ProcessGroupConfig) toServices() []*Service {
 		key := model.Key()
 		svc := svcmap[key]
 		if svc == nil {
-			svc = &Service{Model: model, ServiceType: p.ServiceType, Ports: make([]*progress.Port, 0)}
+			svc = &Service{Model: model, ServiceType: p.ServiceType, Ports: make([]*process.Port, 0)}
 			svc.setTypesLabels(labels)
 		}
 		for _, p := range ports {

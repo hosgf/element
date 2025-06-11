@@ -1,20 +1,27 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"log"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/gconv"
-	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	res "k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 type podsOperation struct {
@@ -165,8 +172,8 @@ func (pod *Pod) toPvc(s types.Storage, v *corev1.Volume) bool {
 	return true
 }
 
-func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progress.Progress {
-	list := make([]*progress.Progress, 0)
+func (pod *Pod) ToProcess(svcs []*Service, metric *Metric, now int64) []*process.Process {
+	list := make([]*process.Process, 0)
 	cs := pod.Containers
 	if len(cs) == 0 {
 		return list
@@ -187,7 +194,7 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 		}
 	}
 	for _, c := range cs {
-		p := &progress.Progress{
+		p := &process.Process{
 			Namespace:  pod.Namespace,
 			PID:        pod.Name,
 			Name:       c.Name,
@@ -221,13 +228,13 @@ func (pod *Pod) ToProgress(svcs []*Service, metric *Metric, now int64) []*progre
 			list = append(list, p)
 			continue
 		}
-		ports := make([]progress.ProgressPort, 0)
+		ports := make([]process.ProcessPort, 0)
 		svcDetails := map[string]string{}
 		for _, svc := range svcs {
 			if gstr.Contains(svc.Group, p.Name) || gstr.Contains(svc.Group, pod.Group) || svc.Name == pod.Group {
 				p.Service = svc.Name
 				svcDetails[svc.Name] = svc.ServiceType
-				ports = append(ports, svc.toProgressPort()...)
+				ports = append(ports, svc.toProcessPort()...)
 				break
 			}
 		}
@@ -268,8 +275,8 @@ func (pod *Pod) toContainer(c corev1.Container) {
 		PullPolicy: string(c.ImagePullPolicy),
 		Command:    c.Command,
 		Args:       c.Args,
-		Ports:      make([]progress.Port, 0, len(c.Ports)),
-		Resource:   make([]progress.Resource, 0),
+		Ports:      make([]process.Port, 0, len(c.Ports)),
+		Resource:   make([]process.Resource, 0),
 		Mounts:     make([]types.Mount, 0),
 		Env:        map[string]string{},
 	}
@@ -286,8 +293,8 @@ type Container struct {
 	PullPolicy string              `json:"string,omitempty"`
 	Command    []string            `json:"command,omitempty"`
 	Args       []string            `json:"args,omitempty"`
-	Ports      []progress.Port     `json:"ports,omitempty"`
-	Resource   []progress.Resource `json:"resource,omitempty"`
+	Ports      []process.Port      `json:"ports,omitempty"`
+	Resource   []process.Resource  `json:"resource,omitempty"`
 	Env        map[string]string   `json:"env,omitempty"`
 	EnvConfig  []types.Environment `json:"envConfig,omitempty"`
 	Mounts     []types.Mount       `json:"mounts,omitempty"`
@@ -335,7 +342,7 @@ func (c *Container) ports(container *corev1.Container) {
 
 func (c *Container) setPorts(container corev1.Container) {
 	for _, port := range container.Ports {
-		c.Ports = append(c.Ports, progress.Port{
+		c.Ports = append(c.Ports, process.Port{
 			Name:       port.Name,
 			TargetPort: port.ContainerPort,
 			Protocol:   types.ProtocolType(port.Protocol),
@@ -345,13 +352,13 @@ func (c *Container) setPorts(container corev1.Container) {
 
 func (c *Container) resource(container *corev1.Container) {
 	var (
-		cpu = progress.Resource{
+		cpu = process.Resource{
 			Type:    types.ResourceCPU,
 			Unit:    "m",
 			Minimum: types.DefaultMinimumCpu,
 			Maximum: types.DefaultMaximumCpu,
 		}
-		memory = progress.Resource{
+		memory = process.Resource{
 			Type:    types.ResourceMemory,
 			Unit:    "Mi",
 			Minimum: types.DefaultMinimumMemory,
@@ -389,13 +396,13 @@ func (c *Container) setResource(container corev1.Container) {
 	resources := container.Resources
 	requests := resources.Requests
 	limits := resources.Limits
-	cpu := progress.Resource{Type: types.ResourceCPU, Threshold: -1, Minimum: -1, Maximum: -1}
+	cpu := process.Resource{Type: types.ResourceCPU, Threshold: -1, Minimum: -1, Maximum: -1}
 	cpu.SetMinimum(requests.Cpu().String())
 	cpu.SetMaximum(limits.Cpu().String())
-	memory := progress.Resource{Type: types.ResourceMemory, Threshold: -1, Minimum: -1, Maximum: -1}
+	memory := process.Resource{Type: types.ResourceMemory, Threshold: -1, Minimum: -1, Maximum: -1}
 	memory.SetMinimum(requests.Memory().String())
 	memory.SetMaximum(limits.Memory().String())
-	storage := progress.Resource{Type: types.ResourceStorage, Threshold: -1, Minimum: -1, Maximum: -1}
+	storage := process.Resource{Type: types.ResourceStorage, Threshold: -1, Minimum: -1, Maximum: -1}
 	storage.SetMinimum(requests.Storage().String())
 	storage.SetMaximum(limits.Storage().String())
 	c.Resource = append(c.Resource, cpu, memory, storage)
@@ -625,6 +632,74 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 	opts := toAppListOptions(appname)
 	err := o.api.CoreV1().Pods(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, opts)
 	return err
+}
+
+func (o *podsOperation) Command(ctx context.Context, namespace, group, process string, cmd ...string) (string, error) {
+	if o.err != nil {
+		return "", o.err
+	}
+	if len(group) < 1 {
+		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程组名称")
+	}
+	if len(process) < 1 {
+		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程名称")
+	}
+	if cmd == nil || len(cmd) < 1 {
+		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入要执行的命令")
+	}
+	req := o.api.CoreV1().RESTClient().
+		Post().
+		Resource("pods").
+		Namespace(namespace).
+		Name(group).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: process,
+			Command:   cmd,
+			Stdin:     false,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       false,
+		}, runtime.NewParameterCodec(scheme.Scheme))
+	executor, err := remotecommand.NewSPDYExecutor(o.c, "POST", req.URL())
+	if err != nil {
+		log.Fatalf("进程命令执行失败: [创建命令执行器出错: %v]", err)
+	}
+	var stdout, stderr bytes.Buffer
+	err = executor.Stream(remotecommand.StreamOptions{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Tty:    false,
+	})
+	if err != nil {
+		log.Fatalf("进程命令执行失败: %v\nstderr: %s", err, stderr.String())
+	}
+	return stdout.String(), err
+}
+
+func (o *podsOperation) Logger(ctx context.Context, namespace, group, process string, config ProcessLogger) (io.ReadCloser, error) {
+	if o.err != nil {
+		return nil, o.err
+	}
+	if len(group) < 1 {
+		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程组名称")
+	}
+	if len(process) < 1 {
+		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程名称")
+	}
+	podLogOpts := &corev1.PodLogOptions{
+		Container:    process,
+		Follow:       config.Follow,
+		Previous:     config.Previous,
+		Timestamps:   config.Timestamps,
+		SinceSeconds: config.SinceSeconds,
+		TailLines:    util.Int64PtrOrDefault(config.TailLines, 100),
+		LimitBytes:   config.LimitBytes,
+		Stream:       GetOutputTypeOrDefault(config.Stream, LoggerOutputAll),
+	}
+	// 发起请求
+	req := o.api.CoreV1().Pods(namespace).GetLogs(group, podLogOpts)
+	return req.Stream(ctx)
 }
 
 func (o *podsOperation) deploymentExists(ctx context.Context, namespace string, group string) (bool, []appsv1.Deployment, error) {

@@ -2,25 +2,26 @@ package k8s
 
 import (
 	"context"
+	"io"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/hosgf/element/logger"
-	"github.com/hosgf/element/model/progress"
+	"github.com/hosgf/element/model/process"
 )
 
-type progressOperation struct {
+type processOperation struct {
 	*options
 	k8s *Kubernetes
 }
 
-func (o *progressOperation) List(ctx context.Context, namespace string) ([]*progress.Progress, error) {
+func (o *processOperation) List(ctx context.Context, namespace string) ([]*process.Process, error) {
 	if o.err != nil {
 		return nil, o.err
 	}
 	var (
-		list    = make([]*progress.Progress, 0)
+		list    = make([]*process.Process, 0)
 		metrics = make(map[string]*Metric)
 		svcs    = make(map[string][]*Service)
 		now     = gtime.Now().Timestamp()
@@ -66,13 +67,13 @@ func (o *progressOperation) List(ctx context.Context, namespace string) ([]*prog
 		}
 	}
 	for _, pod := range pods {
-		ps := pod.ToProgress(svcs[pod.Group], metrics[pod.Name], now)
+		ps := pod.ToProcess(svcs[pod.Group], metrics[pod.Name], now)
 		list = append(list, ps...)
 	}
 	return list, nil
 }
 
-func (o *progressOperation) Running(ctx context.Context, config *ProcessGroupConfig) error {
+func (o *processOperation) Running(ctx context.Context, config *ProcessGroupConfig) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -102,7 +103,7 @@ func (o *progressOperation) Running(ctx context.Context, config *ProcessGroupCon
 	return nil
 }
 
-func (o *progressOperation) Start(ctx context.Context, config *ProcessGroupConfig) error {
+func (o *processOperation) Start(ctx context.Context, config *ProcessGroupConfig) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -116,7 +117,7 @@ func (o *progressOperation) Start(ctx context.Context, config *ProcessGroupConfi
 	return nil
 }
 
-func (o *progressOperation) Stop(ctx context.Context, namespace string, groups ...string) error {
+func (o *processOperation) Stop(ctx context.Context, namespace string, groups ...string) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -129,7 +130,7 @@ func (o *progressOperation) Stop(ctx context.Context, namespace string, groups .
 	return nil
 }
 
-func (o *progressOperation) Destroy(ctx context.Context, namespace string, groups ...string) error {
+func (o *processOperation) Destroy(ctx context.Context, namespace string, groups ...string) error {
 	if o.err != nil {
 		return o.err
 	}
@@ -146,4 +147,27 @@ func (o *progressOperation) Destroy(ctx context.Context, namespace string, group
 		return err
 	}
 	return nil
+}
+
+func (o *processOperation) Restart(ctx context.Context, namespace, group, process string, cmd ...string) error {
+	cmds := append([]string{"/bin/bash", "-c"}, cmd...)
+	data, err := o.k8s.Pod().Command(ctx, namespace, group, process, cmds...)
+	print(data)
+	return err
+}
+
+func (o *processOperation) RestartGroup(ctx context.Context, namespace, group string) error {
+	return o.k8s.Pod().RestartGroup(ctx, namespace, group)
+}
+
+func (o *processOperation) RestartApp(ctx context.Context, namespace, group string) error {
+	return o.k8s.Pod().RestartApp(ctx, namespace, group)
+}
+
+func (o *processOperation) Command(ctx context.Context, namespace, group, process string, cmd ...string) (string, error) {
+	return o.k8s.Pod().Command(ctx, namespace, group, process, cmd...)
+}
+
+func (o *processOperation) Logger(ctx context.Context, namespace, group, process string, config ProcessLogger) (io.ReadCloser, error) {
+	return o.k8s.Pod().Logger(ctx, namespace, group, process, config)
 }
