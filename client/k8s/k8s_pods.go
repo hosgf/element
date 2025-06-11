@@ -645,9 +645,12 @@ func (o *podsOperation) Command(ctx context.Context, namespace, group, process s
 		return "", gerror.NewCodef(gcode.CodeNotImplemented, "没有查询到进程组")
 	}
 	for _, pod := range pods.Items {
-		o.Exec(ctx, namespace, pod.Name, process, cmd...)
+		_, e := o.Exec(ctx, namespace, pod.Name, process, cmd...)
+		if e != nil {
+			err = e
+		}
 	}
-	return "", o.err
+	return "", err
 }
 
 func (o *podsOperation) Exec(ctx context.Context, namespace, pod, process string, cmd ...string) (string, error) {
