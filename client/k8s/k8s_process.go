@@ -150,9 +150,9 @@ func (o *processOperation) Destroy(ctx context.Context, namespace string, groups
 }
 
 func (o *processOperation) Restart(ctx context.Context, namespace, group, process string, cmd ...string) error {
-	cmds := append([]string{"/bin/bash", "-c"}, cmd...)
-	data, err := o.k8s.Pod().Command(ctx, namespace, group, process, cmds...)
-	print(data)
+	cmds := append([]string{"/bin/bash", "-c", "restart.sh"}, cmd...)
+	//cmds := append([]string{"/bin/bash", "-c"}, cmd...)
+	_, err := o.k8s.Pod().Command(ctx, namespace, group, process, cmds...)
 	return err
 }
 

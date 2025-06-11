@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
@@ -663,7 +662,7 @@ func (o *podsOperation) Command(ctx context.Context, namespace, group, process s
 		}, runtime.NewParameterCodec(scheme.Scheme))
 	executor, err := remotecommand.NewSPDYExecutor(o.c, "POST", req.URL())
 	if err != nil {
-		log.Fatalf("进程命令执行失败: [创建命令执行器出错: %v]", err)
+		return "", gerror.WrapCodef(gcode.CodeOperationFailed, err, "进程[%s - %s]命令执行失败: 创建命令执行器出错", group, process)
 	}
 	var stdout, stderr bytes.Buffer
 	err = executor.Stream(remotecommand.StreamOptions{
@@ -672,7 +671,7 @@ func (o *podsOperation) Command(ctx context.Context, namespace, group, process s
 		Tty:    false,
 	})
 	if err != nil {
-		log.Fatalf("进程命令执行失败: %v\nstderr: %s", err, stderr.String())
+		return "", gerror.WrapCodef(gcode.CodeOperationFailed, err, "进程[%s - %s]命令执行失败", group, process)
 	}
 	return stdout.String(), err
 }
