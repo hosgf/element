@@ -12,6 +12,7 @@ type Response struct {
 	Code    int         `json:"code,omitempty"`    // 结果码
 	Message string      `json:"message,omitempty"` // 消息
 	Data    interface{} `json:"data,omitempty"`    // 数据集
+	Error   string      `json:"error,omitempty"`   // 消息
 }
 
 var response = new(Response)
@@ -20,10 +21,11 @@ func NewResponse() *Response {
 	return &Response{}
 }
 
-func Build(code int, message string, data interface{}) *Response {
+func Build(code int, message string, err string, data interface{}) *Response {
 	return &Response{
 		Code:    code,
 		Message: message,
+		Error:   err,
 		Data:    data,
 	}
 }
@@ -69,7 +71,11 @@ func (res *Response) Result(r *ghttp.Request, resultCode gcode.Code, data interf
 }
 
 func (res *Response) Build(r *ghttp.Request, code int, message string, data interface{}) {
-	res.gzip(r, Build(code, message, data))
+	res.gzip(r, Build(code, message, "", data))
+}
+
+func (res *Response) Err(r *ghttp.Request, code int, message string, err error) {
+	res.gzip(r, Build(code, message, err.Error(), nil))
 }
 
 func (res *Response) gzip(r *ghttp.Request, data *Response) {
