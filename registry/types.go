@@ -97,45 +97,51 @@ func ParseFromBytes(data []byte) Message {
 }
 
 func (m *Message) parseHead() error {
-	//if (m.MessageHead == nil) || len(m.MessageHead) != HeadLength {
-	//	return nil
-	//}
-	if m.MessageHead == nil {
-		return nil
+	// 增加长度校验，与Java版本保持一致
+	if m.MessageHead == nil || len(m.MessageHead) != HeadLength {
+		return fmt.Errorf("invalid message head length: expected %d, got %d", HeadLength, len(m.MessageHead))
 	}
-	buf := bytes.NewReader(m.MessageHead) // Exclude flag
+
+	buf := bytes.NewReader(m.MessageHead[:16]) // 只读取前16字节，排除flag
 	if err := binary.Read(buf, binary.BigEndian, &m.MagicNumber); err != nil {
-		return err
+		return fmt.Errorf("failed to read MagicNumber: %w", err)
 	}
 	if err := binary.Read(buf, binary.BigEndian, &m.Length); err != nil {
-		return err
+		return fmt.Errorf("failed to read Length: %w", err)
 	}
 	if err := binary.Read(buf, binary.BigEndian, &m.MessageType); err != nil {
-		return err
+		return fmt.Errorf("failed to read MessageType: %w", err)
 	}
 	if err := binary.Read(buf, binary.BigEndian, &m.LogId); err != nil {
-		return err
+		return fmt.Errorf("failed to read LogId: %w", err)
 	}
 	m.Flag = m.MessageHead[HeadLength-1]
 	return nil
 }
 
 func (m *Message) composeHead() error {
+	// 创建固定17字节的数组，与Java版本保持一致
+	m.MessageHead = make([]byte, HeadLength)
 	buf := bytes.NewBuffer(nil)
+
+	// 按顺序写入4个int32字段
 	if err := binary.Write(buf, binary.BigEndian, m.MagicNumber); err != nil {
-		return err
+		return fmt.Errorf("failed to write MagicNumber: %w", err)
 	}
 	if err := binary.Write(buf, binary.BigEndian, m.Length); err != nil {
-		return err
+		return fmt.Errorf("failed to write Length: %w", err)
 	}
 	if err := binary.Write(buf, binary.BigEndian, m.MessageType); err != nil {
-		return err
+		return fmt.Errorf("failed to write MessageType: %w", err)
 	}
 	if err := binary.Write(buf, binary.BigEndian, m.LogId); err != nil {
-		return err
+		return fmt.Errorf("failed to write LogId: %w", err)
 	}
-	m.MessageHead = buf.Bytes()
-	m.MessageHead = append(m.MessageHead, m.Flag)
+
+	// 复制前16字节到MessageHead
+	copy(m.MessageHead, buf.Bytes())
+	// 设置第17字节为flag
+	m.MessageHead[HeadLength-1] = m.Flag
 	return nil
 }
 
