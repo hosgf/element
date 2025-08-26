@@ -7,6 +7,7 @@ import (
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gtime"
+
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/process"
 )
@@ -103,6 +104,43 @@ func (o *processOperation) Running(ctx context.Context, config *ProcessGroupConf
 	return nil
 }
 
+// ensureStorage 确保 PV/PVC 存在，缺失则批量创建
+func (o *processOperation) ensureStorage(ctx context.Context, config *ProcessGroupConfig) error {
+	if len(config.Storage) == 0 {
+		return nil
+	}
+	needResApply := false
+	needPvcApply := false
+	for _, s := range config.Storage {
+		if len(s.Name) < 1 {
+			continue
+		}
+		if has, err := o.k8s.StorageResource().Exists(ctx, s.Name); !has {
+			if err != nil {
+				return err
+			}
+			needResApply = true
+		}
+		if has, err := o.k8s.Storage().Exists(ctx, config.Namespace, s.Name); !has {
+			if err != nil {
+				return err
+			}
+			needPvcApply = true
+		}
+	}
+	if needResApply {
+		if err := o.k8s.StorageResource().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
+			return err
+		}
+	}
+	if needPvcApply {
+		if err := o.k8s.Storage().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (o *processOperation) Start(ctx context.Context, config *ProcessGroupConfig) error {
 	if o.err != nil {
 		return o.err
@@ -110,6 +148,10 @@ func (o *processOperation) Start(ctx context.Context, config *ProcessGroupConfig
 	pod := config.toPod()
 	if pod == nil {
 		return nil
+	}
+	// 仅在缺失时创建 存储资源(PV) 与 存储(PVC)，避免 PVC 不存在导致调度失败
+	if err := o.ensureStorage(ctx, config); err != nil {
+		return err
 	}
 	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
 		return err

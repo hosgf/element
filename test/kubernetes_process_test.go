@@ -48,8 +48,23 @@ func TestProcessRestart(t *testing.T) {
 	ctx := context.Background()
 	kubernetes := client()
 	// kubectl exec -it -n sandbox  data-sandbox-01-6f97c86f55-5gt44 -c  data-sandbox-01 -- /bin/bash
-	err := kubernetes.Process().Restart(ctx, "sandbox", "data-sandbox-01-6f97c86f55-5gt44", "data-sandbox-01")
+	err := kubernetes.Process().Restart(ctx, "sandbox", "data-sandbox-2-76b769d4cd-n76lz", "sandbox-2")
 	//err := kubernetes.Process().Restart(ctx, "sandbox", "data-sandbox-01", "data-sandbox-01")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	println("--------------------------------------------")
+}
+
+func TestPodExec(t *testing.T) {
+	ctx := context.Background()
+	kubernetes := client()
+	// kubectl exec -it -n sandbox  data-sandbox-01-6f97c86f55-5gt44 -c  data-sandbox-01 -- /bin/bash
+	// kubectl exec -it data-sandbox-2-76b769d4cd-n76lz -c sandbox-2 -n sandbox  -- bash /data/restart.sh
+	data, err := kubernetes.Pod().Exec(ctx, "sandbox", "data-sandbox-2-76b769d4cd-6ph5x", "sandbox-3", "sh", "restart.sh")
+	//err := kubernetes.Process().Restart(ctx, "sandbox", "data-sandbox-01", "data-sandbox-01")
+	println(data)
 	if err != nil {
 		t.Fatal(err)
 		return
