@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/hosgf/element/types"
 
@@ -99,6 +100,7 @@ type storageInterface interface {
 	BatchApply(ctx context.Context, model Model, storage []types.Storage) error
 	Delete(ctx context.Context, delRes bool, namespace string, name ...string) error
 	DeleteByGroup(ctx context.Context, delRes bool, namespace string, groups ...string) error
+	WaitDeleted(ctx context.Context, namespace, name string, timeout time.Duration) error
 }
 
 type storageResourceInterface interface {
@@ -108,4 +110,5 @@ type storageResourceInterface interface {
 	BatchApply(ctx context.Context, model Model, storage []types.Storage) error
 	Delete(ctx context.Context, name string) error
 	DeleteByGroup(ctx context.Context, groups ...string) error
+	WaitDeleted(ctx context.Context, name string, timeout time.Duration) error
 }
