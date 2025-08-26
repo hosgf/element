@@ -2,11 +2,15 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"time"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gtime"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/process"
@@ -109,34 +113,119 @@ func (o *processOperation) ensureStorage(ctx context.Context, config *ProcessGro
 	if len(config.Storage) == 0 {
 		return nil
 	}
+	fmt.Printf("[ensureStorage] start, namespace=%s, items=%d\n", config.Namespace, len(config.Storage))
 	needResApply := false
 	needPvcApply := false
 	for _, s := range config.Storage {
 		if len(s.Name) < 1 {
 			continue
 		}
-		if has, err := o.k8s.StorageResource().Exists(ctx, s.Name); !has {
-			if err != nil {
+		// PV 检查：不存在或处于删除中
+		if pv, err := o.k8s.api.CoreV1().PersistentVolumes().Get(ctx, s.Name, v1.GetOptions{}); err != nil {
+			if apierrors.IsNotFound(err) {
+				fmt.Printf("[ensureStorage] PV not found, name=%s -> needResApply\n", s.Name)
+				needResApply = true
+			} else {
 				return err
 			}
-			needResApply = true
+		} else if pv != nil && pv.DeletionTimestamp != nil {
+			fmt.Printf("[ensureStorage] PV deleting, wait to disappear, name=%s\n", s.Name)
+			deadline := time.Now().Add(60 * time.Second)
+			for {
+				_, err := o.k8s.api.CoreV1().PersistentVolumes().Get(ctx, s.Name, v1.GetOptions{})
+				if apierrors.IsNotFound(err) {
+					needResApply = true
+					break
+				}
+				if err != nil {
+					return err
+				}
+				if time.Now().After(deadline) {
+					return gerror.NewCodef(gcode.CodeNotImplemented, "等待PV删除超时")
+				}
+				time.Sleep(2 * time.Second)
+			}
 		}
-		if has, err := o.k8s.Storage().Exists(ctx, config.Namespace, s.Name); !has {
-			if err != nil {
+
+		// PVC 检查：不存在或处于删除中
+		if pvc, err := o.k8s.api.CoreV1().PersistentVolumeClaims(config.Namespace).Get(ctx, s.Name, v1.GetOptions{}); err != nil {
+			if apierrors.IsNotFound(err) {
+				fmt.Printf("[ensureStorage] PVC not found, ns=%s name=%s -> needPvcApply\n", config.Namespace, s.Name)
+				needPvcApply = true
+			} else {
 				return err
 			}
-			needPvcApply = true
+		} else if pvc != nil && pvc.DeletionTimestamp != nil {
+			fmt.Printf("[ensureStorage] PVC deleting, wait to disappear, ns=%s name=%s\n", config.Namespace, s.Name)
+			deadline := time.Now().Add(60 * time.Second)
+			for {
+				_, err := o.k8s.api.CoreV1().PersistentVolumeClaims(config.Namespace).Get(ctx, s.Name, v1.GetOptions{})
+				if apierrors.IsNotFound(err) {
+					needPvcApply = true
+					break
+				}
+				if err != nil {
+					return err
+				}
+				if time.Now().After(deadline) {
+					return gerror.NewCodef(gcode.CodeNotImplemented, "等待PVC删除超时")
+				}
+				time.Sleep(2 * time.Second)
+			}
 		}
 	}
 	if needResApply {
+		fmt.Printf("[ensureStorage] applying PV batch, items=%d\n", len(config.Storage))
 		if err := o.k8s.StorageResource().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
 			return err
 		}
 	}
 	if needPvcApply {
+		fmt.Printf("[ensureStorage] applying PVC batch, ns=%s items=%d\n", config.Namespace, len(config.Storage))
 		if err := o.k8s.Storage().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
 			return err
 		}
+	}
+	// 等待所有目标 PVC 可用（存在、非删除中、Bound）
+	if len(config.Storage) < 1 {
+		return nil
+	}
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		allReady := true
+		for _, s := range config.Storage {
+			if len(s.Name) < 1 {
+				continue
+			}
+			pvc, err := o.k8s.api.CoreV1().PersistentVolumeClaims(config.Namespace).Get(ctx, s.Name, v1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					allReady = false
+					fmt.Printf("[ensureStorage] waiting PVC appear, ns=%s name=%s\n", config.Namespace, s.Name)
+					break
+				}
+				return err
+			}
+			if pvc.DeletionTimestamp != nil {
+				allReady = false
+				fmt.Printf("[ensureStorage] waiting PVC deletion finish, ns=%s name=%s\n", config.Namespace, s.Name)
+				break
+			}
+			if string(pvc.Status.Phase) != "Bound" {
+				allReady = false
+				fmt.Printf("[ensureStorage] waiting PVC bound, ns=%s name=%s phase=%s\n", config.Namespace, s.Name, string(pvc.Status.Phase))
+				break
+			}
+		}
+		if allReady {
+			fmt.Printf("[ensureStorage] all PVC ready, ns=%s\n", config.Namespace)
+			break
+		}
+		if time.Now().After(deadline) {
+			fmt.Printf("[ensureStorage] wait PVC ready timeout, ns=%s\n", config.Namespace)
+			return gerror.NewCodef(gcode.CodeNotImplemented, "等待PVC就绪超时")
+		}
+		time.Sleep(2 * time.Second)
 	}
 	return nil
 }
