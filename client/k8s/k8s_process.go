@@ -133,16 +133,32 @@ func (o *processOperation) ensureStorageResources(ctx context.Context, config *P
 		if len(s.Name) < 1 {
 			continue
 		}
+
 		// 检查 StorageResource (PV) 是否存在或正在删除
 		exists, err := o.k8s.StorageResource().Exists(ctx, s.Name)
 		if err != nil {
 			return err
 		}
+
 		if !exists {
 			logger.Debugf(ctx, "[ensureStorageResources] StorageResource not found, name=%s -> needStorageResourceApply", s.Name)
 			needStorageResourceApply = true
+			continue
 		}
-		// 如需等待删除完成，使用 StorageResource.WaitDeleted
+
+		// 如果存在，检查是否正在删除
+		isDeleting, err := o.k8s.StorageResource().IsDeleting(ctx, s.Name)
+		if err != nil {
+			return err
+		}
+
+		if isDeleting {
+			logger.Debugf(ctx, "[ensureStorageResources] StorageResource is being deleted, waiting for completion, name=%s", s.Name)
+			if err := o.k8s.StorageResource().WaitDeleted(ctx, s.Name, 60*time.Second); err != nil {
+				return err
+			}
+			needStorageResourceApply = true
+		}
 	}
 
 	if needStorageResourceApply {
@@ -161,16 +177,32 @@ func (o *processOperation) ensureStorages(ctx context.Context, config *ProcessGr
 		if len(s.Name) < 1 {
 			continue
 		}
+
 		// 检查 Storage (PVC) 是否存在或正在删除
 		exists, err := o.k8s.Storage().Exists(ctx, config.Namespace, s.Name)
 		if err != nil {
 			return err
 		}
+
 		if !exists {
 			logger.Debugf(ctx, "[ensureStorages] Storage not found, ns=%s name=%s -> needStorageApply", config.Namespace, s.Name)
 			needStorageApply = true
+			continue
 		}
-		// 如需等待删除完成，使用 Storage.WaitDeleted
+
+		// 如果存在，检查是否正在删除
+		isDeleting, err := o.k8s.Storage().IsDeleting(ctx, config.Namespace, s.Name)
+		if err != nil {
+			return err
+		}
+
+		if isDeleting {
+			logger.Debugf(ctx, "[ensureStorages] Storage is being deleted, waiting for completion, ns=%s name=%s", config.Namespace, s.Name)
+			if err := o.k8s.Storage().WaitDeleted(ctx, config.Namespace, s.Name, 60*time.Second); err != nil {
+				return err
+			}
+			needStorageApply = true
+		}
 	}
 
 	if needStorageApply {
@@ -182,40 +214,12 @@ func (o *processOperation) ensureStorages(ctx context.Context, config *ProcessGr
 	return nil
 }
 
-// computeStorageApplyFlags 计算是否需要创建 StorageResource/Storage，并在遇到删除中的资源时等待删除完成
-func (o *processOperation) computeStorageApplyFlags(ctx context.Context, config *ProcessGroupConfig) (bool, bool, error) {
-	needStorageResourceApply := false
-	needStorageApply := false
-	for _, s := range config.Storage {
-		if len(s.Name) < 1 {
-			continue
-		}
-		// StorageResource (PV)
-		exists, err := o.k8s.StorageResource().Exists(ctx, s.Name)
-		if err != nil {
-			return false, false, err
-		}
-		if !exists {
-			logger.Debugf(ctx, "[computeStorageApplyFlags] StorageResource not found, name=%s -> needStorageResourceApply", s.Name)
-			needStorageResourceApply = true
-		}
-		// Storage (PVC)
-		exists, err = o.k8s.Storage().Exists(ctx, config.Namespace, s.Name)
-		if err != nil {
-			return false, false, err
-		}
-		if !exists {
-			logger.Debugf(ctx, "[computeStorageApplyFlags] Storage not found, ns=%s name=%s -> needStorageApply", config.Namespace, s.Name)
-			needStorageApply = true
-		}
-	}
-	return needStorageResourceApply, needStorageApply, nil
-}
-
+// waitStoragesBound 等待所有 Storage (PVC) 就绪
 func (o *processOperation) waitStoragesBound(ctx context.Context, ns string, storages []types.Storage, timeout time.Duration) error {
 	if len(storages) == 0 {
 		return nil
 	}
+
 	deadline := time.Now().Add(timeout)
 	for {
 		allReady := true
@@ -223,6 +227,7 @@ func (o *processOperation) waitStoragesBound(ctx context.Context, ns string, sto
 			if len(s.Name) < 1 {
 				continue
 			}
+
 			// 使用 Storage 接口检查状态
 			_, err := o.k8s.Storage().Get(ctx, ns, s.Name)
 			if err != nil {
@@ -234,14 +239,17 @@ func (o *processOperation) waitStoragesBound(ctx context.Context, ns string, sto
 				return err
 			}
 		}
+
 		if allReady {
 			logger.Debugf(ctx, "[waitStoragesBound] all Storage ready, ns=%s", ns)
 			return nil
 		}
+
 		if time.Now().After(deadline) {
 			logger.Warningf(ctx, "[waitStoragesBound] wait Storage ready timeout, ns=%s", ns)
 			return gerror.NewCodef(gcode.CodeNotImplemented, "等待Storage就绪超时")
 		}
+
 		time.Sleep(2 * time.Second)
 	}
 }

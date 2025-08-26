@@ -89,20 +89,24 @@ func (o *storageResourceOperation) DeleteByGroup(ctx context.Context, groups ...
 	if o.err != nil {
 		return o.err
 	}
-	var err error
+
+	var lastErr error
 	for _, g := range groups {
 		if has, list, err := o.existsByGroup(ctx, g); has {
 			if err != nil {
-				return err
+				lastErr = err
+				continue
 			}
-			if list != nil && list.Size() > 0 {
+			if list != nil && len(list.Items) > 0 {
 				for _, i := range list.Items {
-					err = o.delete(ctx, i.Name)
+					if err := o.delete(ctx, i.Name); err != nil {
+						lastErr = err
+					}
 				}
 			}
 		}
 	}
-	return err
+	return lastErr
 }
 
 func (o *storageResourceOperation) create(ctx context.Context, storage *PersistentStorageResource) error {
@@ -154,6 +158,17 @@ func (o *storageResourceOperation) exists(ctx context.Context, name string) (boo
 	storage, err := o.api.CoreV1().PersistentVolumes().Get(ctx, name, v1.GetOptions{})
 	has, err := o.isExist(storage, err, "Failed to get Storage: %v")
 	return has, storage, err
+}
+
+func (o *storageResourceOperation) IsDeleting(ctx context.Context, name string) (bool, error) {
+	pv, err := o.api.CoreV1().PersistentVolumes().Get(ctx, name, v1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return pv.DeletionTimestamp != nil, nil
 }
 
 func (o *storageResourceOperation) toStorage(datas *corev1.PersistentVolume) *types.Storage {

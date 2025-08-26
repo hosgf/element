@@ -584,25 +584,32 @@ func (o *podsOperation) DeleteGroup(ctx context.Context, namespace string, group
 	if o.err != nil {
 		return o.err
 	}
+
+	var lastErr error
 	for _, group := range groups {
 		if len(group) < 1 {
 			continue
 		}
+
+		// 删除 Deployment
 		if err := o.deleteDeployment(ctx, namespace, group); err != nil {
-			return err
+			lastErr = err
 		}
+
+		// 删除 Pods
 		datas, err := o.list(ctx, namespace, group)
 		if err != nil {
-			return err
-		}
-		if datas.Items == nil || len(datas.Items) == 0 {
+			lastErr = err
 			continue
 		}
-		if err := o.deleteGroup(ctx, namespace, group); err != nil {
-			return err
+
+		if datas != nil && len(datas.Items) > 0 {
+			if err := o.deleteGroup(ctx, namespace, group); err != nil {
+				lastErr = err
+			}
 		}
 	}
-	return nil
+	return lastErr
 }
 
 func (o *podsOperation) Restart(ctx context.Context, namespace, pod string) error {
@@ -637,20 +644,24 @@ func (o *podsOperation) Command(ctx context.Context, namespace, group, process s
 	if len(process) < 1 {
 		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程名称")
 	}
+
 	pods, err := o.list(ctx, namespace, group)
 	if err != nil {
 		return "", err
 	}
-	if pods.Items == nil || len(pods.Items) == 0 {
+
+	if pods == nil || len(pods.Items) == 0 {
 		return "", gerror.NewCodef(gcode.CodeNotImplemented, "没有查询到进程组")
 	}
+
+	var lastErr error
 	for _, pod := range pods.Items {
-		_, e := o.Exec(ctx, namespace, pod.Name, process, cmd...)
-		if e != nil {
-			err = e
+		_, err := o.Exec(ctx, namespace, pod.Name, process, cmd...)
+		if err != nil {
+			lastErr = err
 		}
 	}
-	return "", err
+	return "", lastErr
 }
 
 func (o *podsOperation) Exec(ctx context.Context, namespace, pod, process string, cmd ...string) (string, error) {

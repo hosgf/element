@@ -257,24 +257,28 @@ func (o *serviceOperation) DeleteGroup(ctx context.Context, namespace string, gr
 	if o.err != nil {
 		return o.err
 	}
+
+	var lastErr error
 	for _, group := range groups {
 		if len(group) < 1 {
 			continue
 		}
+
 		svcs, err := o.list(ctx, namespace, group)
 		if err != nil {
-			return err
-		}
-		if svcs.Items == nil || len(svcs.Items) == 0 {
+			lastErr = err
 			continue
 		}
-		for _, svc := range svcs.Items {
-			if err := o.delete(ctx, namespace, svc.Name); err != nil {
-				return err
+
+		if svcs != nil && len(svcs.Items) > 0 {
+			for _, svc := range svcs.Items {
+				if err := o.delete(ctx, namespace, svc.Name); err != nil {
+					lastErr = err
+				}
 			}
 		}
 	}
-	return nil
+	return lastErr
 }
 
 func (o *serviceOperation) create(ctx context.Context, service *Service) error {

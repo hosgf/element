@@ -117,42 +117,56 @@ func (o *storageOperation) Delete(ctx context.Context, delRes bool, namespace st
 	if o.err != nil {
 		return o.err
 	}
-	var err error
+
+	var lastErr error
 	for _, n := range name {
 		if has, _, err := o.exists(ctx, namespace, n); has {
 			if err != nil {
-				return err
+				lastErr = err
+				continue
 			}
-			err = o.delete(ctx, namespace, n)
+			if err := o.delete(ctx, namespace, n); err != nil {
+				lastErr = err
+			}
 		}
+
 		if delRes {
-			err = o.k8s.StorageResource().Delete(ctx, n)
+			if err := o.k8s.StorageResource().Delete(ctx, n); err != nil {
+				lastErr = err
+			}
 		}
 	}
-	return err
+	return lastErr
 }
 
 func (o *storageOperation) DeleteByGroup(ctx context.Context, delRes bool, namespace string, groups ...string) error {
 	if o.err != nil {
 		return o.err
 	}
-	var err error
+
+	var lastErr error
 	for _, g := range groups {
 		if has, list, err := o.existsByGroup(ctx, namespace, g); has {
 			if err != nil {
-				return err
+				lastErr = err
+				continue
 			}
-			if list != nil && list.Size() > 0 {
+			if list != nil && len(list.Items) > 0 {
 				for _, i := range list.Items {
-					err = o.delete(ctx, namespace, i.Name)
+					if err := o.delete(ctx, namespace, i.Name); err != nil {
+						lastErr = err
+					}
 				}
 			}
 		}
+
 		if delRes {
-			err = o.k8s.StorageResource().DeleteByGroup(ctx, g)
+			if err := o.k8s.StorageResource().DeleteByGroup(ctx, g); err != nil {
+				lastErr = err
+			}
 		}
 	}
-	return err
+	return lastErr
 }
 
 func (o *storageOperation) create(ctx context.Context, storage *PersistentStorage) error {
@@ -198,6 +212,17 @@ func (o *storageOperation) WaitDeleted(ctx context.Context, namespace, name stri
 		}
 		time.Sleep(2 * time.Second)
 	}
+}
+
+func (o *storageOperation) IsDeleting(ctx context.Context, namespace, name string) (bool, error) {
+	pvc, err := o.api.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, v1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return pvc.DeletionTimestamp != nil, nil
 }
 
 func (o *storageOperation) existsByGroup(ctx context.Context, namespace, group string) (bool, *corev1.PersistentVolumeClaimList, error) {
