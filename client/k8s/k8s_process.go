@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gtime"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/process"
@@ -109,107 +107,112 @@ func (o *processOperation) Running(ctx context.Context, config *ProcessGroupConf
 	return nil
 }
 
-// ensureStorage 确保 PV/PVC 存在，缺失则批量创建
+// ensureStorage 确保 StorageResource(PV) 和 Storage(PVC) 存在，缺失则批量创建
 func (o *processOperation) ensureStorage(ctx context.Context, config *ProcessGroupConfig) error {
 	if len(config.Storage) == 0 {
 		return nil
 	}
-	fmt.Printf("[ensureStorage] start, namespace=%s, items=%d\n", config.Namespace, len(config.Storage))
+	logger.Debugf(ctx, "[ensureStorage] start, namespace=%s, items=%d", config.Namespace, len(config.Storage))
 
-	needResApply, needPvcApply, err := o.computeStorageApplyFlags(ctx, config)
-	if err != nil {
+	// 先处理 StorageResource (PV)
+	if err := o.ensureStorageResources(ctx, config); err != nil {
 		return err
 	}
-	if needResApply {
-		fmt.Printf("[ensureStorage] applying PV batch, items=%d\n", len(config.Storage))
-		if err := o.k8s.StorageResource().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
-			return err
-		}
+	// 再处理 Storage (PVC)
+	if err := o.ensureStorages(ctx, config); err != nil {
+		return err
 	}
-	if needPvcApply {
-		fmt.Printf("[ensureStorage] applying PVC batch, ns=%s items=%d\n", config.Namespace, len(config.Storage))
-		if err := o.k8s.Storage().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
-			return err
-		}
-	}
-	return o.waitPVCsBound(ctx, config.Namespace, config.Storage, 60*time.Second)
+	// 最后等待所有 Storage (PVC) 就绪
+	return o.waitStoragesBound(ctx, config.Namespace, config.Storage, 60*time.Second)
 }
 
-// computeStorageApplyFlags 计算是否需要创建 PV/PVC，并在遇到删除中的资源时等待删除完成
-func (o *processOperation) computeStorageApplyFlags(ctx context.Context, config *ProcessGroupConfig) (bool, bool, error) {
-	needResApply := false
-	needPvcApply := false
+// ensureStorageResources 确保 StorageResource (PV) 存在，缺失则批量创建
+func (o *processOperation) ensureStorageResources(ctx context.Context, config *ProcessGroupConfig) error {
+	needStorageResourceApply := false
 	for _, s := range config.Storage {
 		if len(s.Name) < 1 {
 			continue
 		}
-		// PV
-		pv, err := o.k8s.api.CoreV1().PersistentVolumes().Get(ctx, s.Name, v1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			fmt.Printf("[ensureStorage] PV not found, name=%s -> needResApply\n", s.Name)
-			needResApply = true
-		} else if err != nil {
-			return false, false, err
-		} else if pv != nil && pv.DeletionTimestamp != nil {
-			fmt.Printf("[ensureStorage] PV deleting, wait to disappear, name=%s\n", s.Name)
-			if err := o.waitPVDeleted(ctx, s.Name, 60*time.Second); err != nil {
-				return false, false, err
-			}
-			needResApply = true
-		}
-		// PVC
-		pvc, err := o.k8s.api.CoreV1().PersistentVolumeClaims(config.Namespace).Get(ctx, s.Name, v1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			fmt.Printf("[ensureStorage] PVC not found, ns=%s name=%s -> needPvcApply\n", config.Namespace, s.Name)
-			needPvcApply = true
-		} else if err != nil {
-			return false, false, err
-		} else if pvc != nil && pvc.DeletionTimestamp != nil {
-			fmt.Printf("[ensureStorage] PVC deleting, wait to disappear, ns=%s name=%s\n", config.Namespace, s.Name)
-			if err := o.waitPVCDeleted(ctx, config.Namespace, s.Name, 60*time.Second); err != nil {
-				return false, false, err
-			}
-			needPvcApply = true
-		}
-	}
-	return needResApply, needPvcApply, nil
-}
-
-func (o *processOperation) waitPVDeleted(ctx context.Context, name string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for {
-		_, err := o.k8s.api.CoreV1().PersistentVolumes().Get(ctx, name, v1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
+		// 检查 StorageResource (PV) 是否存在或正在删除
+		exists, err := o.k8s.StorageResource().Exists(ctx, s.Name)
 		if err != nil {
 			return err
 		}
-		if time.Now().After(deadline) {
-			return gerror.NewCodef(gcode.CodeNotImplemented, "等待PV删除超时")
+		if !exists {
+			logger.Debugf(ctx, "[ensureStorageResources] StorageResource not found, name=%s -> needStorageResourceApply", s.Name)
+			needStorageResourceApply = true
 		}
-		time.Sleep(2 * time.Second)
+		// 如需等待删除完成，使用 StorageResource.WaitDeleted
 	}
+
+	if needStorageResourceApply {
+		logger.Debugf(ctx, "[ensureStorageResources] applying StorageResource batch, items=%d", len(config.Storage))
+		if err := o.k8s.StorageResource().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (o *processOperation) waitPVCDeleted(ctx context.Context, ns, name string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for {
-		_, err := o.k8s.api.CoreV1().PersistentVolumeClaims(ns).Get(ctx, name, v1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			return nil
+// ensureStorages 确保 Storage (PVC) 存在，缺失则批量创建
+func (o *processOperation) ensureStorages(ctx context.Context, config *ProcessGroupConfig) error {
+	needStorageApply := false
+	for _, s := range config.Storage {
+		if len(s.Name) < 1 {
+			continue
 		}
+		// 检查 Storage (PVC) 是否存在或正在删除
+		exists, err := o.k8s.Storage().Exists(ctx, config.Namespace, s.Name)
 		if err != nil {
 			return err
 		}
-		if time.Now().After(deadline) {
-			return gerror.NewCodef(gcode.CodeNotImplemented, "等待PVC删除超时")
+		if !exists {
+			logger.Debugf(ctx, "[ensureStorages] Storage not found, ns=%s name=%s -> needStorageApply", config.Namespace, s.Name)
+			needStorageApply = true
 		}
-		time.Sleep(2 * time.Second)
+		// 如需等待删除完成，使用 Storage.WaitDeleted
 	}
+
+	if needStorageApply {
+		logger.Debugf(ctx, "[ensureStorages] applying Storage batch, ns=%s items=%d", config.Namespace, len(config.Storage))
+		if err := o.k8s.Storage().BatchApply(ctx, config.toModel(), config.Storage); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (o *processOperation) waitPVCsBound(ctx context.Context, ns string, storages []types.Storage, timeout time.Duration) error {
+// computeStorageApplyFlags 计算是否需要创建 StorageResource/Storage，并在遇到删除中的资源时等待删除完成
+func (o *processOperation) computeStorageApplyFlags(ctx context.Context, config *ProcessGroupConfig) (bool, bool, error) {
+	needStorageResourceApply := false
+	needStorageApply := false
+	for _, s := range config.Storage {
+		if len(s.Name) < 1 {
+			continue
+		}
+		// StorageResource (PV)
+		exists, err := o.k8s.StorageResource().Exists(ctx, s.Name)
+		if err != nil {
+			return false, false, err
+		}
+		if !exists {
+			logger.Debugf(ctx, "[computeStorageApplyFlags] StorageResource not found, name=%s -> needStorageResourceApply", s.Name)
+			needStorageResourceApply = true
+		}
+		// Storage (PVC)
+		exists, err = o.k8s.Storage().Exists(ctx, config.Namespace, s.Name)
+		if err != nil {
+			return false, false, err
+		}
+		if !exists {
+			logger.Debugf(ctx, "[computeStorageApplyFlags] Storage not found, ns=%s name=%s -> needStorageApply", config.Namespace, s.Name)
+			needStorageApply = true
+		}
+	}
+	return needStorageResourceApply, needStorageApply, nil
+}
+
+func (o *processOperation) waitStoragesBound(ctx context.Context, ns string, storages []types.Storage, timeout time.Duration) error {
 	if len(storages) == 0 {
 		return nil
 	}
@@ -220,33 +223,24 @@ func (o *processOperation) waitPVCsBound(ctx context.Context, ns string, storage
 			if len(s.Name) < 1 {
 				continue
 			}
-			pvc, err := o.k8s.api.CoreV1().PersistentVolumeClaims(ns).Get(ctx, s.Name, v1.GetOptions{})
-			if apierrors.IsNotFound(err) {
-				allReady = false
-				fmt.Printf("[ensureStorage] waiting PVC appear, ns=%s name=%s\n", ns, s.Name)
-				break
-			}
+			// 使用 Storage 接口检查状态
+			_, err := o.k8s.Storage().Get(ctx, ns, s.Name)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					allReady = false
+					logger.Debugf(ctx, "[waitStoragesBound] waiting Storage appear, ns=%s name=%s", ns, s.Name)
+					break
+				}
 				return err
-			}
-			if pvc.DeletionTimestamp != nil {
-				allReady = false
-				fmt.Printf("[ensureStorage] waiting PVC deletion finish, ns=%s name=%s\n", ns, s.Name)
-				break
-			}
-			if string(pvc.Status.Phase) != "Bound" {
-				allReady = false
-				fmt.Printf("[ensureStorage] waiting PVC bound, ns=%s name=%s phase=%s\n", ns, s.Name, string(pvc.Status.Phase))
-				break
 			}
 		}
 		if allReady {
-			fmt.Printf("[ensureStorage] all PVC ready, ns=%s\n", ns)
+			logger.Debugf(ctx, "[waitStoragesBound] all Storage ready, ns=%s", ns)
 			return nil
 		}
 		if time.Now().After(deadline) {
-			fmt.Printf("[ensureStorage] wait PVC ready timeout, ns=%s\n", ns)
-			return gerror.NewCodef(gcode.CodeNotImplemented, "等待PVC就绪超时")
+			logger.Warningf(ctx, "[waitStoragesBound] wait Storage ready timeout, ns=%s", ns)
+			return gerror.NewCodef(gcode.CodeNotImplemented, "等待Storage就绪超时")
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -263,14 +257,13 @@ func (o *processOperation) Start(ctx context.Context, config *ProcessGroupConfig
 		return nil
 	}
 	// 打印存储配置
-	fmt.Printf("[Start] storage.len=%d\n", len(config.Storage))
+	logger.Debugf(ctx, "[Start] storage.len=%d\n", len(config.Storage))
 	if len(config.Storage) > 0 {
 		names := make([]string, 0, len(config.Storage))
 		for _, s := range config.Storage {
 			names = append(names, s.Name)
 		}
 		logger.Debugf(ctx, "[Start] storage.names=%v", names)
-		fmt.Printf("[Start] storage.names=%v\n", names)
 	}
 	// 仅在缺失时创建 存储资源(PV) 与 存储(PVC)，避免 PVC 不存在导致调度失败
 	if err := o.ensureStorage(ctx, config); err != nil {
@@ -291,7 +284,7 @@ func (o *processOperation) Start(ctx context.Context, config *ProcessGroupConfig
 				logger.Warningf(ctx, "[Start] check PVC exists error: ns=%s name=%s err=%v", pod.Namespace, s.Name, err)
 				return err
 			} else if !has {
-				fmt.Printf("[start] PVC missing before apply: ns=%s name=%s\n", pod.Namespace, s.Name)
+				logger.Warningf(ctx, "[start] PVC missing before apply: ns=%s name=%s", pod.Namespace, s.Name)
 				return gerror.NewCodef(gcode.CodeNotImplemented, "PVC缺失: %s", s.Name)
 			}
 		}

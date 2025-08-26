@@ -3,15 +3,17 @@ package k8s
 import (
 	"context"
 	"fmt"
-
-	"github.com/gogf/gf/v2/util/gconv"
+	"time"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/hosgf/element/types"
+	"github.com/gogf/gf/v2/util/gconv"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/hosgf/element/types"
 )
 
 type PersistentStorage struct {
@@ -179,6 +181,23 @@ func (o *storageOperation) delete(ctx context.Context, namespace, name string) e
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete Storage: %v", err)
 	}
 	return nil
+}
+
+func (o *storageOperation) WaitDeleted(ctx context.Context, namespace, name string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		_, err := o.api.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, v1.GetOptions{})
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return gerror.NewCodef(gcode.CodeNotImplemented, "等待PVC删除超时")
+		}
+		time.Sleep(2 * time.Second)
+	}
 }
 
 func (o *storageOperation) existsByGroup(ctx context.Context, namespace, group string) (bool, *corev1.PersistentVolumeClaimList, error) {

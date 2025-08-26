@@ -3,12 +3,14 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/types"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -117,6 +119,23 @@ func (o *storageResourceOperation) delete(ctx context.Context, name string) erro
 		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete Storage: %v", err)
 	}
 	return nil
+}
+
+func (o *storageResourceOperation) WaitDeleted(ctx context.Context, name string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		_, err := o.api.CoreV1().PersistentVolumes().Get(ctx, name, v1.GetOptions{})
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return gerror.NewCodef(gcode.CodeNotImplemented, "等待PV删除超时")
+		}
+		time.Sleep(2 * time.Second)
+	}
 }
 
 func (o *storageResourceOperation) existsByGroup(ctx context.Context, group string) (bool, *corev1.PersistentVolumeList, error) {
