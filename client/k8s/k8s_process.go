@@ -107,6 +107,100 @@ func (o *processOperation) Running(ctx context.Context, config *ProcessGroupConf
 	return nil
 }
 
+func (o *processOperation) Start(ctx context.Context, config *ProcessGroupConfig) error {
+	if o.err != nil {
+		return o.err
+	}
+	logger.Info(ctx, "[Start] begin, ns=", config.Namespace, ", group=", config.GroupName, ", replicas=", config.Replicas)
+	pod := config.toPod()
+	if pod == nil {
+		logger.Warningf(ctx, "[Start] toPod returned nil, skip. ns=%s group=%s", config.Namespace, config.GroupName)
+		return nil
+	}
+	// 打印存储配置
+	logger.Debugf(ctx, "[Start] storage.len=%d\n", len(config.Storage))
+	if len(config.Storage) > 0 {
+		names := make([]string, 0, len(config.Storage))
+		for _, s := range config.Storage {
+			names = append(names, s.Name)
+		}
+		logger.Debugf(ctx, "[Start] storage.names=%v", names)
+	}
+
+	// 确保 SVC 存在，缺失则创建
+	if err := o.ensureServices(ctx, config); err != nil {
+		logger.Warningf(ctx, "[Start] ensureServices failed: %v", err)
+		return err
+	}
+	logger.Debugf(ctx, "[Start] ensureServices done, ns=%s", config.Namespace)
+
+	// 确保 Storage 存在，缺失则创建
+	if err := o.ensureStorage(ctx, config); err != nil {
+		logger.Warningf(ctx, "[Start] ensureStorage failed: %v", err)
+		return err
+	}
+	logger.Debugf(ctx, "[Start] ensureStorage done, ns=%s", config.Namespace)
+	// 额外校验：确保即将引用的 PVC 均已存在，避免命名不一致导致的调度失败
+	if pod.Storage != nil && len(pod.Storage) > 0 {
+		for _, s := range pod.Storage {
+			if s.ToStorageType().String() != "pvc" {
+				continue
+			}
+			if len(s.Name) < 1 {
+				continue
+			}
+			if has, err := o.k8s.Storage().Exists(ctx, pod.Namespace, s.Name); err != nil {
+				logger.Warningf(ctx, "[Start] check PVC exists error: ns=%s name=%s err=%v", pod.Namespace, s.Name, err)
+				return err
+			} else if !has {
+				logger.Warningf(ctx, "[start] PVC missing before apply: ns=%s name=%s", pod.Namespace, s.Name)
+				return gerror.NewCodef(gcode.CodeNotImplemented, "PVC缺失: %s", s.Name)
+			}
+		}
+	}
+
+	logger.Info(ctx, "[Start] applying Pod, ns=", pod.Namespace, ", group=", pod.Group)
+	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
+		logger.Warningf(ctx, "[Start] apply Pod failed: %v", err)
+		return err
+	}
+	logger.Info(ctx, "[Start] done, ns=", pod.Namespace, ", group=", pod.Group)
+	return nil
+}
+
+// ensureServices 确保 SVC 存在，缺失则批量创建
+func (o *processOperation) ensureServices(ctx context.Context, config *ProcessGroupConfig) error {
+	svcs := config.toServices()
+	if len(svcs) == 0 {
+		return nil
+	}
+	logger.Debugf(ctx, "[ensureServices] start, namespace=%s, items=%d", config.Namespace, len(svcs))
+
+	for _, svc := range svcs {
+		if len(svc.Name) < 1 {
+			continue
+		}
+
+		// 检查 SVC 是否存在
+		exists, err := o.k8s.Service().Exists(ctx, config.Namespace, svc.Name)
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			logger.Debugf(ctx, "[ensureServices] Service not found, creating: ns=%s name=%s", config.Namespace, svc.Name)
+			if err := o.k8s.Service().Apply(ctx, svc); err != nil {
+				return err
+			}
+		} else {
+			logger.Debugf(ctx, "[ensureServices] Service already exists: ns=%s name=%s", config.Namespace, svc.Name)
+		}
+	}
+
+	logger.Debugf(ctx, "[ensureServices] done, namespace=%s", config.Namespace)
+	return nil
+}
+
 // ensureStorage 确保 StorageResource(PV) 和 Storage(PVC) 存在，缺失则批量创建
 func (o *processOperation) ensureStorage(ctx context.Context, config *ProcessGroupConfig) error {
 	if len(config.Storage) == 0 {
@@ -252,58 +346,6 @@ func (o *processOperation) waitStoragesBound(ctx context.Context, ns string, sto
 
 		time.Sleep(2 * time.Second)
 	}
-}
-
-func (o *processOperation) Start(ctx context.Context, config *ProcessGroupConfig) error {
-	if o.err != nil {
-		return o.err
-	}
-	logger.Info(ctx, "[Start] begin, ns=", config.Namespace, ", group=", config.GroupName, ", replicas=", config.Replicas)
-	pod := config.toPod()
-	if pod == nil {
-		logger.Warningf(ctx, "[Start] toPod returned nil, skip. ns=%s group=%s", config.Namespace, config.GroupName)
-		return nil
-	}
-	// 打印存储配置
-	logger.Debugf(ctx, "[Start] storage.len=%d\n", len(config.Storage))
-	if len(config.Storage) > 0 {
-		names := make([]string, 0, len(config.Storage))
-		for _, s := range config.Storage {
-			names = append(names, s.Name)
-		}
-		logger.Debugf(ctx, "[Start] storage.names=%v", names)
-	}
-	// 仅在缺失时创建 存储资源(PV) 与 存储(PVC)，避免 PVC 不存在导致调度失败
-	if err := o.ensureStorage(ctx, config); err != nil {
-		logger.Warningf(ctx, "[Start] ensureStorage failed: %v", err)
-		return err
-	}
-	logger.Debugf(ctx, "[Start] ensureStorage done, ns=%s", config.Namespace)
-	// 额外校验：确保即将引用的 PVC 均已存在，避免命名不一致导致的调度失败
-	if pod.Storage != nil && len(pod.Storage) > 0 {
-		for _, s := range pod.Storage {
-			if s.ToStorageType().String() != "pvc" {
-				continue
-			}
-			if len(s.Name) < 1 {
-				continue
-			}
-			if has, err := o.k8s.Storage().Exists(ctx, pod.Namespace, s.Name); err != nil {
-				logger.Warningf(ctx, "[Start] check PVC exists error: ns=%s name=%s err=%v", pod.Namespace, s.Name, err)
-				return err
-			} else if !has {
-				logger.Warningf(ctx, "[start] PVC missing before apply: ns=%s name=%s", pod.Namespace, s.Name)
-				return gerror.NewCodef(gcode.CodeNotImplemented, "PVC缺失: %s", s.Name)
-			}
-		}
-	}
-	logger.Info(ctx, "[Start] applying Pod, ns=", pod.Namespace, ", group=", pod.Group)
-	if err := o.k8s.Pod().Apply(ctx, pod); err != nil {
-		logger.Warningf(ctx, "[Start] apply Pod failed: %v", err)
-		return err
-	}
-	logger.Info(ctx, "[Start] done, ns=", pod.Namespace, ", group=", pod.Group)
-	return nil
 }
 
 func (o *processOperation) Stop(ctx context.Context, namespace string, groups ...string) error {
