@@ -55,12 +55,20 @@ func Failure(r *ghttp.Request, err error) {
 	response.Failure(r, SC_FAILURE, err)
 }
 
-func WithGCode(r *ghttp.Request, code gcode.Code, data interface{}) {
+func WithCode(r *ghttp.Request, code int, message string) {
+	response.Build(r, code, message, nil)
+}
+
+func WithGCode(r *ghttp.Request, code gcode.Code) {
+	response.Result(r, code, nil)
+}
+
+func WithGCodeData(r *ghttp.Request, code gcode.Code, data interface{}) {
 	response.Result(r, code, data)
 }
 
-func WithCode(r *ghttp.Request, code int, message string) {
-	response.Build(r, code, message, nil)
+func WithMessage(r *ghttp.Request, message string, data interface{}) {
+	response.Build(r, SC_FAILURE, message, nil)
 }
 
 func WithCodeMessage(r *ghttp.Request, code int, message string) {
