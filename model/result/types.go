@@ -32,6 +32,7 @@ func Build(code int, message string, err string, data interface{}) *Response {
 
 func Download(r *ghttp.Request, path string, err error) {
 	if err != nil {
+		r.SetError(err)
 		r.Response.WriteStatus(404)
 		r.Response.WriteExit(err.Error())
 	} else {
@@ -91,6 +92,7 @@ func (res *Response) Failure(r *ghttp.Request, code int, err error) {
 	if nil == err {
 		return
 	}
+	r.SetError(err)
 	res.Build(r, code, err.Error(), nil)
 }
 
@@ -107,6 +109,7 @@ func (res *Response) Build(r *ghttp.Request, code int, message string, data inte
 }
 
 func (res *Response) Err(r *ghttp.Request, code int, message string, err error) {
+	r.SetError(err)
 	res.gzip(r, Build(code, message, err.Error(), nil))
 }
 
