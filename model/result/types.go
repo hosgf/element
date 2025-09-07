@@ -84,6 +84,10 @@ func ErrorMessage(r *ghttp.Request, message string) {
 	response.Build(r, SC_FAILURE, message, nil)
 }
 
+func WithMessageError(r *ghttp.Request, message string, err error) {
+	response.Err(r, SC_FAILURE, message, err)
+}
+
 func ErrorWithGCode(r *ghttp.Request, code gcode.Code, err error) {
 	response.Err(r, code.Code(), code.Message(), err)
 }
