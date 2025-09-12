@@ -12,7 +12,12 @@ var (
 	AppCode    = ""
 	AppHomeKey = ""
 	AesKey     = "youedata12345678"
+	Debug      = false
 )
+
+func SetDebug(debug bool) {
+	Debug = debug
+}
 
 func Init(appCode, version, aesKey string) {
 	if len(appCode) > 0 {
