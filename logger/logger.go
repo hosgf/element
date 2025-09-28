@@ -3,10 +3,32 @@ package logger
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/gogf/gf/v2/os/glog"
+	"github.com/gogf/gf/v2/text/gstr"
 )
+
+func RequestLogging(o *ghttp.Request, err error) {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("\r\n📌 ---------------> [请求处理] Start %s  %s \r\n", o.Method, o.Header.Get("Content-Type")))
+	sb.WriteString(fmt.Sprintf("    Origin  : %s \r\n", o.URL.String()))
+	var header strings.Builder
+	for k, v := range o.Header {
+		if !gstr.Equal(k, "Content-Type") {
+			header.WriteString(k + "=" + gstr.Join(v, ",") + "  ")
+		}
+	}
+	if header.Len() > 0 {
+		sb.WriteString(fmt.Sprintf("    Headers : %s \r\n", header.String()))
+	}
+	sb.WriteString(fmt.Sprintf("    Response: %d \r\n", o.Response.Status))
+	sb.WriteString(fmt.Sprintf("    Error   : %s \r\n", err.Error()))
+	sb.WriteString(fmt.Sprintf("📌 ---------------> [请求处理] END %s \r\n", gstr.ToUpper(o.Proto)))
+	Errorf(o.Context(), sb.String())
+}
 
 func Call(ctx context.Context, method string, url string, contentType string, headers interface{}, response interface{}, param interface{}) {
 	var str = fmt.Sprintf("\n------> %s  %s\n", method, url)
@@ -48,6 +70,10 @@ func Debug(ctx context.Context, isDebug bool, method string, url string, content
 
 func Info(ctx context.Context, v ...interface{}) {
 	Log().Info(ctx, v...)
+}
+
+func Infof(ctx context.Context, format string, v ...interface{}) {
+	Log().Infof(ctx, format, v...)
 }
 
 func Error(ctx context.Context, message string, err error) {
