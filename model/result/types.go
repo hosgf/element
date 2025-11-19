@@ -69,7 +69,7 @@ func WithGCodeData(r *ghttp.Request, code gcode.Code, data interface{}) {
 }
 
 func WithMessage(r *ghttp.Request, message string, data interface{}) {
-	response.Build(r, SC_FAILURE, message, nil)
+	response.Build(r, SC_OK, message, nil)
 }
 
 func WithCodeMessage(r *ghttp.Request, code int, message string) {
