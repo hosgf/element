@@ -6,7 +6,6 @@ import (
 
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/hosgf/element/types"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
@@ -14,6 +13,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
+
+	"github.com/hosgf/element/types"
 )
 
 func New(isDebug, isTest bool) *Kubernetes {
@@ -96,15 +97,6 @@ func (k *Kubernetes) Init(homePath string) error {
 		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to build kubeconfig: %v", err)
 		return k.err
 	}
-	//if k.isDebug {
-	//	klog.InitFlags(nil)
-	//	logr := klog.NewKlogr()
-	//	klog.SetLogger(logr)
-	//	klog.ContextualLogger(true)
-	//	klog.EnableContextualLogging(true)
-	//	klog.LogToStderr(true)
-	//	klog.SetOutput(os.Stdout)
-	//}
 	config.QPS = 50    // 每秒最大 50 个请求
 	config.Burst = 100 // 突发请求 100 个
 	k.c = config
@@ -115,7 +107,7 @@ func (k *Kubernetes) Init(homePath string) error {
 	}
 	k.metricsApi, err = metricsv.NewForConfig(k.c)
 	if err != nil {
-		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create Kubernetes client: %v", err)
+		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create metrics client: %v", err)
 		return k.err
 	}
 	return nil
@@ -142,37 +134,43 @@ func (k *Kubernetes) config(homePath string) string {
 	return ""
 }
 
-func toAppListOptions(app string) v1.ListOptions {
+// toLabelListOptions 根据标签名和值创建 ListOptions
+func toLabelListOptions(label types.Label, value string) v1.ListOptions {
 	opts := v1.ListOptions{}
-	if len(app) > 0 {
-		opts.LabelSelector = fmt.Sprintf("%s=%s", types.LabelApp, app)
+	if value != "" {
+		opts.LabelSelector = fmt.Sprintf("%s=%s", label, value)
 	}
 	return opts
+}
+
+func toAppListOptions(app string) v1.ListOptions {
+	return toLabelListOptions(types.LabelApp, app)
 }
 
 func toGroupListOptions(group string) v1.ListOptions {
-	opts := v1.ListOptions{}
-	if len(group) > 0 {
-		opts.LabelSelector = fmt.Sprintf("%s=%s", types.LabelGroup, group)
-	}
-	return opts
+	return toLabelListOptions(types.LabelGroup, group)
 }
 
 func toServiceType(serviceType string) string {
-	if len(serviceType) < 1 {
+	if serviceType == "" {
 		return types.DefaultServiceType
 	}
 	return serviceType
 }
 
+// isExist 检查资源是否存在
+// value: 资源对象，如果为nil表示资源不存在
+// err: 获取资源时的错误
+// format: 错误消息格式
 func (o *options) isExist(value interface{}, err error, format string) (bool, error) {
-	if err == nil {
-		return value != nil, nil
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, gerror.NewCodef(gcode.CodeNotImplemented, format, err)
 	}
-	if errors.IsNotFound(err) {
-		return false, nil
-	}
-	return false, gerror.NewCodef(gcode.CodeNotImplemented, format, err)
+	// err == nil 时，检查 value 是否为 nil
+	return value != nil, nil
 }
 
 func (o *options) failed(err error) {
@@ -183,6 +181,8 @@ func (o *options) failed(err error) {
 		o.err = gerror.NewCodef(gcode.CodeNotImplemented, "调用环境服务超时: %+v", err)
 		return
 	}
+	// 对于其他错误，也记录到options中，避免错误被静默忽略
+	o.err = err
 }
 
 func (o *options) success() {
