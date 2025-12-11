@@ -2,12 +2,12 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -93,7 +93,7 @@ func (o *podTemplateOperation) Exists(ctx context.Context, namespace, pod string
 	}
 	opts := v1.GetOptions{}
 	p, err := o.api.CoreV1().Pods(namespace).Get(ctx, pod, opts)
-	return o.isExist(p, err, "Failed to get Pod: %v")
+	return o.isExist(ctx, p, err, fmt.Sprintf("检查Pod是否存在: namespace=%s, pod=%s", namespace, pod))
 }
 
 func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
@@ -117,7 +117,7 @@ func (o *podTemplateOperation) Apply(ctx context.Context, pod *Pod) error {
 	opts := v1.CreateOptions{}
 	_, err := o.api.CoreV1().PodTemplates(pod.Namespace).Create(ctx, p, opts)
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create pod: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("创建Pod: namespace=%s, pod=%s", pod.Namespace, pod.Name))
 	}
 	return nil
 }
@@ -133,7 +133,7 @@ func (o *podTemplateOperation) Delete(ctx context.Context, namespace, pod string
 func (o *podTemplateOperation) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]*Pod, error) {
 	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
 	if err != nil {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
+		return nil, uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("获取Pod列表: namespace=%s", namespace))
 	}
 	pods := make([]*Pod, 0, len(datas.Items))
 	for _, p := range datas.Items {

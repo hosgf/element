@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -25,7 +24,7 @@ func (o *storageResourceOperation) Get(ctx context.Context, name string) (*types
 	}
 	storage, err := o.api.CoreV1().PersistentVolumes().Get(ctx, name, v1.GetOptions{})
 	if err != nil {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get storages: %v", err)
+		return nil, uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("获取Storage资源: name=%s", name))
 	}
 	return o.toStorage(storage), nil
 }
@@ -50,7 +49,8 @@ func (o *storageResourceOperation) Apply(ctx context.Context, storage *Persisten
 		if storage.AllowUpdate {
 			return nil
 		}
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Storage: %s, ClaimName: %v 已存在!", storage.Storage.Name, storage.Item)
+		return uerrors.NewBizLogicError(uerrors.CodeResourceConflict,
+			fmt.Sprintf("Storage资源已存在: name=%s, item=%v", storage.Storage.Name, storage.Item))
 	}
 	return o.create(ctx, storage)
 }
@@ -112,7 +112,7 @@ func (o *storageResourceOperation) DeleteByGroup(ctx context.Context, groups ...
 func (o *storageResourceOperation) create(ctx context.Context, storage *PersistentStorageResource) error {
 	_, err := o.api.CoreV1().PersistentVolumes().Create(ctx, storage.toPv(), v1.CreateOptions{})
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create apps Storage: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("创建Storage资源: name=%s", storage.Storage.Name))
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ func (o *storageResourceOperation) create(ctx context.Context, storage *Persiste
 func (o *storageResourceOperation) delete(ctx context.Context, name string) error {
 	err := o.api.CoreV1().PersistentVolumes().Delete(ctx, name, v1.DeleteOptions{})
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete Storage: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("删除Storage资源: name=%s", name))
 	}
 	return nil
 }
@@ -136,7 +136,8 @@ func (o *storageResourceOperation) WaitDeleted(ctx context.Context, name string,
 			return err
 		}
 		if time.Now().After(deadline) {
-			return gerror.NewCodef(gcode.CodeNotImplemented, "等待PV删除超时")
+			return uerrors.NewKubernetesError(ctx, "等待PV删除", "超时",
+				fmt.Sprintf("name=%s, timeout=%v", name, timeout))
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -147,7 +148,7 @@ func (o *storageResourceOperation) existsByGroup(ctx context.Context, group stri
 		return false, nil, o.err
 	}
 	storage, err := o.api.CoreV1().PersistentVolumes().List(ctx, v1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", types.LabelGroup, group)})
-	has, err := o.isExist(storage, err, "Failed to get Storage: %v")
+	has, err := o.isExist(ctx, storage, err, fmt.Sprintf("检查Storage资源是否存在: group=%s", group))
 	return has, storage, err
 }
 
@@ -156,7 +157,7 @@ func (o *storageResourceOperation) exists(ctx context.Context, name string) (boo
 		return false, nil, o.err
 	}
 	storage, err := o.api.CoreV1().PersistentVolumes().Get(ctx, name, v1.GetOptions{})
-	has, err := o.isExist(storage, err, "Failed to get Storage: %v")
+	has, err := o.isExist(ctx, storage, err, fmt.Sprintf("检查Storage资源是否存在: name=%s", name))
 	return has, storage, err
 }
 

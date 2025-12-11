@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/util/gconv"
+	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/hosgf/element/types"
 )
 
 type PersistentStorage struct {
@@ -66,7 +64,7 @@ func (o *storageOperation) Get(ctx context.Context, namespace, name string) (*ty
 	}
 	storage, err := o.api.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, v1.GetOptions{})
 	if err != nil {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get storages: %v", err)
+		return nil, uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("获取Storage: namespace=%s, name=%s", namespace, name))
 	}
 	return o.toStorage(storage), nil
 }
@@ -91,7 +89,8 @@ func (o *storageOperation) Apply(ctx context.Context, storage *PersistentStorage
 			return nil
 			//return o.update(ctx, data, storage)
 		}
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Storage: %s, Item: %v 已存在!", storage.Storage.Name, storage.Item)
+		return uerrors.NewBizLogicError(uerrors.CodeResourceConflict,
+			fmt.Sprintf("Storage已存在: namespace=%s, name=%s, item=%v", storage.Namespace, storage.Storage.Name, storage.Item))
 	}
 	return o.create(ctx, storage)
 }
@@ -176,7 +175,7 @@ func (o *storageOperation) create(ctx context.Context, storage *PersistentStorag
 	}
 	_, err := o.api.CoreV1().PersistentVolumeClaims(storage.Namespace).Create(ctx, pvc, v1.CreateOptions{})
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to Create apps Storage: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("创建Storage: namespace=%s, name=%s", storage.Namespace, storage.Storage.Name))
 	}
 	return nil
 }
@@ -184,7 +183,7 @@ func (o *storageOperation) create(ctx context.Context, storage *PersistentStorag
 func (o *storageOperation) update(ctx context.Context, data *corev1.PersistentVolumeClaim, storage *PersistentStorage) error {
 	_, err := o.api.CoreV1().PersistentVolumeClaims(storage.Namespace).Update(ctx, storage.updatePvc(data), v1.UpdateOptions{})
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to Update apps Storage: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("更新Storage: namespace=%s, name=%s", storage.Namespace, storage.Storage.Name))
 	}
 	return nil
 }
@@ -192,7 +191,7 @@ func (o *storageOperation) update(ctx context.Context, data *corev1.PersistentVo
 func (o *storageOperation) delete(ctx context.Context, namespace, name string) error {
 	err := o.api.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, name, v1.DeleteOptions{})
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete Storage: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("删除Storage: namespace=%s, name=%s", namespace, name))
 	}
 	return nil
 }
@@ -208,7 +207,8 @@ func (o *storageOperation) WaitDeleted(ctx context.Context, namespace, name stri
 			return err
 		}
 		if time.Now().After(deadline) {
-			return gerror.NewCodef(gcode.CodeNotImplemented, "等待PVC删除超时")
+			return uerrors.NewKubernetesError(ctx, "等待PVC删除", "超时",
+				fmt.Sprintf("namespace=%s, name=%s, timeout=%v", namespace, name, timeout))
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -230,7 +230,7 @@ func (o *storageOperation) existsByGroup(ctx context.Context, namespace, group s
 		return false, nil, o.err
 	}
 	storage, err := o.api.CoreV1().PersistentVolumeClaims(namespace).List(ctx, v1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", types.LabelGroup, group)})
-	has, err := o.isExist(storage, err, "Failed to get Storage: %v")
+	has, err := o.isExist(ctx, storage, err, fmt.Sprintf("检查Storage是否存在: namespace=%s, group=%s", namespace, group))
 	return has, storage, err
 }
 
@@ -239,7 +239,7 @@ func (o *storageOperation) exists(ctx context.Context, namespace, name string) (
 		return false, nil, o.err
 	}
 	storage, err := o.api.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, v1.GetOptions{})
-	has, err := o.isExist(storage, err, "Failed to get Storage: %v")
+	has, err := o.isExist(ctx, storage, err, fmt.Sprintf("检查Storage是否存在: namespace=%s, name=%s", namespace, name))
 	return has, storage, err
 }
 

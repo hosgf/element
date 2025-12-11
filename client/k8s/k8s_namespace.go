@@ -2,10 +2,10 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	"github.com/hosgf/element/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,7 +40,7 @@ func (o *namespaceOperation) Exists(ctx context.Context, namespace string) (bool
 		return false, o.err
 	}
 	_, err := o.api.CoreV1().Namespaces().Get(ctx, namespace, v1.GetOptions{})
-	return o.isExist("", err, "Error occurred while fetching namespace: %v")
+	return o.isExist(ctx, "", err, fmt.Sprintf("检查命名空间是否存在: %s", namespace))
 }
 
 func (o *namespaceOperation) Apply(ctx context.Context, namespace, label string) (bool, error) {
@@ -59,7 +59,7 @@ func (o *namespaceOperation) Apply(ctx context.Context, namespace, label string)
 	if errors.IsAlreadyExists(err) {
 		return false, nil
 	}
-	return false, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create namespace: %v", err)
+	return false, uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("创建命名空间: %s", namespace))
 }
 
 func (o *namespaceOperation) Delete(ctx context.Context, namespace string) error {

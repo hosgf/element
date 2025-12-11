@@ -2,13 +2,13 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -203,7 +203,8 @@ func (o *serviceOperation) Apply(ctx context.Context, service *Service) error {
 		if service.AllowUpdate {
 			return o.update(ctx, svc, service)
 		}
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Service: %s 已存在!", service.Namespace, service.Name)
+		return uerrors.NewBizLogicError(uerrors.CodeResourceConflict,
+			fmt.Sprintf("Service已存在: namespace=%s, service=%s", service.Namespace, service.Name))
 	}
 	return o.create(ctx, service)
 }
@@ -285,7 +286,7 @@ func (o *serviceOperation) create(ctx context.Context, service *Service) error {
 	opts := v1.CreateOptions{}
 	_, err := o.api.CoreV1().Services(service.Namespace).Create(ctx, service.toCoreService(), opts)
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create service: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("创建Service: namespace=%s, service=%s", service.Namespace, service.Name))
 	}
 	return nil
 }
@@ -297,7 +298,7 @@ func (o *serviceOperation) update(ctx context.Context, svc *corev1.Service, serv
 	opts := v1.UpdateOptions{}
 	_, err := o.api.CoreV1().Services(service.Namespace).Update(ctx, service.updateCoreService(svc), opts)
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update service: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("更新Service: namespace=%s, service=%s", service.Namespace, service.Name))
 	}
 	return nil
 }
@@ -306,7 +307,7 @@ func (o *serviceOperation) delete(ctx context.Context, namespace string, service
 	opts := v1.DeleteOptions{}
 	err := o.api.CoreV1().Services(namespace).Delete(ctx, service, opts)
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete service: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("删除Service: namespace=%s, service=%s", namespace, service))
 	}
 	return nil
 }
@@ -317,7 +318,7 @@ func (o *serviceOperation) exists(ctx context.Context, namespace, service string
 	}
 	opts := v1.GetOptions{}
 	svc, err := o.api.CoreV1().Services(namespace).Get(ctx, service, opts)
-	has, err := o.isExist(svc, err, "Failed to get Services: %v")
+	has, err := o.isExist(ctx, svc, err, fmt.Sprintf("检查Service是否存在: namespace=%s, service=%s", namespace, service))
 	return has, svc, err
 }
 
@@ -325,7 +326,7 @@ func (o *serviceOperation) list(ctx context.Context, namespace string, group str
 	opts := toGroupListOptions(group)
 	datas, err := o.api.CoreV1().Services(namespace).List(ctx, opts)
 	if err != nil {
-		return datas, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Services: %v", err)
+		return datas, uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("获取Service列表: namespace=%s, group=%s", namespace, group))
 	}
 	return datas, nil
 }

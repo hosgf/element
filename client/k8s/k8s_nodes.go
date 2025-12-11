@@ -4,12 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/hosgf/element/health"
 	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
@@ -55,13 +54,13 @@ func (o *nodesOperation) Top(ctx context.Context) ([]*Node, error) {
 	}
 	datas, err := o.api.CoreV1().Nodes().List(ctx, v1.ListOptions{})
 	if err != nil {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get nodes: %v", err)
+		return nil, uerrors.WrapKubernetesError(ctx, err, "获取节点列表")
 	}
 	nodes := make([]*Node, 0, len(datas.Items))
 	metricses := map[string]v1beta1.NodeMetrics{}
 	list, err := o.metricsApi.MetricsV1beta1().NodeMetricses().List(ctx, v1.ListOptions{})
 	if err != nil {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get nodes metrics: %v", err)
+		return nil, uerrors.WrapKubernetesError(ctx, err, "获取节点指标")
 	}
 	for _, v := range list.Items {
 		metricses[v.Name] = v

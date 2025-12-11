@@ -1,11 +1,12 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
@@ -13,8 +14,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
-
-	"github.com/hosgf/element/types"
 )
 
 func New(isDebug, isTest bool) *Kubernetes {
@@ -91,10 +90,11 @@ func (k *Kubernetes) Resource() *resourceOperation {
 }
 
 func (k *Kubernetes) Init(homePath string) error {
+	ctx := context.Background()
 	kubeconfig := k.config(homePath)
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to build kubeconfig: %v", err)
+		k.err = uerrors.WrapKubernetesError(ctx, err, "初始化Kubernetes配置")
 		return k.err
 	}
 	config.QPS = 50    // 每秒最大 50 个请求
@@ -102,12 +102,12 @@ func (k *Kubernetes) Init(homePath string) error {
 	k.c = config
 	k.api, err = k8s.NewForConfig(k.c)
 	if err != nil {
-		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create Kubernetes client: %v", err)
+		k.err = uerrors.WrapKubernetesError(ctx, err, "创建Kubernetes客户端")
 		return k.err
 	}
 	k.metricsApi, err = metricsv.NewForConfig(k.c)
 	if err != nil {
-		k.err = gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create metrics client: %v", err)
+		k.err = uerrors.WrapKubernetesError(ctx, err, "创建Metrics客户端")
 		return k.err
 	}
 	return nil
@@ -161,28 +161,28 @@ func toServiceType(serviceType string) string {
 // isExist 检查资源是否存在
 // value: 资源对象，如果为nil表示资源不存在
 // err: 获取资源时的错误
-// format: 错误消息格式
-func (o *options) isExist(value interface{}, err error, format string) (bool, error) {
+// operation: 操作名称，用于错误消息
+func (o *options) isExist(ctx context.Context, value interface{}, err error, operation string) (bool, error) {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return false, nil
 		}
-		return false, gerror.NewCodef(gcode.CodeNotImplemented, format, err)
+		return false, uerrors.WrapKubernetesError(ctx, err, operation)
 	}
 	// err == nil 时，检查 value 是否为 nil
 	return value != nil, nil
 }
 
-func (o *options) failed(err error) {
+func (o *options) failed(ctx context.Context, err error, operation string) {
 	if err == nil {
 		return
 	}
 	if errors.IsTimeout(err) {
-		o.err = gerror.NewCodef(gcode.CodeNotImplemented, "调用环境服务超时: %+v", err)
+		o.err = uerrors.NewKubernetesError(ctx, operation, "调用环境服务超时", err.Error())
 		return
 	}
-	// 对于其他错误，也记录到options中，避免错误被静默忽略
-	o.err = err
+	// 对于其他错误，包装为Kubernetes错误
+	o.err = uerrors.WrapKubernetesError(ctx, err, operation)
 }
 
 func (o *options) success() {

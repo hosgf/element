@@ -7,16 +7,16 @@ import (
 	gingonic "github.com/gin-gonic/gin"
 
 	"github.com/hosgf/element/config"
-	"github.com/hosgf/element/exception"
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/result"
+	"github.com/hosgf/element/uerrors"
 )
 
 // exceptionHandler Gin 的全局异常处理器
 type exceptionHandler struct {
 	isProduction     bool
 	enableStackTrace bool
-	errorNotifier    func(*exception.BizError)
+	errorNotifier    func(*uerrors.BizError)
 }
 
 var handler *exceptionHandler
@@ -27,7 +27,7 @@ func initHandler() {
 		isProduction:     isProduction,
 		enableStackTrace: !isProduction,
 	}
-	handler.SetErrorNotifier(func(err *exception.BizError) {
+	handler.SetErrorNotifier(func(err *uerrors.BizError) {
 		logger.Errorf(context.Background(), "Global error notification: %s", err.Error())
 	})
 }
@@ -39,7 +39,7 @@ func getHandler() *exceptionHandler {
 	return handler
 }
 
-func (h *exceptionHandler) SetErrorNotifier(notifier func(*exception.BizError)) {
+func (h *exceptionHandler) SetErrorNotifier(notifier func(*uerrors.BizError)) {
 	h.errorNotifier = notifier
 }
 
@@ -49,7 +49,7 @@ func ExceptionHandler() gingonic.HandlerFunc {
 	return func(c *gingonic.Context) {
 		start := time.Now()
 		if c.GetString("request_id") == "" {
-			requestID := exception.GenerateRequestID()
+			requestID := uerrors.GenerateRequestID()
 			c.Set("request_id", requestID)
 			c.Writer.Header().Set("X-Request-ID", requestID)
 		}
@@ -73,17 +73,17 @@ func (h *exceptionHandler) HandlePanic(ctx context.Context, c *gingonic.Context,
 		}
 	}
 
-	var bizErr *exception.BizError
+	var bizErr *uerrors.BizError
 	if err, ok := panicValue.(error); ok {
-		if be, isBiz := exception.IsBizError(err); isBiz {
+		if be, isBiz := uerrors.IsBizError(err); isBiz {
 			bizErr = be
 		} else {
-			bizErr = exception.WrapError(err, exception.ErrorTypeSystem, exception.ErrorLevelCritical, result.SC_FAILURE, "系统内部错误")
+			bizErr = uerrors.WrapError(err, uerrors.ErrorTypeSystem, uerrors.ErrorLevelCritical, result.SC_FAILURE, "系统内部错误")
 		}
 	} else {
-		bizErr = exception.NewBizError(
-			exception.ErrorTypeSystem,
-			exception.ErrorLevelCritical,
+		bizErr = uerrors.NewBizError(
+			uerrors.ErrorTypeSystem,
+			uerrors.ErrorLevelCritical,
 			result.SC_FAILURE,
 			"系统内部错误",
 			"panic",
@@ -108,11 +108,11 @@ func (h *exceptionHandler) HandleError(ctx context.Context, c *gingonic.Context,
 		}
 	}
 
-	var bizErr *exception.BizError
-	if be, isBiz := exception.IsBizError(err); isBiz {
+	var bizErr *uerrors.BizError
+	if be, isBiz := uerrors.IsBizError(err); isBiz {
 		bizErr = be
 	} else {
-		bizErr = exception.WrapError(err, exception.ErrorTypeSystem, exception.ErrorLevelError, result.SC_FAILURE, "系统错误")
+		bizErr = uerrors.WrapError(err, uerrors.ErrorTypeSystem, uerrors.ErrorLevelError, result.SC_FAILURE, "系统错误")
 	}
 	bizErr.RequestID = requestID
 
@@ -123,7 +123,7 @@ func (h *exceptionHandler) HandleError(ctx context.Context, c *gingonic.Context,
 	h.writeErrorResponse(c, bizErr)
 }
 
-func (h *exceptionHandler) logError(ctx context.Context, err *exception.BizError) {
+func (h *exceptionHandler) logError(ctx context.Context, err *uerrors.BizError) {
 	logMsg := "[" + err.LevelString() + "] " + err.TypeString() + " - " + err.Message
 	if err.Details != "" {
 		logMsg += " | Details: " + err.Details
@@ -132,18 +132,18 @@ func (h *exceptionHandler) logError(ctx context.Context, err *exception.BizError
 		logMsg += " | RequestID: " + err.RequestID
 	}
 	switch err.Level {
-	case exception.ErrorLevelInfo:
+	case uerrors.ErrorLevelInfo:
 		logger.Log().Infof(ctx, logMsg)
-	case exception.ErrorLevelWarning:
+	case uerrors.ErrorLevelWarning:
 		logger.Warningf(ctx, logMsg)
-	case exception.ErrorLevelError:
+	case uerrors.ErrorLevelError:
 		logger.Errorf(ctx, logMsg)
-	case exception.ErrorLevelCritical:
+	case uerrors.ErrorLevelCritical:
 		logger.Errorf(ctx, logMsg)
 	}
 }
 
-func (h *exceptionHandler) writeErrorResponse(c *gingonic.Context, err *exception.BizError) {
+func (h *exceptionHandler) writeErrorResponse(c *gingonic.Context, err *uerrors.BizError) {
 	// 仅返回顶层 code 与 message
 	response := result.NewResponse()
 	response.Code = err.Code

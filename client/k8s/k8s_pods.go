@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/model/resource"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	"github.com/hosgf/element/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -548,7 +547,7 @@ func (o *podsOperation) Exists(ctx context.Context, namespace, pod string) (bool
 		return false, o.err
 	}
 	p, err := o.api.CoreV1().Pods(namespace).Get(ctx, pod, v1.GetOptions{})
-	return o.isExist(p, err, "Failed to get Pod: %v")
+	return o.isExist(ctx, p, err, fmt.Sprintf("检查Pod是否存在: namespace=%s, pod=%s", namespace, pod))
 }
 
 func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
@@ -562,7 +561,8 @@ func (o *podsOperation) Apply(ctx context.Context, pod *Pod) error {
 		if pod.AllowUpdate {
 			return o.update(ctx, datas, pod)
 		}
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Namespace: %s, Pod: %s 已存在!", pod.Namespace, pod.Name)
+		return uerrors.NewBizLogicError(uerrors.CodeResourceConflict,
+			fmt.Sprintf("Pod已存在: namespace=%s, pod=%s", pod.Namespace, pod.Name))
 	}
 	return o.create(ctx, pod)
 }
@@ -642,7 +642,7 @@ func (o *podsOperation) RestartApp(ctx context.Context, namespace, appname strin
 
 func (o *podsOperation) Command(ctx context.Context, namespace, group, process string, cmd ...string) (string, error) {
 	if len(process) < 1 {
-		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程名称")
+		return "", uerrors.NewValidationError("process", "请传入进程名称")
 	}
 
 	pods, err := o.list(ctx, namespace, group)
@@ -651,7 +651,8 @@ func (o *podsOperation) Command(ctx context.Context, namespace, group, process s
 	}
 
 	if pods == nil || len(pods.Items) == 0 {
-		return "", gerror.NewCodef(gcode.CodeNotImplemented, "没有查询到进程组")
+		return "", uerrors.NewBizLogicError(uerrors.CodeResourceNotFound,
+			fmt.Sprintf("没有查询到进程组: namespace=%s, group=%s", namespace, group))
 	}
 
 	var lastErr error
@@ -669,13 +670,13 @@ func (o *podsOperation) Exec(ctx context.Context, namespace, pod, process string
 		return "", o.err
 	}
 	if len(pod) < 1 {
-		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程组ID")
+		return "", uerrors.NewValidationError("pod", "请传入进程组ID")
 	}
 	if len(process) < 1 {
-		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程名称")
+		return "", uerrors.NewValidationError("process", "请传入进程名称")
 	}
 	if cmd == nil || len(cmd) < 1 {
-		return "", gerror.NewCodef(gcode.CodeNotImplemented, "请传入要执行的命令")
+		return "", uerrors.NewValidationError("cmd", "请传入要执行的命令")
 	}
 	req := o.api.CoreV1().RESTClient().
 		Post().
@@ -693,7 +694,8 @@ func (o *podsOperation) Exec(ctx context.Context, namespace, pod, process string
 		}, runtime.NewParameterCodec(scheme.Scheme))
 	executor, err := remotecommand.NewSPDYExecutor(o.c, "POST", req.URL())
 	if err != nil {
-		return "", gerror.WrapCodef(gcode.CodeOperationFailed, err, "进程命令执行失败: 创建命令执行器出错")
+		return "", uerrors.WrapKubernetesError(ctx, err,
+			fmt.Sprintf("创建命令执行器: namespace=%s, pod=%s, process=%s", namespace, pod, process))
 	}
 	var stdout, stderr bytes.Buffer
 	err = executor.Stream(remotecommand.StreamOptions{
@@ -702,7 +704,8 @@ func (o *podsOperation) Exec(ctx context.Context, namespace, pod, process string
 		Tty:    false,
 	})
 	if err != nil {
-		return "", gerror.WrapCodef(gcode.CodeOperationFailed, err, "进程命令执行失败")
+		return "", uerrors.WrapKubernetesError(ctx, err,
+			fmt.Sprintf("执行命令: namespace=%s, pod=%s, process=%s, cmd=%v", namespace, pod, process, cmd))
 	}
 	return stdout.String(), err
 }
@@ -712,10 +715,10 @@ func (o *podsOperation) Logger(ctx context.Context, namespace, group, process st
 		return nil, o.err
 	}
 	if len(group) < 1 {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程组名称")
+		return nil, uerrors.NewValidationError("group", "请传入进程组名称")
 	}
 	if len(process) < 1 {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "请传入进程名称")
+		return nil, uerrors.NewValidationError("process", "请传入进程名称")
 	}
 	podLogOpts := &corev1.PodLogOptions{
 		Container:    process,
@@ -741,7 +744,7 @@ func (o *podsOperation) deploymentExists(ctx context.Context, namespace string, 
 	if len(items) < 1 {
 		return false, items, nil
 	}
-	has, err := o.isExist(items, err, "Failed to get Pod: %v")
+	has, err := o.isExist(ctx, items, err, fmt.Sprintf("获取Deployment列表: namespace=%s, group=%s", namespace, group))
 	return has, items, err
 }
 
@@ -752,7 +755,7 @@ func (o *podsOperation) deleteDeployment(ctx context.Context, namespace string, 
 		}
 		err := o.api.AppsV1().Deployments(namespace).Delete(ctx, group, v1.DeleteOptions{})
 		if err != nil {
-			return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete apps deployment: %v", err)
+			return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("删除Deployment: namespace=%s, group=%s", namespace, group))
 		}
 	}
 	return nil
@@ -765,7 +768,7 @@ func (o *podsOperation) create(ctx context.Context, pod *Pod) error {
 	}
 	_, err := o.api.AppsV1().Deployments(pod.Namespace).Create(ctx, deployment, v1.CreateOptions{})
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to create apps Deployment: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("创建Deployment: namespace=%s, group=%s", pod.Namespace, pod.Group))
 	}
 	return nil
 }
@@ -781,7 +784,7 @@ func (o *podsOperation) update(ctx context.Context, deployments []appsv1.Deploym
 	for _, deployment := range deployments {
 		_, err := o.api.AppsV1().Deployments(pod.Namespace).Update(ctx, pod.updateAppsDeployment(&deployment), v1.UpdateOptions{})
 		if err != nil {
-			return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to update apps Deployment: %v", err)
+			return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("更新Deployment: namespace=%s, group=%s", pod.Namespace, pod.Group))
 		}
 	}
 	return nil
@@ -791,7 +794,7 @@ func (o *podsOperation) delete(ctx context.Context, namespace string, pod string
 	opts := v1.DeleteOptions{}
 	err := o.api.CoreV1().Pods(namespace).Delete(ctx, pod, opts)
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete pod: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("删除Pod: namespace=%s, pod=%s", namespace, pod))
 	}
 	return nil
 }
@@ -799,7 +802,7 @@ func (o *podsOperation) delete(ctx context.Context, namespace string, pod string
 func (o *podsOperation) deleteGroup(ctx context.Context, namespace string, group string) error {
 	err := o.api.CoreV1().Pods(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, toGroupListOptions(group))
 	if err != nil {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "Failed to delete PodList: %v", err)
+		return uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("删除Pod集合: namespace=%s, group=%s", namespace, group))
 	}
 	return nil
 }
@@ -807,7 +810,7 @@ func (o *podsOperation) deleteGroup(ctx context.Context, namespace string, group
 func (o *podsOperation) list(ctx context.Context, namespace string, group string) (*corev1.PodList, error) {
 	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, toGroupListOptions(group))
 	if err != nil {
-		return datas, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
+		return datas, uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("获取Pod列表: namespace=%s, group=%s", namespace, group))
 	}
 	return datas, nil
 }
@@ -815,7 +818,7 @@ func (o *podsOperation) list(ctx context.Context, namespace string, group string
 func (o *podsOperation) pods(ctx context.Context, namespace string, opts v1.ListOptions) ([]*Pod, error) {
 	datas, err := o.api.CoreV1().Pods(namespace).List(ctx, opts)
 	if err != nil {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get pods: %v", err)
+		return nil, uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("获取Pod列表: namespace=%s", namespace))
 	}
 	return o.toPods(namespace, datas), nil
 }

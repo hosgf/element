@@ -2,10 +2,10 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,7 +32,7 @@ func (o *metricsOperation) List(ctx context.Context, namespace string) ([]*Metri
 	opts := v1.ListOptions{}
 	data, err := o.metricsApi.MetricsV1beta1().PodMetricses(namespace).List(ctx, opts)
 	if err != nil {
-		return nil, gerror.NewCodef(gcode.CodeNotImplemented, "Failed to get Pod Metricses: %v", err)
+		return nil, uerrors.WrapKubernetesError(ctx, err, fmt.Sprintf("获取Pod指标列表: namespace=%s", namespace))
 	}
 	metrics := make([]*Metric, 0, len(data.Items))
 	for _, item := range data.Items {

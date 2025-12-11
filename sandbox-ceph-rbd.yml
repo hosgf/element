@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ceph-secret
+  namespace: sandbox
+type: "kubernetes.io/rbd"
+data:
+  # 需要base64编码的Ceph认证信息
+  # 使用命令: echo -n "your-ceph-key" | base64
+  key: QVFDVzN4WjJ0QmQ2T3hBQUFYa0p5N2JMM3VJZ0pWV1FTSUE9PQ==
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: sandbox-ceph-rbd
+  namespace: sandbox
+provisioner: rbd.csi.ceph.com
+parameters:
+  clusterID: ceph-cluster
+  pool: rbd
+  imageFormat: "2"
+  imageFeatures: layering
+  csi.storage.k8s.io/provisioner-secret-name: ceph-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: sandbox
+  csi.storage.k8s.io/controller-expand-secret-name: ceph-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: sandbox
+  csi.storage.k8s.io/node-stage-secret-name: ceph-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: sandbox
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sandbox-ceph-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: sandbox-ceph-rbd
+  rbd:
+    monitors:
+      - 10.0.0.1:6789
+      - 10.0.0.2:6789
+      - 10.0.0.3:6789
+    pool: rbd
+    image: sandbox-data-image
+    user: admin
+    secretRef:
+      name: ceph-secret
+    fsType: ext4
+    readOnly: false

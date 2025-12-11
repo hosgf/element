@@ -2,17 +2,17 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
-	"github.com/gogf/gf/v2/errors/gcode"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gtime"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/process"
 	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/uerrors"
 )
 
 type processOperation struct {
@@ -154,7 +154,8 @@ func (o *processOperation) Start(ctx context.Context, config *ProcessGroupConfig
 				return err
 			} else if !has {
 				logger.Warningf(ctx, "[start] PVC missing before apply: ns=%s name=%s", pod.Namespace, s.Name)
-				return gerror.NewCodef(gcode.CodeNotImplemented, "PVC缺失: %s", s.Name)
+				return uerrors.NewBizLogicError(uerrors.CodeResourceNotFound,
+					fmt.Sprintf("PVC缺失: namespace=%s, name=%s", pod.Namespace, s.Name))
 			}
 		}
 	}
@@ -341,7 +342,8 @@ func (o *processOperation) waitStoragesBound(ctx context.Context, ns string, sto
 
 		if time.Now().After(deadline) {
 			logger.Warningf(ctx, "[waitStoragesBound] wait Storage ready timeout, ns=%s", ns)
-			return gerror.NewCodef(gcode.CodeNotImplemented, "等待Storage就绪超时")
+			return uerrors.NewKubernetesError(ctx, "等待Storage就绪", "超时",
+				fmt.Sprintf("namespace=%s, timeout=%v", ns, timeout))
 		}
 
 		time.Sleep(2 * time.Second)
@@ -353,7 +355,7 @@ func (o *processOperation) Stop(ctx context.Context, namespace string, groups ..
 		return o.err
 	}
 	if groups == nil || len(groups) < 1 {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "请传入要删除的进程组名称")
+		return uerrors.NewValidationError("groups", "请传入要删除的进程组名称")
 	}
 	if err := o.k8s.Pod().DeleteGroup(ctx, namespace, groups...); err != nil {
 		return err
@@ -366,7 +368,7 @@ func (o *processOperation) Destroy(ctx context.Context, namespace string, groups
 		return o.err
 	}
 	if groups == nil || len(groups) < 1 {
-		return gerror.NewCodef(gcode.CodeNotImplemented, "请传入要删除的进程组名称")
+		return uerrors.NewValidationError("groups", "请传入要删除的进程组名称")
 	}
 	if err := o.k8s.Service().DeleteGroup(ctx, namespace, groups...); err != nil {
 		return err

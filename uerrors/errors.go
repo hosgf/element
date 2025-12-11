@@ -1,4 +1,4 @@
-package exception
+package uerrors
 
 import (
 	"fmt"
