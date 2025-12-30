@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gogf/gf/v2/net/ghttp"
+	"github.com/hosgf/element/client/request"
 
 	"github.com/hosgf/element/config"
 	"github.com/hosgf/element/logger"
@@ -47,12 +48,12 @@ func (h *exceptionHandler) SetErrorNotifier(notifier func(*uerrors.BizError)) {
 func ExceptionHandler(r *ghttp.Request) {
 	start := time.Now()
 	if r.GetCtxVar("request_id").String() == "" {
-		requestID := uerrors.GenerateRequestID()
+		requestID := request.GenerateRequestID()
 		r.SetCtxVar("request_id", requestID)
-		r.Response.Header().Set("X-Request-ID", requestID)
+		r.Response.Header().Set(request.HeaderTraceId.String(), requestID)
 	}
 	defer func() {
-		r.Response.Header().Set("X-Response-Time", time.Since(start).String())
+		r.Response.Header().Set(request.HeaderResponseTime.String(), time.Since(start).String())
 		if panicValue := recover(); panicValue != nil {
 			getHandler().HandlePanic(r.Context(), r, panicValue)
 		}

@@ -27,13 +27,14 @@ func (t Protocol) String() string {
 type Header string
 
 const (
-	HeaderReqAppCode Header = "X-Req-App-Code"
-	HeaderReqAppName Header = "X-Req-App-Name"
-	HeaderReqClient  Header = "X-Req-Client"
-	HeaderTraceId    Header = "X-Req-Id"
-	HeaderUserAgent  Header = "X-User-Agent"
-	HeaderReqToken   Header = "Authorization"
-	HeaderSameToken  Header = "SA-SAME-TOKEN"
+	HeaderReqAppCode   Header = "X-Req-App-Code"
+	HeaderReqAppName   Header = "X-Req-App-Name"
+	HeaderReqClient    Header = "X-Req-Client"
+	HeaderTraceId      Header = "X-Req-Id"
+	HeaderUserAgent    Header = "X-User-Agent"
+	HeaderResponseTime Header = "X-Response-Time"
+	HeaderReqToken     Header = "Authorization"
+	HeaderSameToken    Header = "SA-SAME-TOKEN"
 )
 
 func GetHeaders() []Header {

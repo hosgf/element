@@ -20,6 +20,10 @@ func MiddlewareCORS(r *ghttp.Request) {
 }
 
 func MiddlewareHeader(r *ghttp.Request) {
+	traceId := GetHeader(r, request.HeaderTraceId)
+	if traceId == "" || len(traceId) < 1 {
+		r.Header.Set(request.HeaderTraceId.String(), request.GenerateRequestID())
+	}
 	for _, header := range request.GetHeaders() {
 		r = SetHandler(r, header)
 	}
