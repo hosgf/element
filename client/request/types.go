@@ -47,6 +47,10 @@ func (h Header) String() string {
 	return string(h)
 }
 
+func (h Header) ToLowerString() string {
+	return strings.ToLower(h.String())
+}
+
 func (h Header) Get(ctx context.Context) string {
 	value := ctx.Value(h.String())
 	if value == nil {
