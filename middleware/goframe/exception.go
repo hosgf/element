@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/hosgf/element/client/request"
+	"github.com/hosgf/element/types"
 
 	"github.com/hosgf/element/config"
 	"github.com/hosgf/element/logger"
@@ -47,9 +48,9 @@ func (h *exceptionHandler) SetErrorNotifier(notifier func(*uerrors.BizError)) {
 // ExceptionHandler GoFrame 异常中间件
 func ExceptionHandler(r *ghttp.Request) {
 	start := time.Now()
-	if r.GetCtxVar("request_id").String() == "" {
+	if r.GetCtxVar(types.RequestIdKey).String() == "" {
 		requestID := request.GenerateRequestID()
-		r.SetCtxVar("request_id", requestID)
+		r.SetCtxVar(types.RequestIdKey, requestID)
 		r.Response.Header().Set(request.HeaderTraceId.String(), requestID)
 	}
 	defer func() {
@@ -68,7 +69,7 @@ func UseException(server *ghttp.Server) *ghttp.Server {
 }
 
 func (h *exceptionHandler) HandlePanic(ctx context.Context, r *ghttp.Request, panicValue interface{}) {
-	requestID := r.GetCtxVar("request_id").String()
+	requestID := r.GetCtxVar(types.RequestIdKey).String()
 	if requestID == "" {
 		requestID = "unknown"
 	}
@@ -96,7 +97,7 @@ func (h *exceptionHandler) HandlePanic(ctx context.Context, r *ghttp.Request, pa
 }
 
 func (h *exceptionHandler) HandleError(ctx context.Context, r *ghttp.Request, err error) {
-	requestID := r.GetCtxVar("request_id").String()
+	requestID := r.GetCtxVar(types.RequestIdKey).String()
 	if requestID == "" {
 		requestID = "unknown"
 	}

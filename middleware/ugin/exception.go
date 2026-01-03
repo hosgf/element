@@ -6,6 +6,7 @@ import (
 
 	gingonic "github.com/gin-gonic/gin"
 	"github.com/hosgf/element/client/request"
+	"github.com/hosgf/element/types"
 
 	"github.com/hosgf/element/config"
 	"github.com/hosgf/element/logger"
@@ -49,9 +50,9 @@ func ExceptionHandler() gingonic.HandlerFunc {
 	h := getHandler()
 	return func(c *gingonic.Context) {
 		start := time.Now()
-		if c.GetString("request_id") == "" {
+		if c.GetString(types.RequestIdKey) == "" {
 			requestID := request.GenerateRequestID()
-			c.Set("request_id", requestID)
+			c.Set(types.RequestIdKey, requestID)
 			c.Writer.Header().Set(request.HeaderTraceId.String(), requestID)
 		}
 		defer func() {
@@ -66,7 +67,7 @@ func ExceptionHandler() gingonic.HandlerFunc {
 }
 
 func (h *exceptionHandler) HandlePanic(ctx context.Context, c *gingonic.Context, panicValue interface{}) {
-	requestID := c.GetString("request_id")
+	requestID := c.GetString(types.RequestIdKey)
 	if requestID == "" {
 		requestID = c.GetHeader(request.HeaderTraceId.String())
 		if requestID == "" {
@@ -101,7 +102,7 @@ func (h *exceptionHandler) HandlePanic(ctx context.Context, c *gingonic.Context,
 }
 
 func (h *exceptionHandler) HandleError(ctx context.Context, c *gingonic.Context, err error) {
-	requestID := c.GetString("request_id")
+	requestID := c.GetString(types.RequestIdKey)
 	if requestID == "" {
 		requestID = c.GetHeader(request.HeaderTraceId.String())
 		if requestID == "" {

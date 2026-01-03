@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/hosgf/element/client/request"
+	"github.com/hosgf/element/types"
 )
 
 // GetRequestID 从context中获取RequestID
@@ -13,7 +14,7 @@ func GetRequestID(ctx context.Context) string {
 	}
 
 	// 尝试从context中获取request_id
-	if requestID, ok := ctx.Value("request_id").(string); ok && requestID != "" {
+	if requestID, ok := ctx.Value(types.RequestIdKey).(string); ok && requestID != "" {
 		return requestID
 	}
 
@@ -30,7 +31,7 @@ func WithRequestID(ctx context.Context, requestID string) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return context.WithValue(ctx, "request_id", requestID)
+	return context.WithValue(ctx, types.RequestIdKey, requestID)
 }
 
 // WithUserID 将UserID添加到context中
@@ -38,7 +39,7 @@ func WithUserID(ctx context.Context, userID string) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return context.WithValue(ctx, "user_id", userID)
+	return context.WithValue(ctx, types.UserIdKey, userID)
 }
 
 // GetUserID 从context中获取UserID
@@ -46,7 +47,7 @@ func GetUserID(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	if userID, ok := ctx.Value("user_id").(string); ok {
+	if userID, ok := ctx.Value(types.UserIdKey).(string); ok {
 		return userID
 	}
 	return ""

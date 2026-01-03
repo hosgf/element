@@ -9,7 +9,12 @@ import (
 	"github.com/hosgf/element/util"
 )
 
-var (
+const (
+	UserIdKey    string = "user_id"
+	RequestIdKey string = "request_id"
+)
+
+const (
 	DefaultServiceType   string = "ClusterIP"
 	DefaultGroupLabel    string = "app"
 	DefaultMinimumCpu    int64  = 100
