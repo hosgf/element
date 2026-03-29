@@ -51,6 +51,11 @@ func ExceptionHandler(r *ghttp.Request) {
 	if r.GetCtxVar(types.RequestIdKey).String() == "" {
 		requestID := request.GenerateRequestID()
 		r.SetCtxVar(types.RequestIdKey, requestID)
+		r.Response.Header().Set(request.HeaderReqId.String(), requestID)
+	}
+	if r.GetCtxVar(types.TraceIdKey).String() == "" {
+		requestID := request.GenerateRequestID()
+		r.SetCtxVar(types.TraceIdKey, requestID)
 		r.Response.Header().Set(request.HeaderTraceId.String(), requestID)
 	}
 	defer func() {

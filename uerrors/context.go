@@ -19,7 +19,7 @@ func GetRequestID(ctx context.Context) string {
 	}
 
 	// 尝试从context中获取X-Request-ID
-	if requestID, ok := ctx.Value(request.HeaderTraceId).(string); ok && requestID != "" {
+	if requestID, ok := ctx.Value(request.HeaderReqId).(string); ok && requestID != "" {
 		return requestID
 	}
 

@@ -9,46 +9,64 @@ import (
 
 // GetReqId 从context中获取ReqId
 func GetReqId(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
+	return getValue(ctx, types.RequestIdKey, request.HeaderReqId)
+}
 
-	// 尝试从context中获取request_id
-	if requestID, ok := ctx.Value(types.RequestIdKey).(string); ok && requestID != "" {
-		return requestID
-	}
+// GetTraceId 从context中获取TraceId
+func GetTraceId(ctx context.Context) string {
+	return getValue(ctx, types.TraceIdKey, request.HeaderTraceId)
+}
 
-	// 尝试从context中获取X-Request-ID
-	if requestID, ok := ctx.Value(request.HeaderTraceId).(string); ok && requestID != "" {
-		return requestID
-	}
-
-	return ""
+// GetTenantId 从context中获取TenantId
+func GetTenantId(ctx context.Context) string {
+	return getValue(ctx, types.TenantIdKey, request.HeaderTenantId)
 }
 
 // GetUserId 从context中获取UserId
 func GetUserId(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	if userID, ok := ctx.Value(types.UserIdKey).(string); ok {
-		return userID
-	}
-	return ""
+	return getValue(ctx, types.UserIdKey, "")
 }
 
 // WithReqId 将ReqId添加到context中
-func WithReqId(ctx context.Context, requestID string) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return context.WithValue(ctx, types.RequestIdKey, requestID)
+func WithReqId(ctx context.Context, data string) context.Context {
+	return withValue(ctx, types.RequestIdKey, data)
+}
+
+// WithTraceId 将TraceId添加到context中
+func WithTraceId(ctx context.Context, data string) context.Context {
+	return withValue(ctx, types.TraceIdKey, data)
+}
+
+// WithTenantId 将TenantId添加到context中
+func WithTenantId(ctx context.Context, data string) context.Context {
+	return withValue(ctx, types.TenantIdKey, data)
 }
 
 // WithUserId 将UserId添加到context中
 func WithUserId(ctx context.Context, userID string) context.Context {
+	return withValue(ctx, types.UserIdKey, userID)
+}
+
+func getValue(ctx context.Context, key string, header request.Header) string {
+	if ctx == nil {
+		return ""
+	}
+
+	if val, ok := ctx.Value(key).(string); ok && val != "" {
+		return val
+	}
+	if len(header) < 1 {
+		return ""
+	}
+	if val, ok := ctx.Value(header).(string); ok && val != "" {
+		return val
+	}
+	return ""
+}
+
+func withValue(ctx context.Context, key, value string) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return context.WithValue(ctx, types.UserIdKey, userID)
+	return context.WithValue(ctx, key, value)
 }

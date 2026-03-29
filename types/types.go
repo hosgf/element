@@ -12,6 +12,8 @@ import (
 const (
 	UserIdKey    string = "user_id"
 	RequestIdKey string = "request_id"
+	TraceIdKey   string = "trace_id"
+	TenantIdKey  string = "tenant_id"
 )
 
 const (

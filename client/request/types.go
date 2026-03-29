@@ -31,7 +31,9 @@ const (
 	HeaderReqAppName   Header = "X-Req-App-Name"
 	HeaderReqClient    Header = "X-Req-Client"
 	HeaderSignature    Header = "X-Req-Secret"
-	HeaderTraceId      Header = "X-Req-Id"
+	HeaderReqId        Header = "X-Req-Id"
+	HeaderTraceId      Header = "X-Trace_Id"
+	HeaderTenantId     Header = "X-Tenant_Id"
 	HeaderUserAgent    Header = "X-User-Agent"
 	HeaderTimestamp    Header = "timestamp"
 	HeaderResponseTime Header = "X-Response-Time"
@@ -40,7 +42,7 @@ const (
 )
 
 func GetHeaders() []Header {
-	return []Header{HeaderReqAppCode, HeaderReqAppName, HeaderReqClient, HeaderTraceId, HeaderUserAgent, HeaderReqToken}
+	return []Header{HeaderReqAppCode, HeaderReqAppName, HeaderReqClient, HeaderReqId, HeaderTraceId, HeaderTenantId, HeaderUserAgent, HeaderReqToken}
 }
 
 func (h Header) String() string {

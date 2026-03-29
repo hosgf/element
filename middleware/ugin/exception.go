@@ -53,6 +53,11 @@ func ExceptionHandler() gingonic.HandlerFunc {
 		if c.GetString(types.RequestIdKey) == "" {
 			requestID := request.GenerateRequestID()
 			c.Set(types.RequestIdKey, requestID)
+			c.Writer.Header().Set(request.HeaderReqId.String(), requestID)
+		}
+		if c.GetString(types.TraceIdKey) == "" {
+			requestID := request.GenerateRequestID()
+			c.Set(types.TraceIdKey, requestID)
 			c.Writer.Header().Set(request.HeaderTraceId.String(), requestID)
 		}
 		defer func() {
