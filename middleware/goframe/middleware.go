@@ -8,10 +8,9 @@ import (
 )
 
 func SetMiddleware(s *ghttp.Server, handlers ...ghttp.HandlerFunc) *ghttp.Server {
-	hs := []ghttp.HandlerFunc{MiddlewareCORS, MiddlewareHeader, MiddlewareCookies}
-	if len(handlers) > 0 {
-		hs = append(hs, handlers...)
-	}
+	hs := make([]ghttp.HandlerFunc, 0, 3+len(handlers))
+	hs = append(hs, MiddlewareCORS, MiddlewareHeader, MiddlewareCookies)
+	hs = append(hs, handlers...)
 	s.Use(hs...)
 	return s
 }
@@ -25,29 +24,33 @@ func MiddlewareHeader(r *ghttp.Request) {
 	WithValue(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID)
 	WithValue(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
 	for _, header := range request.GetHeaders() {
-		r = SetHandler(r, header)
+		if header == request.HeaderTraceId || header == request.HeaderReqId {
+			continue
+		}
+		SetHandler(r, header)
 	}
 	r.Middleware.Next()
 }
 
 func MiddlewareCookies(r *ghttp.Request) {
-	r = SetCookies(r)
+	SetCookies(r)
 	r.Middleware.Next()
 }
 
 func SetCookies(req *ghttp.Request) *ghttp.Request {
 	cookies := req.Cookies()
-	cookieMap := make(map[string]string)
-	for _, cookie := range cookies {
-		cookieMap[cookie.Name] = cookie.Value
-	}
-	if len(cookieMap) < 1 {
+	if len(cookies) == 0 {
 		return req
+	}
+	cookieMap := make(map[string]string, len(cookies))
+	for _, c := range cookies {
+		cookieMap[c.Name] = c.Value
 	}
 	req.SetCtxVar(request.CookieKey, cookieMap)
 	return req
 }
 
+// SetHandler 将非空请求头写入同名 ctx 变量。
 func SetHandler(req *ghttp.Request, header request.Header) *ghttp.Request {
 	if value := GetHeader(req, header); len(value) > 0 {
 		req.SetCtxVar(header.String(), value)
@@ -59,17 +62,22 @@ func GetHeader(req *ghttp.Request, key request.Header) string {
 	return req.GetHeader(key.String())
 }
 
-func WithValue(req *ghttp.Request, key string, header request.Header, data func() string) *ghttp.Request {
+// WithValue 优先用请求头；无请求头时用 defaultID 生成，并写回请求头与 ctx（含 types 侧 key）。
+func WithValue(req *ghttp.Request, ctxKey string, header request.Header, defaultID func() string) *ghttp.Request {
 	if value := GetHeader(req, header); len(value) > 0 {
 		req.SetCtxVar(header.String(), value)
-		req.SetCtxVar(key, value)
+		req.SetCtxVar(ctxKey, value)
 		return req
 	}
-	val := data()
-	if len(val) < 1 {
-		req.Header.Set(header.String(), val)
-		req.SetCtxVar(header.String(), val)
-		req.SetCtxVar(key, val)
+	if defaultID == nil {
+		return req
 	}
+	val := defaultID()
+	if len(val) == 0 {
+		return req
+	}
+	req.Header.Set(header.String(), val)
+	req.SetCtxVar(header.String(), val)
+	req.SetCtxVar(ctxKey, val)
 	return req
 }

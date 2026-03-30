@@ -8,71 +8,63 @@ import (
 	"github.com/hosgf/element/client/request"
 	"github.com/hosgf/element/types"
 
-	"github.com/hosgf/element/config"
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/result"
 	"github.com/hosgf/element/uerrors"
 )
 
-// exceptionHandler GoFrame 的全局异常处理器
-type exceptionHandler struct {
-	isProduction     bool
-	enableStackTrace bool
-	errorNotifier    func(*uerrors.BizError)
+type recoverHandler struct {
+	notify func(*uerrors.BizError)
 }
 
-var handler *exceptionHandler
+var recoverDefault *recoverHandler
 
-func initHandler() {
-	isProduction := !config.Debug
-	handler = &exceptionHandler{
-		isProduction:     isProduction,
-		enableStackTrace: !isProduction,
-	}
-	handler.SetErrorNotifier(func(err *uerrors.BizError) {
+func initRecover() {
+	recoverDefault = &recoverHandler{}
+	recoverDefault.SetNotify(func(err *uerrors.BizError) {
 		logger.Errorf(context.Background(), "Global error notification: %s", err.Error())
 	})
 }
 
-func getHandler() *exceptionHandler {
-	if handler == nil {
-		initHandler()
+func getRecover() *recoverHandler {
+	if recoverDefault == nil {
+		initRecover()
 	}
-	return handler
+	return recoverDefault
 }
 
-func (h *exceptionHandler) SetErrorNotifier(notifier func(*uerrors.BizError)) {
-	h.errorNotifier = notifier
+func (h *recoverHandler) SetNotify(fn func(*uerrors.BizError)) {
+	h.notify = fn
 }
 
-// ExceptionHandler GoFrame 异常中间件
-func ExceptionHandler(r *ghttp.Request) {
+func ensureIDs(r *ghttp.Request) {
+	bindCtxHeader(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID)
+	bindCtxHeader(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
+}
+
+// Recover 补齐请求标识、记录耗时、捕获 panic 并统一错误响应。
+func Recover(r *ghttp.Request) {
 	start := time.Now()
-	WithCtxValue(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID)
-	WithCtxValue(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
+	ensureIDs(r)
 	defer func() {
 		r.Response.Header().Set(request.HeaderResponseTime.String(), time.Since(start).String())
-		if panicValue := recover(); panicValue != nil {
-			getHandler().HandlePanic(r.Context(), r, panicValue)
+		if v := recover(); v != nil {
+			getRecover().handlePanic(r.Context(), r, v)
 		}
 	}()
 	r.Middleware.Next()
 }
 
-// UseException 绑定异常中间件
-func UseException(server *ghttp.Server) *ghttp.Server {
-	server.Use(ExceptionHandler)
+// UseRecover 注册 Recover 中间件。
+func UseRecover(server *ghttp.Server) *ghttp.Server {
+	server.Use(Recover)
 	return server
 }
 
-func (h *exceptionHandler) HandlePanic(ctx context.Context, r *ghttp.Request, panicValue interface{}) {
-	requestID := r.GetCtxVar(types.RequestIdKey).String()
-	if requestID == "" {
-		requestID = "unknown"
-	}
+func (h *recoverHandler) handlePanic(ctx context.Context, r *ghttp.Request, v interface{}) {
 	var bizErr *uerrors.BizError
-	if err, ok := panicValue.(error); ok {
-		if be, isBiz := uerrors.IsBizError(err); isBiz {
+	if err, ok := v.(error); ok {
+		if be, ok := uerrors.IsBizError(err); ok {
 			bizErr = be
 		} else {
 			bizErr = uerrors.WrapError(err, uerrors.ErrorTypeSystem, uerrors.ErrorLevelCritical, result.SC_FAILURE, "系统内部错误")
@@ -85,34 +77,33 @@ func (h *exceptionHandler) HandlePanic(ctx context.Context, r *ghttp.Request, pa
 			"系统内部错误",
 		)
 	}
-	bizErr.RequestID = requestID
-	h.logError(ctx, bizErr)
-	if h.errorNotifier != nil {
-		h.errorNotifier(bizErr)
-	}
-	h.writeErrorResponse(r, bizErr)
+	h.respond(ctx, r, bizErr)
 }
 
-func (h *exceptionHandler) HandleError(ctx context.Context, r *ghttp.Request, err error) {
-	requestID := r.GetCtxVar(types.RequestIdKey).String()
-	if requestID == "" {
-		requestID = "unknown"
-	}
+func (h *recoverHandler) handleErr(ctx context.Context, r *ghttp.Request, err error) {
 	var bizErr *uerrors.BizError
-	if be, isBiz := uerrors.IsBizError(err); isBiz {
+	if be, ok := uerrors.IsBizError(err); ok {
 		bizErr = be
 	} else {
 		bizErr = uerrors.WrapError(err, uerrors.ErrorTypeSystem, uerrors.ErrorLevelError, result.SC_FAILURE, "系统错误")
 	}
-	bizErr.RequestID = requestID
-	h.logError(ctx, bizErr)
-	if h.errorNotifier != nil {
-		h.errorNotifier(bizErr)
-	}
-	h.writeErrorResponse(r, bizErr)
+	h.respond(ctx, r, bizErr)
 }
 
-func (h *exceptionHandler) logError(ctx context.Context, err *uerrors.BizError) {
+func (h *recoverHandler) respond(ctx context.Context, r *ghttp.Request, bizErr *uerrors.BizError) {
+	requestID := r.GetCtxVar(types.RequestIdKey).String()
+	if requestID == "" {
+		requestID = "unknown"
+	}
+	bizErr.RequestID = requestID
+	h.logErr(ctx, bizErr)
+	if h.notify != nil {
+		h.notify(bizErr)
+	}
+	h.writeErr(r, bizErr)
+}
+
+func (h *recoverHandler) logErr(ctx context.Context, err *uerrors.BizError) {
 	logMsg := "[" + err.LevelString() + "] " + err.TypeString() + " - " + err.Message
 	if err.Details != "" {
 		logMsg += " | Details: " + err.Details
@@ -122,17 +113,15 @@ func (h *exceptionHandler) logError(ctx context.Context, err *uerrors.BizError) 
 	}
 	switch err.Level {
 	case uerrors.ErrorLevelInfo:
-		logger.Log().Infof(ctx, logMsg)
+		logger.Log().Infof(ctx, "%s", logMsg)
 	case uerrors.ErrorLevelWarning:
-		logger.Warningf(ctx, logMsg)
-	case uerrors.ErrorLevelError:
-		logger.Errorf(ctx, logMsg)
-	case uerrors.ErrorLevelCritical:
-		logger.Errorf(ctx, logMsg)
+		logger.Warningf(ctx, "%s", logMsg)
+	case uerrors.ErrorLevelError, uerrors.ErrorLevelCritical:
+		logger.Errorf(ctx, "%s", logMsg)
 	}
 }
 
-func (h *exceptionHandler) writeErrorResponse(r *ghttp.Request, err *uerrors.BizError) {
+func (h *recoverHandler) writeErr(r *ghttp.Request, err *uerrors.BizError) {
 	// 仅返回顶层 code 与 message
 	response := result.NewResponse()
 	response.Code = err.Code
@@ -140,7 +129,7 @@ func (h *exceptionHandler) writeErrorResponse(r *ghttp.Request, err *uerrors.Biz
 	result.Writer(r, response)
 }
 
-func WithCtxValue(r *ghttp.Request, ctxKey string, header request.Header, data func() string) {
+func bindCtxHeader(r *ghttp.Request, ctxKey string, header request.Header, defaultID func() string) {
 	if r.GetCtxVar(ctxKey).String() != "" {
 		return
 	}
@@ -148,8 +137,11 @@ func WithCtxValue(r *ghttp.Request, ctxKey string, header request.Header, data f
 	var id string
 	if len(headerVal) > 0 {
 		id = headerVal
-	} else {
-		id = data()
+	} else if defaultID != nil {
+		id = defaultID()
+	}
+	if id == "" {
+		return
 	}
 	r.SetCtxVar(header.String(), id)
 	r.SetCtxVar(ctxKey, id)
