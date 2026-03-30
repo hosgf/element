@@ -65,7 +65,7 @@ func GetHeader(req *ghttp.Request, key request.Header) string {
 // WithValue 优先用请求头；无请求头时用 defaultID 生成；Ctx 仅写入 ctxKey（types.*），HTTP 仍用 header 名。
 func WithValue(req *ghttp.Request, ctxKey string, header request.Header, defaultID func() string) *ghttp.Request {
 	if value := GetHeader(req, header); len(value) > 0 {
-		req.SetCtxVar(ctxKey, value)
+		SetCtxVar(req, ctxKey, value)
 		return req
 	}
 	if defaultID == nil {
@@ -78,4 +78,11 @@ func WithValue(req *ghttp.Request, ctxKey string, header request.Header, default
 	req.Header.Set(header.String(), val)
 	req.SetCtxVar(ctxKey, val)
 	return req
+}
+
+func SetCtxVar(req *ghttp.Request, ctxKey string, value string) {
+	if req.GetCtxVar(ctxKey).String() != "" {
+		return
+	}
+	req.SetCtxVar(ctxKey, value)
 }
