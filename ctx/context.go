@@ -61,5 +61,8 @@ func withValue(ctx context.Context, key, value string) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if val, ok := ctx.Value(key).(string); ok && val != "" {
+		return ctx
+	}
 	return context.WithValue(ctx, key, value)
 }

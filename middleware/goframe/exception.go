@@ -122,7 +122,6 @@ func (h *recoverHandler) logErr(ctx context.Context, err *uerrors.BizError) {
 }
 
 func (h *recoverHandler) writeErr(r *ghttp.Request, err *uerrors.BizError) {
-	// 仅返回顶层 code 与 message
 	response := result.NewResponse()
 	response.Code = err.Code
 	response.Message = err.Message
