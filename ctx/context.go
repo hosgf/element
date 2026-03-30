@@ -3,28 +3,27 @@ package ctx
 import (
 	"context"
 
-	"github.com/hosgf/element/client/request"
 	"github.com/hosgf/element/types"
 )
 
 // GetReqId 从context中获取ReqId
 func GetReqId(ctx context.Context) string {
-	return getValue(ctx, types.RequestIdKey, request.HeaderReqId)
+	return getValue(ctx, types.RequestIdKey)
 }
 
 // GetTraceId 从context中获取TraceId
 func GetTraceId(ctx context.Context) string {
-	return getValue(ctx, types.TraceIdKey, request.HeaderTraceId)
+	return getValue(ctx, types.TraceIdKey)
 }
 
 // GetTenantId 从context中获取TenantId
 func GetTenantId(ctx context.Context) string {
-	return getValue(ctx, types.TenantIdKey, request.HeaderTenantId)
+	return getValue(ctx, types.TenantIdKey)
 }
 
 // GetUserId 从context中获取UserId
 func GetUserId(ctx context.Context) string {
-	return getValue(ctx, types.UserIdKey, "")
+	return getValue(ctx, types.UserIdKey)
 }
 
 // WithReqId 将ReqId添加到context中
@@ -47,18 +46,12 @@ func WithUserId(ctx context.Context, userID string) context.Context {
 	return withValue(ctx, types.UserIdKey, userID)
 }
 
-func getValue(ctx context.Context, key string, header request.Header) string {
+func getValue(ctx context.Context, key string) string {
 	if ctx == nil {
 		return ""
 	}
 
 	if val, ok := ctx.Value(key).(string); ok && val != "" {
-		return val
-	}
-	if len(header) < 1 {
-		return ""
-	}
-	if val, ok := ctx.Value(header).(string); ok && val != "" {
 		return val
 	}
 	return ""

@@ -143,7 +143,6 @@ func bindCtxHeader(r *ghttp.Request, ctxKey string, header request.Header, defau
 	if id == "" {
 		return
 	}
-	r.SetCtxVar(header.String(), id)
 	r.SetCtxVar(ctxKey, id)
 	r.Response.Header().Set(header.String(), id)
 }

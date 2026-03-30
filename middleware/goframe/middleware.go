@@ -50,7 +50,7 @@ func SetCookies(req *ghttp.Request) *ghttp.Request {
 	return req
 }
 
-// SetHandler 将非空请求头写入同名 ctx 变量。
+// SetHandler 将非空请求头写入同名 ctx 变量（Trace / ReqId 已由 WithValue 写入 types.*，循环中会跳过）。
 func SetHandler(req *ghttp.Request, header request.Header) *ghttp.Request {
 	if value := GetHeader(req, header); len(value) > 0 {
 		req.SetCtxVar(header.String(), value)
@@ -62,10 +62,9 @@ func GetHeader(req *ghttp.Request, key request.Header) string {
 	return req.GetHeader(key.String())
 }
 
-// WithValue 优先用请求头；无请求头时用 defaultID 生成，并写回请求头与 ctx（含 types 侧 key）。
+// WithValue 优先用请求头；无请求头时用 defaultID 生成；Ctx 仅写入 ctxKey（types.*），HTTP 仍用 header 名。
 func WithValue(req *ghttp.Request, ctxKey string, header request.Header, defaultID func() string) *ghttp.Request {
 	if value := GetHeader(req, header); len(value) > 0 {
-		req.SetCtxVar(header.String(), value)
 		req.SetCtxVar(ctxKey, value)
 		return req
 	}
@@ -77,7 +76,6 @@ func WithValue(req *ghttp.Request, ctxKey string, header request.Header, default
 		return req
 	}
 	req.Header.Set(header.String(), val)
-	req.SetCtxVar(header.String(), val)
 	req.SetCtxVar(ctxKey, val)
 	return req
 }
