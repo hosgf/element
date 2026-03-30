@@ -48,16 +48,8 @@ func (h *exceptionHandler) SetErrorNotifier(notifier func(*uerrors.BizError)) {
 // ExceptionHandler GoFrame 异常中间件
 func ExceptionHandler(r *ghttp.Request) {
 	start := time.Now()
-	if r.GetCtxVar(types.RequestIdKey).String() == "" {
-		requestID := request.GenerateRequestID()
-		r.SetCtxVar(types.RequestIdKey, requestID)
-		r.Response.Header().Set(request.HeaderReqId.String(), requestID)
-	}
-	if r.GetCtxVar(types.TraceIdKey).String() == "" {
-		requestID := request.GenerateRequestID()
-		r.SetCtxVar(types.TraceIdKey, requestID)
-		r.Response.Header().Set(request.HeaderTraceId.String(), requestID)
-	}
+	WithCtxValue(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID)
+	WithCtxValue(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
 	defer func() {
 		r.Response.Header().Set(request.HeaderResponseTime.String(), time.Since(start).String())
 		if panicValue := recover(); panicValue != nil {
@@ -146,4 +138,20 @@ func (h *exceptionHandler) writeErrorResponse(r *ghttp.Request, err *uerrors.Biz
 	response.Code = err.Code
 	response.Message = err.Message
 	result.Writer(r, response)
+}
+
+func WithCtxValue(r *ghttp.Request, ctxKey string, header request.Header, data func() string) {
+	if r.GetCtxVar(ctxKey).String() != "" {
+		return
+	}
+	headerVal := GetHeader(r, header)
+	var id string
+	if len(headerVal) > 0 {
+		id = headerVal
+	} else {
+		id = data()
+	}
+	r.SetCtxVar(header.String(), id)
+	r.SetCtxVar(ctxKey, id)
+	r.Response.Header().Set(header.String(), id)
 }
