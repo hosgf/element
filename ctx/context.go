@@ -6,6 +6,13 @@ import (
 	"github.com/hosgf/element/types"
 )
 
+func Context(ctx context.Context) context.Context {
+	if ctx != nil {
+		return ctx
+	}
+	return context.Background()
+}
+
 // GetTenantId 从context中获取TenantId
 func GetTenantId(ctx context.Context) string {
 	return GetValue(ctx, types.TenantIdKey)
@@ -47,9 +54,7 @@ func WithUserId(ctx context.Context, userID string) context.Context {
 }
 
 func WithValue(ctx context.Context, key, value string) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	ctx = Context(ctx)
 	if value == "" {
 		return ctx
 	}
