@@ -23,8 +23,13 @@ func MiddlewareCORS(r *ghttp.Request) {
 func MiddlewareHeader(r *ghttp.Request) {
 	WithValue(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID)
 	WithValue(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
+	WithValue(r, types.TenantIdKey, request.HeaderTenantId, nil)
+	WithValue(r, types.UserIdKey, request.HeaderUserId, nil)
 	for _, header := range request.GetHeaders() {
-		if header == request.HeaderTraceId || header == request.HeaderReqId {
+		if header == request.HeaderTraceId ||
+			header == request.HeaderReqId ||
+			header == request.HeaderTenantId ||
+			header == request.HeaderUserId {
 			continue
 		}
 		SetHandler(r, header)
