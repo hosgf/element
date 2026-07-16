@@ -11,10 +11,15 @@ import (
 )
 
 const (
-	UserIdKey    string = "user_id"
-	RequestIdKey string = "request_id"
-	TraceIdKey   string = "trace_id"
-	TenantIdKey  string = "tenant_id"
+	UserIdKey     string = "user_id"
+	RequestIdKey  string = "request_id"
+	TraceIdKey    string = "trace_id"
+	TenantIdKey   string = "tenant_id"
+	ClientIPKey   string = "client_ip"
+	DeviceCodeKey string = "device_code"
+	DeviceTypeKey string = "device_type"
+	UserAgentKey  string = "user_agent"
+	ReqClientKey  string = "req_client"
 )
 
 const (

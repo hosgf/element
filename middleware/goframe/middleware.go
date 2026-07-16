@@ -7,6 +7,24 @@ import (
 	"github.com/hosgf/element/types"
 )
 
+type headerBinding struct {
+	ctxKey    string
+	header    request.Header
+	defaultID func() string
+}
+
+var contextHeaders = []headerBinding{
+	{types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID},
+	{types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID},
+	{types.TenantIdKey, request.HeaderTenantId, nil},
+	{types.UserIdKey, request.HeaderUserId, nil},
+	{types.ClientIPKey, request.HeaderRealIP, nil},
+	{types.DeviceCodeKey, request.HeaderDeviceCode, nil},
+	{types.DeviceTypeKey, request.HeaderDeviceType, nil},
+	{types.UserAgentKey, request.HeaderUserAgent, nil},
+	{types.ReqClientKey, request.HeaderReqClient, nil},
+}
+
 func SetMiddleware(s *ghttp.Server, handlers ...ghttp.HandlerFunc) *ghttp.Server {
 	hs := make([]ghttp.HandlerFunc, 0, 3+len(handlers))
 	hs = append(hs, MiddlewareCORS, MiddlewareHeader, MiddlewareCookies)
@@ -21,20 +39,21 @@ func MiddlewareCORS(r *ghttp.Request) {
 }
 
 func MiddlewareHeader(r *ghttp.Request) {
-	WithValue(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID)
-	WithValue(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
-	WithValue(r, types.TenantIdKey, request.HeaderTenantId, nil)
-	WithValue(r, types.UserIdKey, request.HeaderUserId, nil)
-	for _, header := range request.GetHeaders() {
-		if header == request.HeaderTraceId ||
-			header == request.HeaderReqId ||
-			header == request.HeaderTenantId ||
-			header == request.HeaderUserId {
-			continue
-		}
+	BindContextHeaders(r)
+	SetHeaders(r, request.GetHeaders()...)
+	r.Middleware.Next()
+}
+
+func BindContextHeaders(r *ghttp.Request) {
+	for _, binding := range contextHeaders {
+		WithValue(r, binding.ctxKey, binding.header, binding.defaultID)
+	}
+}
+
+func SetHeaders(r *ghttp.Request, headers ...request.Header) {
+	for _, header := range headers {
 		SetHandler(r, header)
 	}
-	r.Middleware.Next()
 }
 
 func MiddlewareCookies(r *ghttp.Request) {
@@ -55,7 +74,7 @@ func SetCookies(req *ghttp.Request) *ghttp.Request {
 	return req
 }
 
-// SetHandler 将非空请求头写入同名 ctx 变量（Trace / ReqId 已由 WithValue 写入 types.*，循环中会跳过）。
+// SetHandler 将非空请求头写入同名 ctx 变量，用于后续 HTTP 透传。
 func SetHandler(req *ghttp.Request, header request.Header) *ghttp.Request {
 	if value := GetHeader(req, header); len(value) > 0 {
 		req.SetCtxVar(header.String(), value)
@@ -67,10 +86,11 @@ func GetHeader(req *ghttp.Request, key request.Header) string {
 	return req.GetHeader(key.String())
 }
 
-// WithValue 优先用请求头；无请求头时用 defaultID 生成；Ctx 仅写入 ctxKey（types.*），HTTP 仍用 header 名。
+// WithValue 优先用请求头；无请求头时用 defaultID 生成；同时写入语义 ctxKey 与 header 名。
 func WithValue(req *ghttp.Request, ctxKey string, header request.Header, defaultID func() string) *ghttp.Request {
 	if value := GetHeader(req, header); len(value) > 0 {
 		SetCtxVar(req, ctxKey, value)
+		SetCtxVar(req, header.String(), value)
 		return req
 	}
 	if defaultID == nil {
@@ -82,6 +102,7 @@ func WithValue(req *ghttp.Request, ctxKey string, header request.Header, default
 	}
 	req.Header.Set(header.String(), val)
 	req.SetCtxVar(ctxKey, val)
+	req.SetCtxVar(header.String(), val)
 	return req
 }
 
