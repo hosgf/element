@@ -1,6 +1,8 @@
 package goframe
 
 import (
+	"strings"
+
 	"github.com/gogf/gf/v2/net/ghttp"
 
 	"github.com/hosgf/element/client/request"
@@ -8,13 +10,13 @@ import (
 )
 
 type headerBinding struct {
-	ctxKey    string
-	header    request.Header
-	defaultID func() string
+	ctxKey string
+	header request.Header
+	gen    func() string
 }
 
 var contextHeaders = []headerBinding{
-	{types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID},
+	{types.TraceIdKey, request.HeaderTraceId, request.GenerateTraceID},
 	{types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID},
 	{types.TenantIdKey, request.HeaderTenantId, nil},
 	{types.UserIdKey, request.HeaderUserId, nil},
@@ -45,8 +47,8 @@ func MiddlewareHeader(r *ghttp.Request) {
 }
 
 func BindContextHeaders(r *ghttp.Request) {
-	for _, binding := range contextHeaders {
-		WithValue(r, binding.ctxKey, binding.header, binding.defaultID)
+	for _, b := range contextHeaders {
+		WithValue(r, b.ctxKey, b.header, b.gen)
 	}
 }
 
@@ -76,39 +78,37 @@ func SetCookies(req *ghttp.Request) *ghttp.Request {
 
 // SetHandler 将非空请求头写入同名 ctx 变量，用于后续 HTTP 透传。
 func SetHandler(req *ghttp.Request, header request.Header) *ghttp.Request {
-	if value := GetHeader(req, header); len(value) > 0 {
+	if value := GetHeader(req, header); value != "" {
 		req.SetCtxVar(header.String(), value)
 	}
 	return req
 }
 
 func GetHeader(req *ghttp.Request, key request.Header) string {
-	return req.GetHeader(key.String())
+	return strings.TrimSpace(req.GetHeader(key.String()))
 }
 
-// WithValue 优先用请求头；无请求头时用 defaultID 生成；同时写入语义 ctxKey 与 header 名。
-func WithValue(req *ghttp.Request, ctxKey string, header request.Header, defaultID func() string) *ghttp.Request {
-	if value := GetHeader(req, header); len(value) > 0 {
-		SetCtxVar(req, ctxKey, value)
-		SetCtxVar(req, header.String(), value)
-		return req
+// WithValue 优先用请求头；无则用 gen 生成；写入语义 ctxKey 与 header 名。
+func WithValue(req *ghttp.Request, ctxKey string, header request.Header, gen func() string) *ghttp.Request {
+	value := GetHeader(req, header)
+	if value == "" {
+		if gen == nil {
+			return req
+		}
+		value = gen()
+		if value == "" {
+			return req
+		}
+		req.Header.Set(header.String(), value)
 	}
-	if defaultID == nil {
-		return req
-	}
-	val := defaultID()
-	if len(val) == 0 {
-		return req
-	}
-	req.Header.Set(header.String(), val)
-	req.SetCtxVar(ctxKey, val)
-	req.SetCtxVar(header.String(), val)
+	setCtx(req, ctxKey, value)
+	setCtx(req, header.String(), value)
 	return req
 }
 
-func SetCtxVar(req *ghttp.Request, ctxKey string, value string) {
-	if req.GetCtxVar(ctxKey).String() != "" {
+func setCtx(req *ghttp.Request, key, value string) {
+	if req.GetCtxVar(key).String() != "" {
 		return
 	}
-	req.SetCtxVar(ctxKey, value)
+	req.SetCtxVar(key, value)
 }

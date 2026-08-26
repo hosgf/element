@@ -2,6 +2,7 @@ package ugin
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -29,13 +30,13 @@ func MiddlewareHeader() gin.HandlerFunc {
 }
 
 func SetHandler(ctx context.Context, c *gin.Context, header request.Header) context.Context {
-	if value := GetHeader(c, header); len(value) > 0 {
+	if value := GetHeader(c, header); value != "" {
 		ctx = context.WithValue(ctx, header.String(), value)
 		c.Set(header.String(), value)
 	}
 	return ctx
 }
 
-func GetHeader(context *gin.Context, key request.Header) string {
-	return context.GetHeader(key.String())
+func GetHeader(c *gin.Context, key request.Header) string {
+	return strings.TrimSpace(c.GetHeader(key.String()))
 }

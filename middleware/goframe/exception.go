@@ -20,10 +20,11 @@ type recoverHandler struct {
 var recoverDefault *recoverHandler
 
 func initRecover() {
-	recoverDefault = &recoverHandler{}
-	recoverDefault.SetNotify(func(err *uerrors.BizError) {
-		logger.Errorf(context.Background(), "Global error notification: %s", err.Error())
-	})
+	recoverDefault = &recoverHandler{
+		notify: func(err *uerrors.BizError) {
+			logger.Errorf(context.Background(), "Global error notification: %s", err.Error())
+		},
+	}
 }
 
 func getRecover() *recoverHandler {
@@ -33,13 +34,23 @@ func getRecover() *recoverHandler {
 	return recoverDefault
 }
 
-func (h *recoverHandler) SetNotify(fn func(*uerrors.BizError)) {
-	h.notify = fn
+// SetNotify 设置全局错误通知回调。
+func SetNotify(fn func(*uerrors.BizError)) {
+	getRecover().notify = fn
 }
 
+// ensureIDs 补齐 TraceId/RequestId，并回写响应头。
 func ensureIDs(r *ghttp.Request) {
-	bindCtxHeader(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateRequestID)
-	bindCtxHeader(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
+	WithValue(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateTraceID)
+	WithValue(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
+	echoHeader(r, types.TraceIdKey, request.HeaderTraceId)
+	echoHeader(r, types.RequestIdKey, request.HeaderReqId)
+}
+
+func echoHeader(r *ghttp.Request, ctxKey string, header request.Header) {
+	if id := r.GetCtxVar(ctxKey).String(); id != "" {
+		r.Response.Header().Set(header.String(), id)
+	}
 }
 
 // Recover 补齐请求标识、记录耗时、捕获 panic 并统一错误响应。
@@ -75,27 +86,14 @@ func (h *recoverHandler) handlePanic(ctx context.Context, r *ghttp.Request, v in
 			uerrors.ErrorLevelCritical,
 			result.SC_FAILURE,
 			"系统内部错误",
+			"panic",
 		)
 	}
 	h.respond(ctx, r, bizErr)
 }
 
-func (h *recoverHandler) handleErr(ctx context.Context, r *ghttp.Request, err error) {
-	var bizErr *uerrors.BizError
-	if be, ok := uerrors.IsBizError(err); ok {
-		bizErr = be
-	} else {
-		bizErr = uerrors.WrapError(err, uerrors.ErrorTypeSystem, uerrors.ErrorLevelError, result.SC_FAILURE, "系统错误")
-	}
-	h.respond(ctx, r, bizErr)
-}
-
 func (h *recoverHandler) respond(ctx context.Context, r *ghttp.Request, bizErr *uerrors.BizError) {
-	requestID := r.GetCtxVar(types.RequestIdKey).String()
-	if requestID == "" {
-		requestID = "unknown"
-	}
-	bizErr.RequestID = requestID
+	bizErr.RequestID = r.GetCtxVar(types.RequestIdKey).String()
 	h.logErr(ctx, bizErr)
 	if h.notify != nil {
 		h.notify(bizErr)
@@ -104,20 +102,17 @@ func (h *recoverHandler) respond(ctx context.Context, r *ghttp.Request, bizErr *
 }
 
 func (h *recoverHandler) logErr(ctx context.Context, err *uerrors.BizError) {
-	logMsg := "[" + err.LevelString() + "] " + err.TypeString() + " - " + err.Message
+	msg := "[" + err.LevelString() + "] " + err.TypeString() + " - " + err.Message
 	if err.Details != "" {
-		logMsg += " | Details: " + err.Details
-	}
-	if err.RequestID != "" {
-		logMsg += " | RequestID: " + err.RequestID
+		msg += " | Details: " + err.Details
 	}
 	switch err.Level {
 	case uerrors.ErrorLevelInfo:
-		logger.Log().Infof(ctx, "%s", logMsg)
+		logger.Infof(ctx, "%s", msg)
 	case uerrors.ErrorLevelWarning:
-		logger.Warningf(ctx, "%s", logMsg)
-	case uerrors.ErrorLevelError, uerrors.ErrorLevelCritical:
-		logger.Errorf(ctx, "%s", logMsg)
+		logger.Warningf(ctx, "%s", msg)
+	default:
+		logger.Errorf(ctx, "%s", msg)
 	}
 }
 
@@ -126,22 +121,4 @@ func (h *recoverHandler) writeErr(r *ghttp.Request, err *uerrors.BizError) {
 	response.Code = err.Code
 	response.Message = err.Message
 	result.Writer(r, response)
-}
-
-func bindCtxHeader(r *ghttp.Request, ctxKey string, header request.Header, defaultID func() string) {
-	if r.GetCtxVar(ctxKey).String() != "" {
-		return
-	}
-	headerVal := GetHeader(r, header)
-	var id string
-	if len(headerVal) > 0 {
-		id = headerVal
-	} else if defaultID != nil {
-		id = defaultID()
-	}
-	if id == "" {
-		return
-	}
-	r.SetCtxVar(ctxKey, id)
-	r.Response.Header().Set(header.String(), id)
 }

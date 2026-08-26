@@ -2,36 +2,30 @@ package ugin
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	gingonic "github.com/gin-gonic/gin"
 	"github.com/hosgf/element/client/request"
 	"github.com/hosgf/element/types"
 
-	"github.com/hosgf/element/config"
 	"github.com/hosgf/element/logger"
 	"github.com/hosgf/element/model/result"
 	"github.com/hosgf/element/uerrors"
 )
 
-// exceptionHandler Gin 的全局异常处理器
 type exceptionHandler struct {
-	isProduction     bool
-	enableStackTrace bool
-	errorNotifier    func(*uerrors.BizError)
+	notify func(*uerrors.BizError)
 }
 
 var handler *exceptionHandler
 
 func initHandler() {
-	isProduction := !config.Debug
 	handler = &exceptionHandler{
-		isProduction:     isProduction,
-		enableStackTrace: !isProduction,
+		notify: func(err *uerrors.BizError) {
+			logger.Errorf(context.Background(), "Global error notification: %s", err.Error())
+		},
 	}
-	handler.SetErrorNotifier(func(err *uerrors.BizError) {
-		logger.Errorf(context.Background(), "Global error notification: %s", err.Error())
-	})
 }
 
 func getHandler() *exceptionHandler {
@@ -41,29 +35,21 @@ func getHandler() *exceptionHandler {
 	return handler
 }
 
-func (h *exceptionHandler) SetErrorNotifier(notifier func(*uerrors.BizError)) {
-	h.errorNotifier = notifier
+// SetNotify 设置全局错误通知回调。
+func SetNotify(fn func(*uerrors.BizError)) {
+	getHandler().notify = fn
 }
 
-// ExceptionHandler 返回 Gin 中间件
+// ExceptionHandler 返回 Gin 中间件。
 func ExceptionHandler() gingonic.HandlerFunc {
 	h := getHandler()
 	return func(c *gingonic.Context) {
 		start := time.Now()
-		if c.GetString(types.RequestIdKey) == "" {
-			requestID := request.GenerateRequestID()
-			c.Set(types.RequestIdKey, requestID)
-			c.Writer.Header().Set(request.HeaderReqId.String(), requestID)
-		}
-		if c.GetString(types.TraceIdKey) == "" {
-			requestID := request.GenerateRequestID()
-			c.Set(types.TraceIdKey, requestID)
-			c.Writer.Header().Set(request.HeaderTraceId.String(), requestID)
-		}
+		ensureIDs(c)
 		defer func() {
 			c.Writer.Header().Set(request.HeaderResponseTime.String(), time.Since(start).String())
-			if panicValue := recover(); panicValue != nil {
-				h.HandlePanic(c.Request.Context(), c, panicValue)
+			if v := recover(); v != nil {
+				h.handlePanic(c.Request.Context(), c, v)
 				c.Abort()
 			}
 		}()
@@ -71,18 +57,37 @@ func ExceptionHandler() gingonic.HandlerFunc {
 	}
 }
 
-func (h *exceptionHandler) HandlePanic(ctx context.Context, c *gingonic.Context, panicValue interface{}) {
-	requestID := c.GetString(types.RequestIdKey)
-	if requestID == "" {
-		requestID = c.GetHeader(request.HeaderTraceId.String())
-		if requestID == "" {
-			requestID = "unknown"
-		}
-	}
+// ensureIDs 从请求头取或生成 RequestId/TraceId，写入 gin + request ctx，并回写响应头。
+func ensureIDs(c *gingonic.Context) {
+	ctx := c.Request.Context()
+	ctx = bindID(c, ctx, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
+	ctx = bindID(c, ctx, types.TraceIdKey, request.HeaderTraceId, request.GenerateTraceID)
+	c.Request = c.Request.WithContext(ctx)
+}
 
+func bindID(c *gingonic.Context, ctx context.Context, key string, header request.Header, gen func() string) context.Context {
+	id := c.GetString(key)
+	if id == "" {
+		id = strings.TrimSpace(c.GetHeader(header.String()))
+	}
+	if id == "" {
+		id = gen()
+	}
+	if id == "" {
+		return ctx
+	}
+	c.Set(key, id)
+	c.Writer.Header().Set(header.String(), id)
+	if v, _ := ctx.Value(key).(string); v == id {
+		return ctx
+	}
+	return context.WithValue(ctx, key, id)
+}
+
+func (h *exceptionHandler) handlePanic(ctx context.Context, c *gingonic.Context, v interface{}) {
 	var bizErr *uerrors.BizError
-	if err, ok := panicValue.(error); ok {
-		if be, isBiz := uerrors.IsBizError(err); isBiz {
+	if err, ok := v.(error); ok {
+		if be, ok := uerrors.IsBizError(err); ok {
 			bizErr = be
 		} else {
 			bizErr = uerrors.WrapError(err, uerrors.ErrorTypeSystem, uerrors.ErrorLevelCritical, result.SC_FAILURE, "系统内部错误")
@@ -96,62 +101,49 @@ func (h *exceptionHandler) HandlePanic(ctx context.Context, c *gingonic.Context,
 			"panic",
 		)
 	}
-
-	bizErr.RequestID = requestID
-
-	h.logError(ctx, bizErr)
-	if h.errorNotifier != nil {
-		h.errorNotifier(bizErr)
-	}
-	h.writeErrorResponse(c, bizErr)
+	h.respond(ctx, c, bizErr)
 }
 
-func (h *exceptionHandler) HandleError(ctx context.Context, c *gingonic.Context, err error) {
-	requestID := c.GetString(types.RequestIdKey)
-	if requestID == "" {
-		requestID = c.GetHeader(request.HeaderTraceId.String())
-		if requestID == "" {
-			requestID = "unknown"
-		}
-	}
+// HandleError 显式处理业务错误并写统一响应。
+func HandleError(ctx context.Context, c *gingonic.Context, err error) {
+	getHandler().handleError(ctx, c, err)
+}
 
+func (h *exceptionHandler) handleError(ctx context.Context, c *gingonic.Context, err error) {
 	var bizErr *uerrors.BizError
-	if be, isBiz := uerrors.IsBizError(err); isBiz {
+	if be, ok := uerrors.IsBizError(err); ok {
 		bizErr = be
 	} else {
 		bizErr = uerrors.WrapError(err, uerrors.ErrorTypeSystem, uerrors.ErrorLevelError, result.SC_FAILURE, "系统错误")
 	}
-	bizErr.RequestID = requestID
-
-	h.logError(ctx, bizErr)
-	if h.errorNotifier != nil {
-		h.errorNotifier(bizErr)
-	}
-	h.writeErrorResponse(c, bizErr)
+	h.respond(ctx, c, bizErr)
 }
 
-func (h *exceptionHandler) logError(ctx context.Context, err *uerrors.BizError) {
-	logMsg := "[" + err.LevelString() + "] " + err.TypeString() + " - " + err.Message
-	if err.Details != "" {
-		logMsg += " | Details: " + err.Details
+func (h *exceptionHandler) respond(ctx context.Context, c *gingonic.Context, bizErr *uerrors.BizError) {
+	bizErr.RequestID = c.GetString(types.RequestIdKey)
+	h.logErr(ctx, bizErr)
+	if h.notify != nil {
+		h.notify(bizErr)
 	}
-	if err.RequestID != "" {
-		logMsg += " | RequestID: " + err.RequestID
+	h.writeErr(c, bizErr)
+}
+
+func (h *exceptionHandler) logErr(ctx context.Context, err *uerrors.BizError) {
+	msg := "[" + err.LevelString() + "] " + err.TypeString() + " - " + err.Message
+	if err.Details != "" {
+		msg += " | Details: " + err.Details
 	}
 	switch err.Level {
 	case uerrors.ErrorLevelInfo:
-		logger.Log().Infof(ctx, logMsg)
+		logger.Infof(ctx, "%s", msg)
 	case uerrors.ErrorLevelWarning:
-		logger.Warningf(ctx, logMsg)
-	case uerrors.ErrorLevelError:
-		logger.Errorf(ctx, logMsg)
-	case uerrors.ErrorLevelCritical:
-		logger.Errorf(ctx, logMsg)
+		logger.Warningf(ctx, "%s", msg)
+	default:
+		logger.Errorf(ctx, "%s", msg)
 	}
 }
 
-func (h *exceptionHandler) writeErrorResponse(c *gingonic.Context, err *uerrors.BizError) {
-	// 仅返回顶层 code 与 message
+func (h *exceptionHandler) writeErr(c *gingonic.Context, err *uerrors.BizError) {
 	response := result.NewResponse()
 	response.Code = err.Code
 	response.Message = err.Message
