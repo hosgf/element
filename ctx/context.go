@@ -20,14 +20,14 @@ func GetTenantId(ctx context.Context) string {
 	return GetValue(ctx, types.TenantIdKey)
 }
 
-// GetTraceId 从context中获取TraceId
+// GetTraceId 从 context 中获取 TraceId。
 func GetTraceId(ctx context.Context) string {
-	return GetValue(ctx, types.TraceIdKey)
+	return strings.TrimSpace(GetValue(ctx, types.TraceIdKey))
 }
 
-// GetReqId 从context中获取ReqId
+// GetReqId 从 context 中获取 ReqId。
 func GetReqId(ctx context.Context) string {
-	return GetValue(ctx, types.RequestIdKey)
+	return strings.TrimSpace(GetValue(ctx, types.RequestIdKey))
 }
 
 // GetUserId 从context中获取UserId

@@ -14,12 +14,3 @@ func GenerateRequestID() string {
 	}
 	return time.Now().Format("20060102150405") + hex.EncodeToString(buf)
 }
-
-// GenerateTraceID 生成 32 hex TraceId（OTEL 形状），经 X-Trace-Id 传递。
-func GenerateTraceID() string {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(b)
-}

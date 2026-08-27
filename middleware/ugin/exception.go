@@ -2,11 +2,11 @@ package ugin
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	gingonic "github.com/gin-gonic/gin"
 	"github.com/hosgf/element/client/request"
+	"github.com/hosgf/element/ctx"
 	"github.com/hosgf/element/types"
 
 	"github.com/hosgf/element/logger"
@@ -57,31 +57,21 @@ func ExceptionHandler() gingonic.HandlerFunc {
 	}
 }
 
-// ensureIDs 从请求头取或生成 RequestId/TraceId，写入 gin + request ctx，并回写响应头。
+// ensureIDs 补齐 trace / request，写入 gin + ctx，回写响应头。
 func ensureIDs(c *gingonic.Context) {
-	ctx := c.Request.Context()
-	ctx = bindID(c, ctx, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
-	ctx = bindID(c, ctx, types.TraceIdKey, request.HeaderTraceId, request.GenerateTraceID)
-	c.Request = c.Request.WithContext(ctx)
+	reqCtx := request.ApplyHTTP(c.Request.Context(), GetHeader(c, request.HeaderTraceId), GetHeader(c, request.HeaderReqId))
+	c.Request = c.Request.WithContext(reqCtx)
+	bindRespID(c, types.TraceIdKey, request.HeaderTraceId, ctx.GetTraceId(reqCtx))
+	bindRespID(c, types.RequestIdKey, request.HeaderReqId, ctx.GetReqId(reqCtx))
 }
 
-func bindID(c *gingonic.Context, ctx context.Context, key string, header request.Header, gen func() string) context.Context {
-	id := c.GetString(key)
+func bindRespID(c *gingonic.Context, key string, header request.Header, id string) {
 	if id == "" {
-		id = strings.TrimSpace(c.GetHeader(header.String()))
+		return
 	}
-	if id == "" {
-		id = gen()
-	}
-	if id == "" {
-		return ctx
-	}
-	c.Set(key, id)
+	reqCtx := bindID(c.Request.Context(), c, key, header, id)
+	c.Request = c.Request.WithContext(reqCtx)
 	c.Writer.Header().Set(header.String(), id)
-	if v, _ := ctx.Value(key).(string); v == id {
-		return ctx
-	}
-	return context.WithValue(ctx, key, id)
 }
 
 func (h *exceptionHandler) handlePanic(ctx context.Context, c *gingonic.Context, v interface{}) {
@@ -119,9 +109,9 @@ func (h *exceptionHandler) handleError(ctx context.Context, c *gingonic.Context,
 	h.respond(ctx, c, bizErr)
 }
 
-func (h *exceptionHandler) respond(ctx context.Context, c *gingonic.Context, bizErr *uerrors.BizError) {
-	bizErr.RequestID = c.GetString(types.RequestIdKey)
-	h.logErr(ctx, bizErr)
+func (h *exceptionHandler) respond(reqCtx context.Context, c *gingonic.Context, bizErr *uerrors.BizError) {
+	bizErr.RequestID = ctx.GetReqId(reqCtx)
+	h.logErr(reqCtx, bizErr)
 	if h.notify != nil {
 		h.notify(bizErr)
 	}

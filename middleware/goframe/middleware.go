@@ -6,26 +6,9 @@ import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
 	"github.com/hosgf/element/client/request"
-	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/ctx"
+	"github.com/hosgf/element/middleware"
 )
-
-type headerBinding struct {
-	ctxKey string
-	header request.Header
-	gen    func() string
-}
-
-var contextHeaders = []headerBinding{
-	{types.TraceIdKey, request.HeaderTraceId, request.GenerateTraceID},
-	{types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID},
-	{types.TenantIdKey, request.HeaderTenantId, nil},
-	{types.UserIdKey, request.HeaderUserId, nil},
-	{types.ClientIPKey, request.HeaderRealIP, nil},
-	{types.DeviceCodeKey, request.HeaderDeviceCode, nil},
-	{types.DeviceTypeKey, request.HeaderDeviceType, nil},
-	{types.UserAgentKey, request.HeaderUserAgent, nil},
-	{types.ReqClientKey, request.HeaderReqClient, nil},
-}
 
 func SetMiddleware(s *ghttp.Server, handlers ...ghttp.HandlerFunc) *ghttp.Server {
 	hs := make([]ghttp.HandlerFunc, 0, 3+len(handlers))
@@ -47,8 +30,24 @@ func MiddlewareHeader(r *ghttp.Request) {
 }
 
 func BindContextHeaders(r *ghttp.Request) {
-	for _, b := range contextHeaders {
-		WithValue(r, b.ctxKey, b.header, b.gen)
+	bindTrace(r)
+	for _, b := range middleware.ContextHeaders {
+		bindHeader(r, b.Key, b.Header)
+	}
+}
+
+func bindTrace(r *ghttp.Request) {
+	hint := GetHeader(r, request.HeaderTraceId)
+	c := ctx.ContinueTrace(r.Context(), hint)
+	r.SetCtx(c)
+	tid := ctx.GetTraceId(c)
+	if tid == "" {
+		return
+	}
+	// 语义 key 已在 ContinueTrace 写入；补 header 名供出站透传。
+	setCtx(r, request.HeaderTraceId.String(), tid)
+	if hint == "" {
+		r.Header.Set(request.HeaderTraceId.String(), tid)
 	}
 }
 
@@ -88,20 +87,12 @@ func GetHeader(req *ghttp.Request, key request.Header) string {
 	return strings.TrimSpace(req.GetHeader(key.String()))
 }
 
-// WithValue 优先用请求头；无则用 gen 生成；写入语义 ctxKey 与 header 名。
-func WithValue(req *ghttp.Request, ctxKey string, header request.Header, gen func() string) *ghttp.Request {
+func bindHeader(req *ghttp.Request, key string, header request.Header) *ghttp.Request {
 	value := GetHeader(req, header)
 	if value == "" {
-		if gen == nil {
-			return req
-		}
-		value = gen()
-		if value == "" {
-			return req
-		}
-		req.Header.Set(header.String(), value)
+		return req
 	}
-	setCtx(req, ctxKey, value)
+	setCtx(req, key, value)
 	setCtx(req, header.String(), value)
 	return req
 }

@@ -2,71 +2,62 @@ package uerrors
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hosgf/element/client/request"
+	"github.com/hosgf/element/ctx"
 	"github.com/hosgf/element/types"
 )
 
-// GetRequestID 从context中获取RequestID
-func GetRequestID(ctx context.Context) string {
-	if ctx == nil {
+// GetRequestID 从 context 获取 request_id（语义 key 优先，其次 X-Req-Id）。
+func GetRequestID(c context.Context) string {
+	if rid := ctx.GetReqId(c); rid != "" {
+		return rid
+	}
+	return strings.TrimSpace(request.HeaderReqId.Get(c))
+}
+
+// WithRequestID 将 RequestID 写入 context。
+func WithRequestID(c context.Context, requestID string) context.Context {
+	if c == nil {
+		c = context.Background()
+	}
+	return context.WithValue(c, types.RequestIdKey, strings.TrimSpace(requestID))
+}
+
+// WithUserID 将 UserID 写入 context。
+func WithUserID(c context.Context, userID string) context.Context {
+	if c == nil {
+		c = context.Background()
+	}
+	return context.WithValue(c, types.UserIdKey, userID)
+}
+
+// GetUserID 从 context 获取 UserID。
+func GetUserID(c context.Context) string {
+	if c == nil {
 		return ""
 	}
-
-	// 尝试从context中获取request_id
-	if requestID, ok := ctx.Value(types.RequestIdKey).(string); ok && requestID != "" {
-		return requestID
-	}
-
-	// 尝试从context中获取X-Request-ID
-	if requestID, ok := ctx.Value(request.HeaderReqId).(string); ok && requestID != "" {
-		return requestID
-	}
-
-	return ""
-}
-
-// WithRequestID 将RequestID添加到context中
-func WithRequestID(ctx context.Context, requestID string) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return context.WithValue(ctx, types.RequestIdKey, requestID)
-}
-
-// WithUserID 将UserID添加到context中
-func WithUserID(ctx context.Context, userID string) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return context.WithValue(ctx, types.UserIdKey, userID)
-}
-
-// GetUserID 从context中获取UserID
-func GetUserID(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	if userID, ok := ctx.Value(types.UserIdKey).(string); ok {
+	if userID, ok := c.Value(types.UserIdKey).(string); ok {
 		return userID
 	}
 	return ""
 }
 
-// WithError 将错误信息添加到context中（用于调试）
-func WithError(ctx context.Context, err error) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
+// WithError 将错误信息写入 context（调试用）。
+func WithError(c context.Context, err error) context.Context {
+	if c == nil {
+		c = context.Background()
 	}
-	return context.WithValue(ctx, "error", err)
+	return context.WithValue(c, "error", err)
 }
 
-// GetError 从context中获取错误信息
-func GetError(ctx context.Context) error {
-	if ctx == nil {
+// GetError 从 context 获取错误信息。
+func GetError(c context.Context) error {
+	if c == nil {
 		return nil
 	}
-	if err, ok := ctx.Value("error").(error); ok {
+	if err, ok := c.Value("error").(error); ok {
 		return err
 	}
 	return nil

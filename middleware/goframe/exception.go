@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/hosgf/element/client/request"
+	"github.com/hosgf/element/ctx"
 	"github.com/hosgf/element/types"
 
 	"github.com/hosgf/element/logger"
@@ -39,18 +40,21 @@ func SetNotify(fn func(*uerrors.BizError)) {
 	getRecover().notify = fn
 }
 
-// ensureIDs 补齐 TraceId/RequestId，并回写响应头。
+// ensureIDs 补齐 trace / request，写入 ctx 与响应头（ApplyHTTP 幂等，Header 已设 trace 时仅补 request）。
 func ensureIDs(r *ghttp.Request) {
-	WithValue(r, types.TraceIdKey, request.HeaderTraceId, request.GenerateTraceID)
-	WithValue(r, types.RequestIdKey, request.HeaderReqId, request.GenerateRequestID)
-	echoHeader(r, types.TraceIdKey, request.HeaderTraceId)
-	echoHeader(r, types.RequestIdKey, request.HeaderReqId)
+	c := request.ApplyHTTP(r.Context(), GetHeader(r, request.HeaderTraceId), GetHeader(r, request.HeaderReqId))
+	r.SetCtx(c)
+	bindRespID(r, types.TraceIdKey, request.HeaderTraceId, ctx.GetTraceId(c))
+	bindRespID(r, types.RequestIdKey, request.HeaderReqId, ctx.GetReqId(c))
 }
 
-func echoHeader(r *ghttp.Request, ctxKey string, header request.Header) {
-	if id := r.GetCtxVar(ctxKey).String(); id != "" {
-		r.Response.Header().Set(header.String(), id)
+func bindRespID(r *ghttp.Request, ctxKey string, header request.Header, id string) {
+	if id == "" {
+		return
 	}
+	r.SetCtxVar(ctxKey, id)
+	r.SetCtxVar(header.String(), id)
+	r.Response.Header().Set(header.String(), id)
 }
 
 // Recover 补齐请求标识、记录耗时、捕获 panic 并统一错误响应。
@@ -92,9 +96,9 @@ func (h *recoverHandler) handlePanic(ctx context.Context, r *ghttp.Request, v in
 	h.respond(ctx, r, bizErr)
 }
 
-func (h *recoverHandler) respond(ctx context.Context, r *ghttp.Request, bizErr *uerrors.BizError) {
-	bizErr.RequestID = r.GetCtxVar(types.RequestIdKey).String()
-	h.logErr(ctx, bizErr)
+func (h *recoverHandler) respond(reqCtx context.Context, r *ghttp.Request, bizErr *uerrors.BizError) {
+	bizErr.RequestID = ctx.GetReqId(reqCtx)
+	h.logErr(reqCtx, bizErr)
 	if h.notify != nil {
 		h.notify(bizErr)
 	}

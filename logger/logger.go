@@ -10,20 +10,13 @@ import (
 	"github.com/gogf/gf/v2/text/gstr"
 )
 
-// 与 middleware 写入的 ctx key 一致（不可 import types：util→logger 环依赖）。
-const (
-	ctxKeyTraceID = "trace_id"
-	ctxKeyReqID   = "request_id"
-)
-
 var (
 	handlersMu sync.RWMutex
 	handlers   []Handler
 )
 
 // Handler 默认日志写出后的额外回调（如插件文件双写）。
-// format/args 已含 request_id/trace_id；同 ctx 内再调默认日志不会重入 emit。
-// 插件侧写入请用 Named/New，避免走 Default 形成回环。
+// 同 ctx 内再调默认日志不会重入 emit；插件侧请用 Named/New，避免回环。
 type Handler func(ctx context.Context, level string, format string, args []interface{})
 
 // AddHandler 注册额外写入钩子，可多次调用；nil 会被忽略。
@@ -47,45 +40,6 @@ func safeCtx(ctx context.Context) context.Context {
 		return context.Background()
 	}
 	return ctx
-}
-
-// ctxStr 从 ctx 读取字符串值并 TrimSpace；缺失则返回空串。
-func ctxStr(ctx context.Context, key string) string {
-	if ctx == nil {
-		return ""
-	}
-	v, _ := ctx.Value(key).(string)
-	return strings.TrimSpace(v)
-}
-
-// metaSuffix 生成 " request_id=... trace_id=..." 后缀；already 中已有对应字段则跳过。
-func metaSuffix(ctx context.Context, already string) string {
-	var b strings.Builder
-	if rid := ctxStr(ctx, ctxKeyReqID); rid != "" && !strings.Contains(already, "request_id=") {
-		b.WriteString(" request_id=")
-		b.WriteString(rid)
-	}
-	if tid := ctxStr(ctx, ctxKeyTraceID); tid != "" && !strings.Contains(already, "trace_id=") {
-		b.WriteString(" trace_id=")
-		b.WriteString(tid)
-	}
-	return b.String()
-}
-
-// Format 在 format 末尾追加 request_id= / trace_id=（来自 ctx，由中间件写入）。
-func Format(ctx context.Context, format string) string {
-	return format + metaSuffix(ctx, format)
-}
-
-// withMeta 将 meta 后缀作为额外参数追加到可变参列表。
-func withMeta(ctx context.Context, v []interface{}) []interface{} {
-	s := strings.TrimSpace(metaSuffix(ctx, ""))
-	if s == "" {
-		return v
-	}
-	out := make([]interface{}, 0, len(v)+1)
-	out = append(out, v...)
-	return append(out, s)
 }
 
 // emitKey 标记 emit 重入，避免 Handler 内再打默认日志死循环。
