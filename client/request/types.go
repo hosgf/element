@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/gogf/gf/v2/util/gconv"
+
+	"github.com/hosgf/element/types"
 )
 
 const (
@@ -71,11 +73,18 @@ func (h Header) ToLowerString() string {
 }
 
 func (h Header) Get(ctx context.Context) string {
-	value := ctx.Value(h.String())
-	if value == nil {
-		return ""
+	switch h {
+	case HeaderTraceId:
+		return firstID(ctx, types.TraceIdKey, HeaderTraceId.String())
+	case HeaderReqId:
+		return firstID(ctx, types.RequestIdKey, HeaderReqId.String())
+	default:
+		if ctx == nil {
+			return ""
+		}
+		v, _ := ctx.Value(h.String()).(string)
+		return strings.TrimSpace(v)
 	}
-	return value.(string)
 }
 
 func SetSameToken(ctx context.Context, value interface{}) context.Context {

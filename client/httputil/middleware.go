@@ -26,7 +26,8 @@ type MiddlewareFunc = func(ctx context.Context, c *gclient.Client) *gclient.Clie
 
 func (c *Client) SetMiddleware(handlers ...gclient.HandlerFunc) *Client {
 	c.middleware(middlewareHeader, middlewareCookies)
-	hs := []gclient.HandlerFunc{MiddlewareSame, MiddlewareSecurity}
+	// Propagate 按请求 ctx 覆盖链路头，避免客户端构造时预置的旧 ID 残留
+	hs := []gclient.HandlerFunc{MiddlewarePropagate}
 	if len(handlers) > 0 {
 		hs = append(hs, handlers...)
 	}
@@ -50,16 +51,14 @@ func (c *Client) middleware(middlewares ...MiddlewareFunc) {
 	}
 }
 
-func MiddlewareSame(c *gclient.Client, r *http.Request) (resp *gclient.Response, err error) {
-	return c.Next(r)
-}
-
-func MiddlewareSecurity(c *gclient.Client, r *http.Request) (resp *gclient.Response, err error) {
+// MiddlewarePropagate 每请求从 r.Context() 注入 / 覆盖 X-Trace-Id、X-Req-Id。
+func MiddlewarePropagate(c *gclient.Client, r *http.Request) (resp *gclient.Response, err error) {
+	request.Inject(r.Header, r.Context())
 	return c.Next(r)
 }
 
 func middlewareHeader(ctx context.Context, c *gclient.Client) *gclient.Client {
-	if headers := request.GetHeader(ctx); headers != nil {
+	if headers := request.GetHeader(ctx); len(headers) > 0 {
 		return c.Header(headers)
 	}
 	return c

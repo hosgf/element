@@ -2,6 +2,7 @@ package request
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
 	"github.com/hosgf/element/trace"
@@ -33,6 +34,38 @@ func EnsureRequestID(c context.Context, hint ...string) context.Context {
 func ApplyHTTP(c context.Context, traceHint, reqHint string) context.Context {
 	c = trace.Continue(c, traceHint)
 	return EnsureRequestID(c, reqHint)
+}
+
+// Outbound 从 ctx 提取出站链路头（X-Trace-Id / X-Req-Id）。
+// 语义 key（trace_id / request_id）优先，其次 header 名。
+func Outbound(c context.Context) map[string]string {
+	out := make(map[string]string, 2)
+	if tid := HeaderTraceId.Get(c); tid != "" {
+		out[HeaderTraceId.String()] = tid
+	}
+	if rid := HeaderReqId.Get(c); rid != "" {
+		out[HeaderReqId.String()] = rid
+	}
+	return out
+}
+
+// Inject 用 ctx 中的链路头写入 h（有值则覆盖，保证与当前请求一致）。
+func Inject(h http.Header, c context.Context) {
+	if h == nil {
+		return
+	}
+	for k, v := range Outbound(c) {
+		h.Set(k, v)
+	}
+}
+
+func firstID(c context.Context, keys ...string) string {
+	for _, key := range keys {
+		if s := strings.TrimSpace(get(c, key)); s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 func bg(c context.Context) context.Context {
