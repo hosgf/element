@@ -7,6 +7,7 @@ import (
 	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/hosgf/element/client/request"
 	"github.com/hosgf/element/ctx"
+	"github.com/hosgf/element/trace"
 	"github.com/hosgf/element/types"
 
 	"github.com/hosgf/element/logger"
@@ -40,11 +41,10 @@ func SetNotify(fn func(*uerrors.BizError)) {
 	getRecover().notify = fn
 }
 
-// ensureIDs 补齐 trace / request，写入 ctx 与响应头（ApplyHTTP 幂等，Header 已设 trace 时仅补 request）。
+// ensureIDs 补齐 request_id，写入 ctx 与响应头（trace 由 GoFrame OTel + bindTrace 桥接）。
 func ensureIDs(r *ghttp.Request) {
-	c := request.ApplyHTTP(r.Context(), GetHeader(r, request.HeaderTraceId), GetHeader(r, request.HeaderReqId))
+	c := trace.Sync(request.EnsureID(r.Context(), GetHeader(r, request.HeaderReqId)))
 	r.SetCtx(c)
-	bindRespID(r, types.TraceIdKey, request.HeaderTraceId, ctx.GetTraceId(c))
 	bindRespID(r, types.RequestIdKey, request.HeaderReqId, ctx.GetReqId(c))
 }
 

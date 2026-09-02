@@ -6,8 +6,8 @@ import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
 	"github.com/hosgf/element/client/request"
-	"github.com/hosgf/element/ctx"
 	"github.com/hosgf/element/middleware"
+	"github.com/hosgf/element/trace"
 )
 
 func SetMiddleware(s *ghttp.Server, handlers ...ghttp.HandlerFunc) *ghttp.Server {
@@ -37,18 +37,7 @@ func BindContextHeaders(r *ghttp.Request) {
 }
 
 func bindTrace(r *ghttp.Request) {
-	hint := GetHeader(r, request.HeaderTraceId)
-	c := ctx.ContinueTrace(r.Context(), hint)
-	r.SetCtx(c)
-	tid := ctx.GetTraceId(c)
-	if tid == "" {
-		return
-	}
-	// 语义 key 已在 ContinueTrace 写入；补 header 名供出站透传。
-	setCtx(r, request.HeaderTraceId.String(), tid)
-	if hint == "" {
-		r.Header.Set(request.HeaderTraceId.String(), tid)
-	}
+	r.SetCtx(trace.Sync(r.Context()))
 }
 
 func SetHeaders(r *ghttp.Request, headers ...request.Header) {

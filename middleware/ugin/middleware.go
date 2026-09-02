@@ -7,9 +7,8 @@ import (
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/hosgf/element/client/request"
-	"github.com/hosgf/element/ctx"
 	"github.com/hosgf/element/middleware"
-	"github.com/hosgf/element/types"
+	"github.com/hosgf/element/trace"
 )
 
 func SetMiddleware(s *gin.Engine, handlers ...gin.HandlerFunc) *gin.Engine {
@@ -36,20 +35,7 @@ func MiddlewareHeader() gin.HandlerFunc {
 }
 
 func bindTrace(c *gin.Context) context.Context {
-	hint := GetHeader(c, request.HeaderTraceId)
-	reqCtx := ctx.ContinueTrace(c.Request.Context(), hint)
-	tid := ctx.GetTraceId(reqCtx)
-	if tid == "" {
-		return reqCtx
-	}
-	// 语义 key 已在 ContinueTrace 写入；补 header 名供出站透传。
-	reqCtx = context.WithValue(reqCtx, request.HeaderTraceId.String(), tid)
-	c.Set(types.TraceIdKey, tid)
-	c.Set(request.HeaderTraceId.String(), tid)
-	if hint == "" {
-		c.Request.Header.Set(request.HeaderTraceId.String(), tid)
-	}
-	return reqCtx
+	return trace.Sync(c.Request.Context())
 }
 
 func bindHeader(reqCtx context.Context, c *gin.Context, key string, header request.Header) context.Context {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/hosgf/element/client/request"
 	"github.com/hosgf/element/types"
 )
@@ -20,8 +22,12 @@ func GetTenantId(ctx context.Context) string {
 	return GetValue(ctx, types.TenantIdKey)
 }
 
-// GetTraceId 从 context 中获取 TraceId。
+// GetTraceId 从 context 中获取 TraceId；有效 OTel SpanContext 优先。
 func GetTraceId(ctx context.Context) string {
+	sc := trace.SpanContextFromContext(Context(ctx))
+	if sc.IsValid() {
+		return sc.TraceID().String()
+	}
 	return strings.TrimSpace(GetValue(ctx, types.TraceIdKey))
 }
 

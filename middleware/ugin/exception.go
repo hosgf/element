@@ -7,6 +7,7 @@ import (
 	gingonic "github.com/gin-gonic/gin"
 	"github.com/hosgf/element/client/request"
 	"github.com/hosgf/element/ctx"
+	"github.com/hosgf/element/trace"
 	"github.com/hosgf/element/types"
 
 	"github.com/hosgf/element/logger"
@@ -57,11 +58,10 @@ func ExceptionHandler() gingonic.HandlerFunc {
 	}
 }
 
-// ensureIDs 补齐 trace / request，写入 gin + ctx，回写响应头。
+// ensureIDs 补齐 request_id，写入 gin + ctx，回写响应头。
 func ensureIDs(c *gingonic.Context) {
-	reqCtx := request.ApplyHTTP(c.Request.Context(), GetHeader(c, request.HeaderTraceId), GetHeader(c, request.HeaderReqId))
+	reqCtx := trace.Sync(request.EnsureID(c.Request.Context(), GetHeader(c, request.HeaderReqId)))
 	c.Request = c.Request.WithContext(reqCtx)
-	bindRespID(c, types.TraceIdKey, request.HeaderTraceId, ctx.GetTraceId(reqCtx))
 	bindRespID(c, types.RequestIdKey, request.HeaderReqId, ctx.GetReqId(reqCtx))
 }
 

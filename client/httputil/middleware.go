@@ -51,7 +51,7 @@ func (c *Client) middleware(middlewares ...MiddlewareFunc) {
 	}
 }
 
-// MiddlewarePropagate 每请求从 r.Context() 注入 / 覆盖 X-Trace-Id、X-Req-Id。
+// MiddlewarePropagate 每请求注入 traceparent 与全新 X-Req-Id。
 func MiddlewarePropagate(c *gclient.Client, r *http.Request) (resp *gclient.Response, err error) {
 	request.Inject(r.Header, r.Context())
 	return c.Next(r)

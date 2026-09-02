@@ -59,11 +59,14 @@ func LoggerMiddleware(o *ghttp.Request, t *http.Request, route *Route, next func
 
 		// 只记录关键头部信息，避免内存浪费
 		if t != nil {
-			keyHeaders := []request.Header{request.HeaderReqToken, "User-Agent", request.HeaderTraceId}
+			keyHeaders := []request.Header{request.HeaderReqToken, "User-Agent"}
 			for _, key := range keyHeaders {
 				if value := t.Header.Get(key.String()); value != "" {
 					logData = append(logData, fmt.Sprintf("%s: %s", key, value))
 				}
+			}
+			if value := t.Header.Get("traceparent"); value != "" {
+				logData = append(logData, fmt.Sprintf("traceparent: %s", value))
 			}
 		}
 

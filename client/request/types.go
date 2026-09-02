@@ -53,7 +53,6 @@ func GetHeaders() []Header {
 		HeaderReqAppName,
 		HeaderReqClient,
 		HeaderReqId,
-		HeaderTraceId,
 		HeaderTenantId,
 		HeaderUserAgent,
 		HeaderReqToken,

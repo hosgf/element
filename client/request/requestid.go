@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// GenerateRequestID 业务请求 ID（幂等/去重），不是 TraceId。
+// GenerateRequestID 生成业务请求 ID（幂等/去重），不是 trace_id。
 func GenerateRequestID() string {
 	buf := make([]byte, 12)
 	if _, err := rand.Read(buf); err != nil {
