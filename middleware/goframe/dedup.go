@@ -35,7 +35,7 @@ type DedupOptions struct {
 	OnError      func(r *ghttp.Request, err error)
 }
 
-// Deduper 请求去重：范围 Method+Path；同范围内 X-Req-Secret > X-Req-Id；两者皆无则跳过。
+// Deduper 请求去重：范围 Method+Path；同范围内 X-Req-Id > X-Req-Secret；两者皆无则跳过。
 type Deduper struct {
 	store        DedupStore
 	opts         DedupOptions
@@ -172,18 +172,19 @@ type dedupMark struct {
 
 func findMark(r *ghttp.Request) (dedupMark, bool) {
 	scope := reqScope(r)
-	if secret := GetHeader(r, request.HeaderSignature); secret != "" {
-		return dedupMark{
-			key:    hashKey(scope + ":" + secret),
-			header: request.HeaderSignature.String(),
-			value:  maskSecret(secret),
-		}, true
-	}
+	// 优先 X-Req-Id：SameAuth 的 X-Req-Secret 多为 MD5(timestamp+salt)，同秒请求会撞键。
 	if id := GetHeader(r, request.HeaderReqId); id != "" {
 		return dedupMark{
 			key:    hashKey(scope + ":" + id),
 			header: request.HeaderReqId.String(),
 			value:  id,
+		}, true
+	}
+	if secret := GetHeader(r, request.HeaderSignature); secret != "" {
+		return dedupMark{
+			key:    hashKey(scope + ":" + secret),
+			header: request.HeaderSignature.String(),
+			value:  maskSecret(secret),
 		}, true
 	}
 	return dedupMark{}, false

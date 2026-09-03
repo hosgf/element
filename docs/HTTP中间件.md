@@ -70,7 +70,9 @@ Gin 要记请求 body，需先读入 `gin.BodyBytesKey`（并重置 `c.Request.B
 
 ## Dedup
 
-范围是 `Method+Path`。同一范围内优先 `X-Req-Secret`，否则 `X-Req-Id`；两者皆无则跳过。默认 `g.Redis()` SET NX，失败且未设 `RequireRedis` 时降级内存。
+范围是 `Method+Path`。同一范围内优先 `X-Req-Id`，否则 `X-Req-Secret`；两者皆无则跳过。默认 `g.Redis()` SET NX，失败且未设 `RequireRedis` 时降级内存。
+
+> SameAuth 的 `X-Req-Secret` 多为 `MD5(timestamp+salt)`，同一秒内多请求会相同，因此有 `X-Req-Id` 时必须优先用它。
 
 默认跳过：`/health`、`/metrics`、`/metrics/*`、`/debug/*`、`/ping`、`/favicon.ico`。
 

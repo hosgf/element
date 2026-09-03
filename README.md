@@ -32,7 +32,7 @@ mf.DedupExclude("/internal/notify")
 
 `result.Success` / `Writer` 只把 JSON 写入 GoFrame buffer；压缩由 `MiddlewareGzip` 按 `Accept-Encoding` 处理。访问日志须注册在 Gzip **内侧**（作为 `SetMiddleware` 的后续 handler 或后 `Use`），才能打到明文请求/响应。完整说明见 [HTTP 中间件](./docs/HTTP中间件.md)。
 
-去重：范围 `Method+Path`，同范围内 `X-Req-Secret` > `X-Req-Id`，两者皆无则跳过。默认 `g.Redis()` SET NX，失败且未设 `RequireRedis` 时降级内存。`DedupExclude` 可在注册前后调用。
+去重：范围 `Method+Path`，同范围内 `X-Req-Id` > `X-Req-Secret`，两者皆无则跳过。默认 `g.Redis()` SET NX，失败且未设 `RequireRedis` 时降级内存。`DedupExclude` 可在注册前后调用。
 
 业务失败写入 ctx 后 AccessLog 会打 `[异常]`：
 
