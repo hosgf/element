@@ -69,7 +69,7 @@ func bindRespID(c *gingonic.Context, key string, header request.Header, id strin
 	if id == "" {
 		return
 	}
-	reqCtx := bindID(c.Request.Context(), c, key, header, id)
+	reqCtx := bindValue(c.Request.Context(), c, key, header, id)
 	c.Request = c.Request.WithContext(reqCtx)
 	c.Writer.Header().Set(header.String(), id)
 }

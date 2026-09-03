@@ -1,9 +1,6 @@
 package result
 
 import (
-	"compress/gzip"
-	"encoding/json"
-
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/net/ghttp"
 )
@@ -109,31 +106,23 @@ func (res *Response) Result(r *ghttp.Request, resultCode gcode.Code, data interf
 }
 
 func (res *Response) Build(r *ghttp.Request, code int, message string, data interface{}) {
-	res.gzip(r, Build(code, message, "", data))
+	WriteJSON(r, Build(code, message, "", data))
 }
 
 func (res *Response) Err(r *ghttp.Request, code int, message string, err error) {
 	r.SetError(err)
-	res.gzip(r, Build(code, message, err.Error(), nil))
+	WriteJSON(r, Build(code, message, err.Error(), nil))
 }
 
-func (res *Response) gzip(r *ghttp.Request, data *Response) {
-	r.Response.Header().Set("Content-Type", "application/json")
-	r.Response.Header().Set("Content-Encoding", "gzip")
-	gw := gzip.NewWriter(r.Response.Writer)
-	defer gw.Close()
-	_ = json.NewEncoder(gw).Encode(data)
-	r.Exit()
+// WriteJSON 将响应写入 GoFrame buffer（明文 JSON）。
+// 压缩由 middleware/goframe.MiddlewareGzip 按 Accept-Encoding 处理，勿直写 Response.Writer。
+func WriteJSON(r *ghttp.Request, data interface{}) {
+	if r == nil || data == nil {
+		return
+	}
+	r.Response.WriteJsonExit(data)
 }
 
 func Writer(r *ghttp.Request, data interface{}) {
-	if nil == data {
-		return
-	}
-	r.Response.Header().Set("Content-Type", "application/json")
-	r.Response.Header().Set("Content-Encoding", "gzip")
-	gw := gzip.NewWriter(r.Response.Writer)
-	defer gw.Close()
-	_ = json.NewEncoder(gw).Encode(data)
-	r.Exit()
+	WriteJSON(r, data)
 }

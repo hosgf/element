@@ -1,7 +1,6 @@
 package util
 
 import (
-	"context"
 	rand2 "crypto/rand"
 	"encoding/binary"
 	"errors"
@@ -10,15 +9,9 @@ import (
 	"math/big"
 	"math/rand"
 	"net"
-	"os"
-	"path"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/hosgf/element/logger"
 )
 
 func Int64PtrOrDefault(a *int64, b int64) *int64 {
@@ -92,18 +85,6 @@ func AnyInt64(expr bool, a, b int64) int64 {
 		return a
 	}
 	return b
-}
-
-func GetPath(path string, args ...string) string {
-	if args == nil || len(args) < 1 {
-		return path
-	}
-	for _, arg := range args {
-		if len(arg) > 0 {
-			path += "/" + arg
-		}
-	}
-	return path
 }
 
 // HashCode 计算hashcode唯一值
@@ -208,35 +189,4 @@ func Addr() (string, error) {
 		}
 	}
 	return "", nil
-}
-
-func AppDir() string {
-	homePath := GetHomePath()
-	if len(homePath) < 1 {
-		return homePath
-	}
-	dir := getCurrentAbPathByExecutable()
-	tmpDir, _ := filepath.EvalSymlinks(os.TempDir())
-	if strings.Contains(dir, tmpDir) {
-		return getCurrentAbPathByCaller()
-	}
-	return dir
-}
-
-func getCurrentAbPathByExecutable() string {
-	exePath, err := os.Executable()
-	if err != nil {
-		logger.Log().Error(context.Background(), err)
-	}
-	res, _ := filepath.EvalSymlinks(filepath.Dir(exePath))
-	return res
-}
-
-func getCurrentAbPathByCaller() string {
-	var abPath string
-	_, filename, _, ok := runtime.Caller(0)
-	if ok {
-		abPath = path.Dir(filename)
-	}
-	return abPath
 }

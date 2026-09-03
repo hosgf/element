@@ -36,15 +36,17 @@ const (
 	HeaderReqId        Header = "X-Req-Id"
 	HeaderUserId       Header = "X-Req-UserId"
 	HeaderRealIP       Header = "X-Real-IP"
+	HeaderTraceparent  Header = "traceparent"
 	HeaderTraceId      Header = "X-Trace-Id"
 	HeaderTenantId     Header = "X-Tenant-Id"
 	HeaderDeviceCode   Header = "X-Device-Code"
 	HeaderDeviceType   Header = "X-Device-Type"
-	HeaderUserAgent    Header = "X-User-Agent"
+	HeaderUserAgent    Header = "User-Agent"
 	HeaderTimestamp    Header = "timestamp"
 	HeaderResponseTime Header = "X-Response-Time"
 	HeaderReqToken     Header = "Authorization"
 	HeaderSameToken    Header = "SA-SAME-TOKEN"
+	HeaderContentType  Header = "Content-Type"
 )
 
 func GetHeaders() []Header {

@@ -11,6 +11,12 @@ import (
 	"github.com/hosgf/element/trace"
 )
 
+// SetMiddleware 注册核心中间件：Gzip（外层）+ MiddlewareHeader。
+// Gzip 在最外层压缩；AccessLog 应在其内侧（后注册）读明文。
+// 典型用法：
+//
+//	r := gin.New()
+//	ugin.SetMiddleware(r, ugin.AccessLog(), ugin.Dedup())
 func SetMiddleware(s *gin.Engine, handlers ...gin.HandlerFunc) *gin.Engine {
 	hs := []gin.HandlerFunc{gzip.Gzip(gzip.DefaultCompression), MiddlewareHeader()}
 	if len(handlers) > 0 {
@@ -27,7 +33,7 @@ func MiddlewareHeader() gin.HandlerFunc {
 			reqCtx = bindHeader(reqCtx, c, b.Key, b.Header)
 		}
 		for _, header := range request.GetHeaders() {
-			reqCtx = passthroughHeader(reqCtx, c, header)
+			reqCtx = setHeader(reqCtx, c, header)
 		}
 		c.Request = c.Request.WithContext(reqCtx)
 		c.Next()
@@ -43,10 +49,10 @@ func bindHeader(reqCtx context.Context, c *gin.Context, key string, header reque
 	if value == "" {
 		return reqCtx
 	}
-	return bindID(reqCtx, c, key, header, value)
+	return bindValue(reqCtx, c, key, header, value)
 }
 
-func passthroughHeader(reqCtx context.Context, c *gin.Context, header request.Header) context.Context {
+func setHeader(reqCtx context.Context, c *gin.Context, header request.Header) context.Context {
 	if value := GetHeader(c, header); value != "" {
 		reqCtx = context.WithValue(reqCtx, header.String(), value)
 		c.Set(header.String(), value)
@@ -54,8 +60,8 @@ func passthroughHeader(reqCtx context.Context, c *gin.Context, header request.He
 	return reqCtx
 }
 
-// bindID 写入语义 key、header 名到 ctx 与 gin。
-func bindID(reqCtx context.Context, c *gin.Context, key string, header request.Header, value string) context.Context {
+// bindValue 写入语义 key、header 名到 ctx 与 gin。
+func bindValue(reqCtx context.Context, c *gin.Context, key string, header request.Header, value string) context.Context {
 	reqCtx = context.WithValue(reqCtx, key, value)
 	reqCtx = context.WithValue(reqCtx, header.String(), value)
 	c.Set(key, value)

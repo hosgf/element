@@ -18,13 +18,27 @@ shutdown, _ := trace.Init(ctx, trace.Config{
 defer shutdown(ctx)
 ```
 
-### 2. HTTP（GoFrame 自动 OTel）
+### 2. HTTP（GoFrame）
 
 ```go
 import mf "github.com/hosgf/element/middleware/goframe"
 
-mf.SetMiddleware(g.Server(), mf.Recover)
-logger.Infof(r.Context(), "hello")  // 自动输出 {trace_id} <request_id>
+s := g.Server()
+mf.SetMiddleware(s, mf.Recover, mf.AccessLog(), mf.Dedup(mf.DedupOptions{
+    KeyPrefix: "mysvc:dedup:",
+}))
+mf.DedupExclude("/internal/notify")
+```
+
+`result.Success` / `Writer` 只把 JSON 写入 GoFrame buffer；压缩由 `MiddlewareGzip` 按 `Accept-Encoding` 处理。访问日志须注册在 Gzip **内侧**（作为 `SetMiddleware` 的后续 handler 或后 `Use`），才能打到明文请求/响应。完整说明见 [HTTP 中间件](./docs/HTTP中间件.md)。
+
+去重：范围 `Method+Path`，同范围内 `X-Req-Secret` > `X-Req-Id`，两者皆无则跳过。默认 `g.Redis()` SET NX，失败且未设 `RequireRedis` 时降级内存。`DedupExclude` 可在注册前后调用。
+
+业务失败写入 ctx 后 AccessLog 会打 `[异常]`：
+
+```go
+r.SetCtxVar(mf.AccessFailureKey, `{"message":"..."}`)
+r.SetCtxVar(mf.AccessErrorKey, err)
 ```
 
 ### 3. HTTP（Gin 需显式 OTel）
@@ -33,8 +47,14 @@ logger.Infof(r.Context(), "hello")  // 自动输出 {trace_id} <request_id>
 import "github.com/hosgf/element/middleware/ugin"
 
 r.Use(ugin.Tracing("my-service"))  // 必须在 MiddlewareHeader 前
-ugin.SetMiddleware(r, ugin.ExceptionHandler())
+ugin.SetMiddleware(r, ugin.ExceptionHandler(), ugin.AccessLog(), ugin.Dedup())
+ugin.DedupExclude("/webhook/callback")
 ```
+
+**Gin 中间件注意**：
+- Gzip 已在 `SetMiddleware` 外层处理（gin-contrib/gzip）
+- `AccessLog` 自动捕获响应体，需要记录请求 body 时需先读到 `gin.BodyBytesKey`
+- 业务失败写入 context：`c.Set(ugin.AccessFailureKey, msg)` / `c.Set(ugin.AccessErrorKey, err)`
 
 ### 4. 定时任务 / 消息消费
 
@@ -58,6 +78,7 @@ ctx.Go(reqCtx, func(c context.Context) {
 
 | 文档 | 说明 |
 |------|------|
+| [HTTP 中间件](./docs/HTTP中间件.md) | Gzip、AccessLog、Dedup、路径匹配与请求头 |
 | [链路上下文接入指南](./docs/链路上下文接入指南.md) | trace_id / request_id、HTTP / 定时器 / goroutine 接入 |
 | [OpenTelemetry 接入设计](./docs/OpenTelemetry接入设计.md) | OTel 分层（层 1 传播 + 层 2 上报）、复用点、改造步骤 |
 | [全局异常处理](./docs/全局异常处理.md) | GoFrame / Gin 异常中间件与 uerrors |

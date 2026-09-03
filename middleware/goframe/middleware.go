@@ -11,8 +11,8 @@ import (
 )
 
 func SetMiddleware(s *ghttp.Server, handlers ...ghttp.HandlerFunc) *ghttp.Server {
-	hs := make([]ghttp.HandlerFunc, 0, 3+len(handlers))
-	hs = append(hs, MiddlewareCORS, MiddlewareHeader, MiddlewareCookies)
+	hs := make([]ghttp.HandlerFunc, 0, 4+len(handlers))
+	hs = append(hs, MiddlewareGzip, MiddlewareCORS, MiddlewareHeader, MiddlewareCookies)
 	hs = append(hs, handlers...)
 	s.Use(hs...)
 	return s
@@ -42,7 +42,7 @@ func bindTrace(r *ghttp.Request) {
 
 func SetHeaders(r *ghttp.Request, headers ...request.Header) {
 	for _, header := range headers {
-		SetHandler(r, header)
+		SetHeader(r, header)
 	}
 }
 
@@ -51,44 +51,44 @@ func MiddlewareCookies(r *ghttp.Request) {
 	r.Middleware.Next()
 }
 
-func SetCookies(req *ghttp.Request) *ghttp.Request {
-	cookies := req.Cookies()
+func SetCookies(r *ghttp.Request) *ghttp.Request {
+	cookies := r.Cookies()
 	if len(cookies) == 0 {
-		return req
+		return r
 	}
 	cookieMap := make(map[string]string, len(cookies))
 	for _, c := range cookies {
 		cookieMap[c.Name] = c.Value
 	}
-	req.SetCtxVar(request.CookieKey, cookieMap)
-	return req
+	r.SetCtxVar(request.CookieKey, cookieMap)
+	return r
 }
 
-// SetHandler 将非空请求头写入同名 ctx 变量，用于后续 HTTP 透传。
-func SetHandler(req *ghttp.Request, header request.Header) *ghttp.Request {
-	if value := GetHeader(req, header); value != "" {
-		req.SetCtxVar(header.String(), value)
+// SetHeader 将非空请求头写入同名 ctx 变量，用于后续 HTTP 透传。
+func SetHeader(r *ghttp.Request, header request.Header) *ghttp.Request {
+	if value := GetHeader(r, header); value != "" {
+		r.SetCtxVar(header.String(), value)
 	}
-	return req
+	return r
 }
 
-func GetHeader(req *ghttp.Request, key request.Header) string {
-	return strings.TrimSpace(req.GetHeader(key.String()))
+func GetHeader(r *ghttp.Request, key request.Header) string {
+	return strings.TrimSpace(r.GetHeader(key.String()))
 }
 
-func bindHeader(req *ghttp.Request, key string, header request.Header) *ghttp.Request {
-	value := GetHeader(req, header)
+func bindHeader(r *ghttp.Request, key string, header request.Header) *ghttp.Request {
+	value := GetHeader(r, header)
 	if value == "" {
-		return req
+		return r
 	}
-	setCtx(req, key, value)
-	setCtx(req, header.String(), value)
-	return req
+	setCtx(r, key, value)
+	setCtx(r, header.String(), value)
+	return r
 }
 
-func setCtx(req *ghttp.Request, key, value string) {
-	if req.GetCtxVar(key).String() != "" {
+func setCtx(r *ghttp.Request, key, value string) {
+	if r.GetCtxVar(key).String() != "" {
 		return
 	}
-	req.SetCtxVar(key, value)
+	r.SetCtxVar(key, value)
 }
