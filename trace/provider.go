@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -26,13 +27,17 @@ func Init(ctx context.Context, cfg Config) (Shutdown, error) {
 		return nil, fmt.Errorf("trace: service name is required when enabled")
 	}
 
-	attrs := []resource.Option{
-		resource.WithAttributes(semconv.ServiceName(cfg.ServiceName)),
-	}
+	kv := []attribute.KeyValue{semconv.ServiceName(cfg.ServiceName)}
 	if v := strings.TrimSpace(cfg.ServiceVersion); v != "" {
-		attrs = append(attrs, resource.WithAttributes(semconv.ServiceVersion(v)))
+		kv = append(kv, semconv.ServiceVersion(v))
 	}
-	res, err := resource.New(ctx, attrs...)
+	if v := strings.TrimSpace(cfg.Environment); v != "" {
+		kv = append(kv, semconv.DeploymentEnvironment(v))
+	}
+	if v := strings.TrimSpace(cfg.System); v != "" {
+		kv = append(kv, attribute.String("system", v))
+	}
+	res, err := resource.New(ctx, resource.WithAttributes(kv...))
 	if err != nil {
 		return nil, fmt.Errorf("trace: resource: %w", err)
 	}

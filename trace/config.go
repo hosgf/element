@@ -12,6 +12,10 @@ type Config struct {
 	ServiceName string
 	// ServiceVersion 可选，写入 resource。
 	ServiceVersion string
+	// Environment 可选，写入 resource deployment.environment（如 test / prod）。
+	Environment string
+	// System 可选，写入 resource system（与 Pod 标签 system 对齐，如 hiit）。
+	System string
 	// SampleRate 采样率，主要影响层 2 导出量；默认 1.0。
 	SampleRate float64
 }
