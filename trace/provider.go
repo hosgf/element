@@ -32,7 +32,7 @@ func Init(ctx context.Context, cfg Config) (Shutdown, error) {
 		kv = append(kv, semconv.ServiceVersion(v))
 	}
 	if v := strings.TrimSpace(cfg.Environment); v != "" {
-		kv = append(kv, semconv.DeploymentEnvironment(v))
+		kv = append(kv, attribute.String("env", v))
 	}
 	if v := strings.TrimSpace(cfg.System); v != "" {
 		kv = append(kv, attribute.String("system", v))

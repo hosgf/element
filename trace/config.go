@@ -12,7 +12,7 @@ type Config struct {
 	ServiceName string
 	// ServiceVersion 可选，写入 resource。
 	ServiceVersion string
-	// Environment 可选，写入 resource deployment.environment（如 test / prod）。
+	// Environment 可选，写入 resource env（与日志/Pod 标签 env 对齐，如 test / prod）。
 	Environment string
 	// System 可选，写入 resource system（与 Pod 标签 system 对齐，如 hiit）。
 	System string
